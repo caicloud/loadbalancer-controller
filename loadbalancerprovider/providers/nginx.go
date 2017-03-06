@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"os"
 
-	tprapi "github.com/caicloud/ingress-admin/loadbalancer-controller/api"
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/controller"
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/loadbalancerprovider"
+	tprapi "github.com/caicloud/loadbalancer-controller/api"
+	"github.com/caicloud/loadbalancer-controller/controller"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api/errors"
 
