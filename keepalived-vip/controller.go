@@ -113,6 +113,8 @@ func (c *keepalivedController) Sync() error {
 	return c.keepalived.Reload()
 }
 
+// The k8s informer framework support List&Watch, instead of Get&Watch, so currently
+// periodically fetch config parameter inetsad of watch
 func (c *keepalivedController) fetchConfig() (conf map[string]interface{}, err error) {
 	service, err := c.clientset.Core().Services(c.namespace).Get(c.serviceName, meta_v1.GetOptions{})
 	if err != nil {
@@ -172,7 +174,7 @@ func (c *keepalivedController) removeVIP(iface, vip string) error {
 	glog.Infof("removing configured VIP %v", vip)
 	out, err := exec.New().Command("ip", "addr", "del", vip+"/32", "dev", iface).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("error reloading keepalived: %v\n%s", err, out)
+		return fmt.Errorf("error removing VIP %s on interface %s", err, out)
 	}
 	return nil
 }
