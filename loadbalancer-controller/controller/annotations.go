@@ -14,10 +14,11 @@ limitations under the License.
 package controller
 
 const (
-	// these pair of constants are used by the provisioner.
-	// The key is a kube namespaced key that denotes a ingress service requires provisioning.
-	// The value is set only when provisioning is completed.  Any other value will tell the provisioner
-	// that provisioning has not yet occurred.
+	// These pair of constants are used by the provisioner.
+
+	// The key is a kube namespaced key that denotes a loadbalancer requires provisioning.
+	// The value is set only when provisioning is completed.  Any other value will tell the
+	// provisioner that provisioning has not yet occurred.
 	ingressProvisioningRequiredAnnotationKey    = "ingress.alpha.k8s.io/provisioning-required"
 	ingressProvisioningCompletedAnnotationValue = "ingress.alpha.k8s.io/provisioning-completed"
 	ingressProvisioningFailedAnnotationValue    = "ingress.alpha.k8s.io/provisioning-failed"

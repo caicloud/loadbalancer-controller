@@ -36,6 +36,14 @@ import (
 	"github.com/caicloud/ingress-admin/loadbalancer-controller/loadbalancerprovider/providers"
 )
 
+const (
+	LoadbalancerClaimName string = "loadbalancerclaims"
+	LoadbalancerClaimKind string = "loadbalancerclaim"
+
+	LoadbalancerName string = "loadbalancers"
+	LoadbalancerKind string = "loadbalancer"
+)
+
 var (
 	flags = pflag.NewFlagSet("", pflag.ExitOnError)
 )
@@ -46,16 +54,20 @@ func init() {
 	go wait.Until(glog.Flush, 10*time.Second, wait.NeverStop)
 }
 
+var defaultBackendName string
 var defaultBackendImage string
+var defaultBackendLabelSelector map[string]string
 
 func init() {
 	defaultBackendImage = os.Getenv("INGRESS_DEFAULT_BACKEND_IMAGE")
 	if defaultBackendImage == "" {
 		defaultBackendImage = "index.caicloud.io/caicloud/default-http-backend:v0.0.1"
 	}
+	defaultBackendName = "default-http-backend"
+	defaultBackendLabelSelector = map[string]string{"app": "default-http-backend"}
 }
 
-// regiser loadbalancer providr
+// register loadbalancer providers
 func init() {
 	loadbalancerprovider.RegisterPlugin(nginx.ProbeLoadBalancerPlugin())
 }
@@ -78,7 +90,7 @@ func main() {
 		panic(err)
 	}
 
-	if err := ensureDefaulBackendService(clientset); err != nil {
+	if err := ensureDefaultBackendService(clientset); err != nil {
 		panic(err)
 	}
 
@@ -88,14 +100,14 @@ func main() {
 			GroupVersion: "k8s.io/v1",
 			APIResources: []unversioned.APIResource{
 				{
-					Name:       "loadbalancerclaims",
+					Name:       LoadbalancerClaimName,
+					Kind:       LoadbalancerClaimKind,
 					Namespaced: true,
-					Kind:       "loadbalancerclaim",
 				},
 				{
-					Name:       "loadbalancers",
+					Name:       LoadbalancerName,
+					Kind:       LoadbalancerKind,
 					Namespaced: true,
-					Kind:       "loadbalancer",
 				},
 			},
 		},
@@ -112,25 +124,23 @@ func main() {
 
 	pc := controller.NewProvisionController(clientset, dynamicClient, loadbalancerprovider.PluginMgr)
 	pc.Run(5, wait.NeverStop)
-
 }
 
-// when nginx loadbalancer receive a request, and can not matching any ingress rules,
-// it forward it to default backend service. default-http-backend will always response
-// "404"
-func ensureDefaulBackendService(clientset *kubernetes.Clientset) error {
+// ensureDefaultBackendService ensure a default backend service exists. When nginx
+// loadbalancer receives a request which doesn't match any ingress rules, it forwards
+// the request to default backend service. default-http-backend will always respond
+// with "404".
+func ensureDefaultBackendService(clientset *kubernetes.Clientset) error {
 	pod := v1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: "default",
-			Name:      "default-http-backend",
-			Labels: map[string]string{
-				"app": "default-http-backend",
-			},
+			Name:      defaultBackendName,
+			Labels:    defaultBackendLabelSelector,
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:            "default-http-backend",
+					Name:            defaultBackendName,
 					Image:           defaultBackendImage,
 					ImagePullPolicy: v1.PullAlways,
 					Resources: v1.ResourceRequirements{
@@ -151,17 +161,13 @@ func ensureDefaulBackendService(clientset *kubernetes.Clientset) error {
 	svc := v1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: "default",
-			Name:      "default-http-backend",
-			Labels: map[string]string{
-				"app": "default-http-backend",
-			},
+			Name:      defaultBackendName,
+			Labels:    defaultBackendLabelSelector,
 		},
 		Spec: v1.ServiceSpec{
 			Type:            v1.ServiceTypeClusterIP,
 			SessionAffinity: v1.ServiceAffinityNone,
-			Selector: map[string]string{
-				"app": "default-http-backend",
-			},
+			Selector:        defaultBackendLabelSelector,
 			Ports: []v1.ServicePort{
 				{
 					Port:       int32(80),

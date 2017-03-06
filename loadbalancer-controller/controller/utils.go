@@ -23,6 +23,9 @@ import (
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )
 
+// isProvisioningNeeded checks if it is required to provision a new loadbalancer.
+// It provisions a new loadbalancer if user sets `ingressProvisioningRequiredAnnotationKey`
+// and `IngressProvisioningClassKey`, and the provision has not occurred yet.
 func isProvisioningNeeded(annotation map[string]string) bool {
 	if annotation == nil {
 		return false
@@ -33,6 +36,7 @@ func isProvisioningNeeded(annotation map[string]string) bool {
 		annotation[ingressProvisioningRequiredAnnotationKey] != ingressProvisioningFailedAnnotationValue
 }
 
+// getResourceList returns list of resource requirement of a loadbalancer.
 func getResourceList(annotation map[string]string) (*v1.ResourceList, error) {
 	if annotation == nil {
 		return nil, fmt.Errorf("annotation is nil")

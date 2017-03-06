@@ -70,7 +70,7 @@ func RegisterPlugin(plugin LoadBalancerPlugin) error {
 	return nil
 }
 
-// FindPluginBySpec find a matching loadbalancer provider by LoadBalancerClaimSpec
+// FindPluginBySpec finds a matching loadbalancer provider by LoadBalancerClaim.LoadBalancerClaimSpec.
 func (pm *LoadBalancerPluginMgr) FindPluginBySpec(claim *api.LoadBalancerClaim) (LoadBalancerPlugin, error) {
 	pm.mutex.Lock()
 	defer pm.mutex.Unlock()
