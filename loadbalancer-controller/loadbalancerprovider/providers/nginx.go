@@ -1,3 +1,16 @@
+/*
+Copyright 2017 The Kubernetes Authors.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package nginx
 
 import (
@@ -5,10 +18,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang/glog"
 	tprapi "github.com/caicloud/ingress-admin/loadbalancer-controller/api"
 	"github.com/caicloud/ingress-admin/loadbalancer-controller/controller"
 	"github.com/caicloud/ingress-admin/loadbalancer-controller/loadbalancerprovider"
+	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api/errors"
 
 	"k8s.io/client-go/1.5/dynamic"
@@ -78,7 +91,6 @@ type nginxLoadbalancerProvisioner struct {
 }
 
 var _ loadbalancerprovider.Provisioner = &nginxLoadbalancerProvisioner{}
-
 
 // Provision() provision a Nginx Loadbalancer in cluster by deploying a nginx app
 func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset, dynamicClient *dynamic.Client) (string, error) {
