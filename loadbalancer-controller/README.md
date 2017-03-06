@@ -1,14 +1,18 @@
-# loadbalancer-controller
+# Loadbalancer controller
 
 #### Description
-LoadbalabcerController is a controller which allow to dynamically provision a Loadbalancer.
-For more information, see design doc [here](https://github.com/kubernetes/community/pull/275),
-currently implemented by third party resource.
 
+LoadbalancerController is a controller which provisions Loadbalancer dynamically.
+A loadbalancer is either on-prem solution (e.g. nginx, F5) or cloud Loadbalancer (e.g.
+Google Cloud Load Balancing). Loadbalancer is backed by [ingress controller](https://github.com/kubernetes/ingress)
+in kubernetes. For more information, see design doc [here](https://github.com/kubernetes/community/pull/275).
+The feature is currently implemented via third party resource.
 
-#### How to use
-* First, create third party resources
-```
+#### Usage
+
+* First, create third party resources `loadbalancer` and `loadbalancerclaim`:
+
+```yaml
 apiVersion: extensions/v1beta1
 kind: ThirdPartyResourceList
 items:
@@ -27,8 +31,10 @@ items:
     versions:
     - name: v1
 ```
+
 * Second, deploy loadbalancer-controller
-```
+
+```yaml
 apiVersion: v1
 kind: ReplicationController
 metadata:
@@ -59,6 +65,7 @@ spec:
 ```
 
 * Then, you can create a LoadbalancerClaim
+
 ```
 apiVersion: k8s.io/v1
 kind: Loadbalancerclaim
@@ -73,13 +80,14 @@ metadata:
     ingress.alpha.k8s.io/ingress-vip: "127.192.0.1"
 ```
 
-* loadbalancer-controller will dynamically provision a loadbalancer for you, by deploy a nginx-ingress-controller
-replication controller in the kube-system namespace
-
+loadbalancer-controller will dynamically provision a loadbalancer for you, by deploying a
+`nginx-ingress-controller` replication controller in the kube-system namespace.
 
 #### Current stage
+
 * loadbalancer-provision-controller is completed, which can dynamically provision a Loadbalancer for a LoadbalancerClaim
 
 #### Future plan
-* loadbalancer-recycler-controller whcih recycle a Loadbalancer is it's LoadbalancerClaim is deleted
-* loadbalancer-binding-controller which bind an Ingress resource to Loadbalancer
+
+* loadbalancer-recycler-controller which recycles a Loadbalancer when its LoadbalancerClaim is deleted
+* loadbalancer-binding-controller which binds an Ingress resource to Loadbalancer
