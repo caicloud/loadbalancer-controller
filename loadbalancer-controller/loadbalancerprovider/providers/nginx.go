@@ -92,7 +92,7 @@ type nginxLoadbalancerProvisioner struct {
 
 var _ loadbalancerprovider.Provisioner = &nginxLoadbalancerProvisioner{}
 
-// Provision() provision a Nginx Loadbalancer in cluster by deploying a nginx app
+// Provision provisions a Nginx Loadbalancer in cluster by deploying a nginx app
 func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset, dynamicClient *dynamic.Client) (string, error) {
 	service, rc, configmap, loadbalancer := p.getService(), p.getReplicationController(), p.getConfigMap(), p.getLoadBalancer()
 

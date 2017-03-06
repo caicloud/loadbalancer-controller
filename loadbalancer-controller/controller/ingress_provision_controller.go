@@ -46,7 +46,7 @@ var (
 	lbcresource = &unversioned.APIResource{Name: "loadbalancerclaims", Kind: "loadbalancerclaim", Namespaced: true}
 )
 
-// ProvisionController provision a LoadBalancer for LoadBalancerClaim when need
+// ProvisionController provisions a LoadBalancer for LoadBalancerClaim when need
 type ProvisionController struct {
 	clientset     *kubernetes.Clientset
 	dynamicClient *dynamic.Client
@@ -60,6 +60,7 @@ type ProvisionController struct {
 	syncHandler func(key string) error
 }
 
+// NewProvisionController creates a new ProvisionController.
 func NewProvisionController(clientset *kubernetes.Clientset, dynamicClient *dynamic.Client, pluginMgr loadbalancerprovider.LoadBalancerPluginMgr) *ProvisionController {
 	pc := &ProvisionController{
 		clientset:     clientset,
@@ -91,6 +92,7 @@ func NewProvisionController(clientset *kubernetes.Clientset, dynamicClient *dyna
 	return pc
 }
 
+// enqueueClaim enqueues a claim into work queue to be processed by worker.
 func (pc *ProvisionController) enqueueClaim(obj interface{}) {
 	item := *obj.(*runtime.Unstructured)
 	if !isProvisioningNeeded(item.GetAnnotations()) {
@@ -106,6 +108,7 @@ func (pc *ProvisionController) enqueueClaim(obj interface{}) {
 	pc.queue.Add(key)
 }
 
+// Run is the entry point of Provision Controller.
 func (pc *ProvisionController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	go pc.claimController.Run(stopCh)
@@ -117,6 +120,8 @@ func (pc *ProvisionController) Run(workers int, stopCh <-chan struct{}) {
 	pc.queue.ShutDown()
 }
 
+// worker runs a worker thread that dequeues items, processes them and marks
+// work done. It ensures that items are not processed concurrently.
 func (pc *ProvisionController) worker() {
 	for {
 		func() {
@@ -133,6 +138,7 @@ func (pc *ProvisionController) worker() {
 	}
 }
 
+// syncClaim is the main process work of ProvisionController.
 func (pc *ProvisionController) syncClaim(key string) error {
 	obj, exists, err := pc.claimStore.GetByKey(key)
 	if !exists {
@@ -155,7 +161,7 @@ func (pc *ProvisionController) syncClaim(key string) error {
 		return nil
 	}
 
-	lbName, provisionErr := pc.provosion(claim)
+	lbName, provisionErr := pc.provision(claim)
 	if provisionErr != nil {
 		glog.Errorf("failed to provision %v due to %v", key, provisionErr)
 	}
@@ -163,7 +169,8 @@ func (pc *ProvisionController) syncClaim(key string) error {
 	return pc.updateLoadBalancerClaimStatus(claim, lbName, provisionErr)
 }
 
-func (pc *ProvisionController) provosion(claim *tpapi.LoadBalancerClaim) (string, error) {
+// provision provisions a new loadbalancer via given `LoadBalancerClaim` specification.
+func (pc *ProvisionController) provision(claim *tpapi.LoadBalancerClaim) (string, error) {
 	plugin, err := pc.pluginMgr.FindPluginBySpec(claim)
 	if err != nil {
 		return "", err

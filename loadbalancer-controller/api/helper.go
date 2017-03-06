@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/1.5/pkg/util/json"
 )
 
-// ToLoadbalancerClaim converts  a Unstructured to LoadBalancerClaim
+// ToLoadbalancerClaim converts `Unstructured` to `LoadBalancerClaim`.
 func ToLoadbalancerClaim(unstructed *runtime.Unstructured) (*LoadBalancerClaim, error) {
 	data, err := unstructed.MarshalJSON()
 	if err != nil {
