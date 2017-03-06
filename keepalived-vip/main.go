@@ -66,14 +66,14 @@ func main() {
 		glog.Fatalf("missing SERVICE_NAME environment variable")
 	}
 
-	keepaivedController, err := newKeepalivedController(clientset, namespace, serviceName, podName)
+	keepalivedController, err := newKeepalivedController(clientset, namespace, serviceName, podName)
 	if err != nil {
 		glog.Fatalf("can not create keepalive controller due to: %v", err)
 	}
 
-	go handleSigterm(keepaivedController)
+	go handleSigterm(keepalivedController)
 
-	keepaivedController.Run(*resyncPeriod, wait.NeverStop)
+	keepalivedController.Run(*resyncPeriod, wait.NeverStop)
 
 	return
 }

@@ -16,6 +16,9 @@ import (
 	"github.com/golang/glog"
 )
 
+// keepalivedController is a controller which list&watch keepalived
+// configuration information(VIP, neighbors IPs, etc) from a Service
+// and update keepalived config file
 type keepalivedController struct {
 	clientset  *kubernetes.Clientset
 	keepalived *keepalived
@@ -49,6 +52,7 @@ func newKeepalivedController(clientset *kubernetes.Clientset, namespace, service
 	return c, nil
 }
 
+// Run begins watching and syncing.
 func (c *keepalivedController) Run(period time.Duration, stopCh <-chan struct{}) {
 	go c.keepalived.Start()
 
@@ -61,6 +65,7 @@ func (c *keepalivedController) Run(period time.Duration, stopCh <-chan struct{})
 	<-stopCh
 }
 
+// Stop stops controller and remove configured VIP from interface
 func (c *keepalivedController) Stop() error {
 	vip := c.config["vip"]
 	iface := c.config["iface"]
@@ -70,6 +75,7 @@ func (c *keepalivedController) Stop() error {
 	return c.removeVIP(iface.(string), vip.(string))
 }
 
+// Sync fetches keepalived configuration parameter and update config files
 func (c *keepalivedController) Sync() error {
 	conf, err := c.fetchConfig()
 	if err != nil {

@@ -25,12 +25,8 @@ func (k *keepalived) Start() {
 	k.cmd.Stdout = os.Stdout
 	k.cmd.Stderr = os.Stderr
 
-	if err := k.cmd.Start(); err != nil {
+	if err := k.cmd.Run(); err != nil {
 		glog.Errorf("keepalived error: %v", err)
-	}
-
-	if err := k.cmd.Wait(); err != nil {
-		glog.Fatalf("keepalived error: %v", err)
 	}
 }
 
@@ -45,7 +41,7 @@ func (k *keepalived) Reload() error {
 	return nil
 }
 
-// Stop stop keepalived process
+// Stop stops keepalived process
 func (k *keepalived) Stop() error {
 	err := syscall.Kill(k.cmd.Process.Pid, syscall.SIGTERM)
 	if err != nil {
