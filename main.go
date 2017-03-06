@@ -31,9 +31,9 @@ import (
 	"k8s.io/client-go/1.5/pkg/util/wait"
 	"k8s.io/client-go/1.5/rest"
 
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/controller"
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/loadbalancerprovider"
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/loadbalancerprovider/providers"
+	"github.com/caicloud/loadbalancer-controller/controller"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers"
 )
 
 const (

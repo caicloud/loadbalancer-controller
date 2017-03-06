@@ -31,8 +31,8 @@ import (
 	"k8s.io/client-go/1.5/pkg/watch"
 	"k8s.io/client-go/1.5/tools/cache"
 
-	tpapi "github.com/caicloud/ingress-admin/loadbalancer-controller/api"
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/loadbalancerprovider"
+	tpapi "github.com/caicloud/loadbalancer-controller/api"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
 )
 
 var keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc

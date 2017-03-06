@@ -18,7 +18,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/api"
+	"github.com/caicloud/loadbalancer-controller/api"
 	"k8s.io/client-go/1.5/pkg/api/resource"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 )

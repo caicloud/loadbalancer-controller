@@ -18,7 +18,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/caicloud/ingress-admin/loadbalancer-controller/api"
+	"github.com/caicloud/loadbalancer-controller/api"
 
 	"k8s.io/client-go/1.5/dynamic"
 	"k8s.io/client-go/1.5/kubernetes"
