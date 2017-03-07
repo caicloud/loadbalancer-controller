@@ -23,6 +23,7 @@ const (
 	ingressProvisioningCompletedAnnotationValue = "ingress.alpha.k8s.io/provisioning-completed"
 	ingressProvisioningFailedAnnotationValue    = "ingress.alpha.k8s.io/provisioning-failed"
 
+	// IngressProvisioningClassKey is the class of ingress, e.g. nginx, gce.
 	IngressProvisioningClassKey = "ingress.alpha.k8s.io/ingress-class"
 
 	ingressParameterCPUKey = "ingress.alpha.k8s.io/ingress-cpu"

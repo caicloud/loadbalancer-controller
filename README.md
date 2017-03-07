@@ -1,6 +1,6 @@
 # Loadbalancer controller
 
-#### Description
+## Description
 
 LoadbalancerController is a controller which provisions Loadbalancer dynamically.
 A loadbalancer is either on-prem solution (e.g. nginx, F5) or cloud Loadbalancer (e.g.
@@ -8,7 +8,7 @@ Google Cloud Load Balancing). Loadbalancer is backed by [ingress controller](htt
 in kubernetes. For more information, see design doc [here](https://github.com/kubernetes/community/pull/275).
 The feature is currently implemented via third party resource.
 
-#### Usage
+## Usage
 
 * First, create third party resources `loadbalancer` and `loadbalancerclaim`:
 

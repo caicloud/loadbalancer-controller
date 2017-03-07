@@ -26,18 +26,21 @@ import (
 	"k8s.io/client-go/1.5/pkg/util/validation"
 )
 
+// LoadBalancerPlugin is the interface implemented by loadbalancer plugin.
 type LoadBalancerPlugin interface {
 	GetPluginName() string
 	CanSupport(spec *api.LoadBalancerClaim) bool
 	NewProvisioner(options LoadBalancerOptions) Provisioner
 }
 
+// LoadBalancerOptions contains options for provisioning new LoadBalancer.
 type LoadBalancerOptions struct {
 	Resources        v1.ResourceRequirements
 	LoadBalancerName string
 	LoadBalancerVIP  string
 }
 
+// Provisioner knows how to provision LoadBalancer.
 type Provisioner interface {
 	Provision(clientset *kubernetes.Clientset, dynamicClient *dynamic.Client) (string, error)
 }
@@ -53,6 +56,7 @@ var PluginMgr LoadBalancerPluginMgr = LoadBalancerPluginMgr{
 	plugins: map[string]LoadBalancerPlugin{},
 }
 
+// RegisterPlugin registers a specific plugin; it is expected to be called for each plugin.
 func RegisterPlugin(plugin LoadBalancerPlugin) error {
 	PluginMgr.mutex.Lock()
 	defer PluginMgr.mutex.Unlock()

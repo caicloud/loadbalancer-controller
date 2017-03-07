@@ -46,7 +46,7 @@ var (
 	lbcresource = &unversioned.APIResource{Name: "loadbalancerclaims", Kind: "loadbalancerclaim", Namespaced: true}
 )
 
-// ProvisionController provisions a LoadBalancer for LoadBalancerClaim when need
+// ProvisionController provisions a LoadBalancer for LoadBalancerClaim when needed.
 type ProvisionController struct {
 	clientset     *kubernetes.Clientset
 	dynamicClient *dynamic.Client
@@ -193,6 +193,7 @@ func (pc *ProvisionController) provision(claim *tpapi.LoadBalancerClaim) (string
 	return provisioner.Provision(pc.clientset, pc.dynamicClient)
 }
 
+// updateLoadBalancerClaimStatus updates Loadbalancer claim status to kubernetes.
 func (pc *ProvisionController) updateLoadBalancerClaimStatus(claim *tpapi.LoadBalancerClaim, lbName string, provisionErr error) error {
 	for i := 0; i < updateLoadBalancerClaimRetryCount; i++ {
 		if err := func() error {
