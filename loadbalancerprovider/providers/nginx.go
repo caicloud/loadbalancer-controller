@@ -33,28 +33,33 @@ import (
 	"k8s.io/client-go/1.5/pkg/util/intstr"
 )
 
-var keepalibedImage, nginxIngressImage string
-
-// make keepalibedImage and nginxIngressImage configurable by environment variable
-func init() {
-	keepalibedImage = os.Getenv("INGRESS_KEEPALIVED_IMAGE")
-	if keepalibedImage == "" {
-		keepalibedImage = "index.caicloud.io/caicloud/ingress-keepalived-vip:v0.0.1"
-	}
-	nginxIngressImage = os.Getenv("INGRESS_NGINX_IMAGE")
-	if nginxIngressImage == "" {
-		nginxIngressImage = "index.caicloud.io/caicloud/nginx-ingress-controller:v0.0.1"
-	}
-}
-
-func ProbeLoadBalancerPlugin() loadbalancerprovider.LoadBalancerPlugin {
-	return &nginxLoadBalancerPlugin{}
-}
-
 const (
+	defaultKeepalivedImage   string = "index.caicloud.io/caicloud/ingress-keepalived-vip:v0.0.1"
+	defaultNginxIngressImage string = "index.caicloud.io/caicloud/nginx-ingress-controller:v0.0.1"
+
 	nginxLoadBalancerPluginName = "ingress.alpha.k8s.io/ingress-nginx"
 	ingressRoleLabelKey         = "ingress.alpha.k8s.io/role"
 )
+
+var keepalivedImage, nginxIngressImage string
+
+// read keepalivedImage and nginxIngressImage from environment variable; or
+// fallover to default images.
+func init() {
+	keepalivedImage = os.Getenv("INGRESS_KEEPALIVED_IMAGE")
+	if keepalivedImage == "" {
+		keepalivedImage = defaultKeepalivedImage
+	}
+	nginxIngressImage = os.Getenv("INGRESS_NGINX_IMAGE")
+	if nginxIngressImage == "" {
+		nginxIngressImage = defaultNginxIngressImage
+	}
+}
+
+// ProbeLoadBalancerPlugin returns nginx loadbalancer plugin.
+func ProbeLoadBalancerPlugin() loadbalancerprovider.LoadBalancerPlugin {
+	return &nginxLoadBalancerPlugin{}
+}
 
 var (
 	lbresource = &unversioned.APIResource{Name: "loadbalancers", Kind: "loadbalancer", Namespaced: true}
@@ -64,13 +69,13 @@ var _ loadbalancerprovider.LoadBalancerPlugin = &nginxLoadBalancerPlugin{}
 
 type nginxLoadBalancerPlugin struct{}
 
-// GetPluginName() implement LoadBalancerPlugin interface
+// GetPluginName implements LoadBalancerPlugin interface.
 func (plugin *nginxLoadBalancerPlugin) GetPluginName() string {
 	return nginxLoadBalancerPluginName
 }
 
-// CanSupport() implement LoadBalancerPlugin interface
-// It returns true if LoadBalancerClaim claims a Nginx type Loadbalancer
+// CanSupport implement LoadBalancerPlugin interface.
+// It returns true if LoadBalancerClaim claims a nginx type loadbalancer.
 func (plugin *nginxLoadBalancerPlugin) CanSupport(claim *tprapi.LoadBalancerClaim) bool {
 	if claim == nil || claim.Annotations == nil {
 		return false
@@ -78,8 +83,8 @@ func (plugin *nginxLoadBalancerPlugin) CanSupport(claim *tprapi.LoadBalancerClai
 	return claim.Annotations[controller.IngressProvisioningClassKey] == nginxLoadBalancerPluginName
 }
 
-// NewProvisioner() implement LoadBalancerPlugin interface
-// It returns a Nginx Loadbalancer Provisioner
+// NewProvisioner implements LoadBalancerPlugin interface.
+// It returns a nginx loadbalancer provisioner.
 func (plugin *nginxLoadBalancerPlugin) NewProvisioner(options loadbalancerprovider.LoadBalancerOptions) loadbalancerprovider.Provisioner {
 	return &nginxLoadbalancerProvisioner{
 		options: options,
@@ -92,7 +97,8 @@ type nginxLoadbalancerProvisioner struct {
 
 var _ loadbalancerprovider.Provisioner = &nginxLoadbalancerProvisioner{}
 
-// Provision provisions a Nginx Loadbalancer in cluster by deploying a nginx app
+// Provision provisions a nginx LoadBalancer, including ingress controllers, configurations,
+// services, etc; where ingress controller listens to ingress rules and does the actual forwarding.
 func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset, dynamicClient *dynamic.Client) (string, error) {
 	service, rc, configmap, loadbalancer := p.getService(), p.getReplicationController(), p.getConfigMap(), p.getLoadBalancer()
 
@@ -137,6 +143,7 @@ func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset
 	return p.options.LoadBalancerName, nil
 }
 
+// getLoadBalancer returns a LoadBalancer API object to represent the provisioned LoadBalancer.
 func (p *nginxLoadbalancerProvisioner) getLoadBalancer() *tprapi.LoadBalancer {
 	return &tprapi.LoadBalancer{
 		TypeMeta: unversioned.TypeMeta{
@@ -163,6 +170,8 @@ func (p *nginxLoadbalancerProvisioner) getLoadBalancer() *tprapi.LoadBalancer {
 	}
 }
 
+// getService returns a service to be created along with nginx LoadBalancer; the service
+// is used to reference and dereference ingress <-> loadbalancer.
 func (p *nginxLoadbalancerProvisioner) getService() *v1.Service {
 	return &v1.Service{
 		ObjectMeta: v1.ObjectMeta{
@@ -188,6 +197,8 @@ func (p *nginxLoadbalancerProvisioner) getService() *v1.Service {
 	}
 }
 
+// getConfigMap returns a configmap used to configure nginx ingress controller, for
+// details, see https://github.com/kubernetes/ingress/blob/master/controllers/nginx/configuration.md
 func (p *nginxLoadbalancerProvisioner) getConfigMap() *v1.ConfigMap {
 	return &v1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
@@ -203,6 +214,7 @@ func (p *nginxLoadbalancerProvisioner) getConfigMap() *v1.ConfigMap {
 	}
 }
 
+// getReplicationController returns RC for nginx controller.
 func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.ReplicationController {
 	nginxlbReplicas, terminationGracePeriodSeconds, nginxlbPrivileged := int32(2), int64(60), true
 
@@ -258,7 +270,7 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 					Containers: []v1.Container{
 						{
 							Name:            "keepalived",
-							Image:           keepalibedImage,
+							Image:           keepalivedImage,
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
@@ -340,13 +352,11 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: 80,
-									//HostPort:      80,
-									HostIP: p.options.LoadBalancerVIP,
+									HostIP:        p.options.LoadBalancerVIP,
 								},
 								{
 									ContainerPort: 443,
-									//HostPort:      443,
-									HostIP: p.options.LoadBalancerVIP,
+									HostIP:        p.options.LoadBalancerVIP,
 								},
 							},
 							Args: []string{

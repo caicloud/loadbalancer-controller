@@ -61,7 +61,7 @@ type LoadBalancerClaim struct {
 }
 
 type LoadBalancerClaimSpec struct {
-	// the binding reference to the LoadBalancer backing this claim.
+	// The binding reference to the LoadBalancer backing this claim.
 	LoadBalancerName string `json:"loadBalancerName,omitempty"`
 }
 

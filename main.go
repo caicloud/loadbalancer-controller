@@ -126,7 +126,7 @@ func main() {
 	pc.Run(5, wait.NeverStop)
 }
 
-// ensureDefaultBackendService ensure a default backend service exists. When nginx
+// ensureDefaultBackendService ensures a default backend service exists. When nginx
 // loadbalancer receives a request which doesn't match any ingress rules, it forwards
 // the request to default backend service. default-http-backend will always respond
 // with "404".
