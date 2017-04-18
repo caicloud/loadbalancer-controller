@@ -15,7 +15,6 @@ package nginx
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	tprapi "github.com/caicloud/loadbalancer-controller/api"
@@ -35,16 +34,21 @@ import (
 
 var keepalibedImage, nginxIngressImage string
 
+const (
+	KeepalivedVIPKey  = "keepalived.k8s.io/vip"
+	KeepalivedVRIDKey = "keepalived.k8s.io/vrid"
+)
+
 // read keepalivedImage and nginxIngressImage from environment variable; or
 // fallover to default images.
 func init() {
 	keepalibedImage = os.Getenv("INGRESS_KEEPALIVED_IMAGE")
 	if keepalibedImage == "" {
-		keepalibedImage = "cargo.caicloud.io/caicloud/ingress-keepalived-vip:v0.0.1"
+		keepalibedImage = "cargo.caicloud.io/caicloud/keepalived-sidecar:v0.1.0"
 	}
 	nginxIngressImage = os.Getenv("INGRESS_NGINX_IMAGE")
 	if nginxIngressImage == "" {
-		nginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:v0.0.1"
+		nginxIngressImage = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
 	}
 }
 
@@ -97,6 +101,7 @@ var _ loadbalancerprovider.Provisioner = &nginxLoadbalancerProvisioner{}
 // services, etc; where ingress controller listens to ingress rules and does the actual forwarding.
 func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset, dynamicClient *dynamic.Client) (string, error) {
 	service, rc, configmap, loadbalancer := p.getService(), p.getReplicationController(), p.getConfigMap(), p.getLoadBalancer()
+	tcpCM, udpCM := p.getTCPConfigMap(), p.getUDPConfigMap()
 
 	lbUnstructed, err := loadbalancer.ToUnstructured()
 	if err != nil {
@@ -113,6 +118,12 @@ func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset
 		if _, err := clientset.Core().ConfigMaps("kube-system").Create(configmap); err != nil {
 			return err
 		}
+		if _, err := clientset.Core().ConfigMaps("kube-system").Create(tcpCM); err != nil {
+			return err
+		}
+		if _, err := clientset.Core().ConfigMaps("kube-system").Create(udpCM); err != nil {
+			return err
+		}
 		if _, err := dynamicClient.Resource(lbresource, "kube-system").Create(lbUnstructed); err != nil {
 			return err
 		}
@@ -120,20 +131,26 @@ func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset
 	}()
 
 	if err != nil {
-		if err := clientset.Core().Services("kube-system").Delete(service.Name, nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Failed do delete service due to: %v", err)
+		if err = clientset.Core().Services("kube-system").Delete(service.Name, nil); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete service due to: %v", err)
 		}
-		if err := clientset.Core().ReplicationControllers("kube-system").Delete(rc.Name, nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Failed do delete rc due to: %v", err)
+		if err = clientset.Core().ReplicationControllers("kube-system").Delete(rc.Name, nil); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete rc due to: %v", err)
 		}
-		if err := clientset.Core().ConfigMaps("kube-system").Delete(configmap.Name, nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Failed do delete configmap due to: %v", err)
+		if err = clientset.Core().ConfigMaps("kube-system").Delete(configmap.Name, nil); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete configmap due to: %v", err)
 		}
-		if err := dynamicClient.Resource(lbresource, "kube-system").Delete(lbUnstructed.GetName(), nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Failed do delete lb due to: %v", err)
+		if err = clientset.Core().ConfigMaps("kube-system").Delete(tcpCM.Name, nil); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete tcp configmap due to: %v", err)
+		}
+		if err = clientset.Core().ConfigMaps("kube-system").Delete(udpCM.Name, nil); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete udp configmap due to: %v", err)
+		}
+		if err = dynamicClient.Resource(lbresource, "kube-system").Delete(lbUnstructed.GetName(), nil); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete lb due to: %v", err)
 		}
 
-		return "", fmt.Errorf("Failed to provision loadbalancer due to: %v", err)
+		return "", err
 	}
 
 	return p.options.LoadBalancerName, nil
@@ -176,8 +193,8 @@ func (p *nginxLoadbalancerProvisioner) getService() *v1.Service {
 				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
 			},
 			Annotations: map[string]string{
-				controller.IngressParameterVIPKey:  p.options.LoadBalancerVIP,
-				controller.IngressParameterVRIDKey: p.options.LoadBalancerVRID,
+				KeepalivedVIPKey:  p.options.LoadBalancerVIP,
+				KeepalivedVRIDKey: p.options.LoadBalancerVRID,
 			},
 		},
 		Spec: v1.ServiceSpec{
@@ -208,6 +225,36 @@ func (p *nginxLoadbalancerProvisioner) getConfigMap() *v1.ConfigMap {
 		Data: map[string]string{
 			"enable-sticky-sessions": "true",
 		},
+	}
+}
+
+// getTCPConfigMap returns a configmap used to configure nginx ingress controller, for
+// details, see https://github.com/kubernetes/ingress/blob/master/controllers/nginx/configuration.md
+func (p *nginxLoadbalancerProvisioner) getTCPConfigMap() *v1.ConfigMap {
+	return &v1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
+			Name: p.options.LoadBalancerName + "-tcp",
+			Labels: map[string]string{
+				"k8s-app":                 p.options.LoadBalancerName,
+				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
+			},
+		},
+		Data: map[string]string{},
+	}
+}
+
+// getUDPConfigMap returns a configmap used to configure nginx ingress controller, for
+// details, see https://github.com/kubernetes/ingress/blob/master/controllers/nginx/configuration.md
+func (p *nginxLoadbalancerProvisioner) getUDPConfigMap() *v1.ConfigMap {
+	return &v1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
+			Name: p.options.LoadBalancerName + "-udp",
+			Labels: map[string]string{
+				"k8s-app":                 p.options.LoadBalancerName,
+				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
+			},
+		},
+		Data: map[string]string{},
 	}
 }
 
@@ -306,15 +353,15 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 							},
 						},
 						{
-							Name:            "nginx-ingress-lb",
+							Name:            "ingress-nginx",
 							Image:           nginxIngressImage,
 							ImagePullPolicy: v1.PullAlways,
 							Resources:       p.options.Resources,
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
-										Path:   "/ingress-controller-healthz",
-										Port:   intstr.FromInt(80),
+										Path:   "/healthz",
+										Port:   intstr.FromInt(10254),
 										Scheme: v1.URISchemeHTTP,
 									},
 								},
@@ -322,11 +369,12 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 							LivenessProbe: &v1.Probe{
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
-										Path:   "/ingress-controller-healthz",
-										Port:   intstr.FromInt(80),
+										Path:   "/healthz",
+										Port:   intstr.FromInt(10254),
 										Scheme: v1.URISchemeHTTP,
 									},
 								},
+								InitialDelaySeconds: 10,
 							},
 							Env: []v1.EnvVar{
 								{
@@ -361,7 +409,12 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 							Args: []string{
 								"/nginx-ingress-controller",
 								"--default-backend-service=default/default-http-backend",
-								"--nginx-configmap=kube-system/" + p.options.LoadBalancerName,
+								"--configmap=kube-system/" + p.options.LoadBalancerName,
+								"--ingress-class=" + p.options.LoadBalancerName,
+								"--tcp-services-configmap=kube-system/" + p.options.LoadBalancerName + "-tcp",
+								"--udp-services-configmap=kube-system/" + p.options.LoadBalancerName + "-udp",
+								"--healthz-port=" + "10254",
+								"--health-check-path=" + "/healthz",
 							},
 						},
 					},

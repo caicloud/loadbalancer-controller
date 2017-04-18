@@ -64,7 +64,7 @@ var defaultBackendLabelSelector map[string]string
 func init() {
 	defaultBackendImage = os.Getenv("INGRESS_DEFAULT_BACKEND_IMAGE")
 	if defaultBackendImage == "" {
-		defaultBackendImage = "index.caicloud.io/caicloud/default-http-backend:v0.0.1"
+		defaultBackendImage = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
 	}
 	defaultBackendName = "default-http-backend"
 	defaultBackendLabelSelector = map[string]string{"app": "default-http-backend"}

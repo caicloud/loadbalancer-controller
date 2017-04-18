@@ -14,7 +14,6 @@ limitations under the License.
 package aliyun
 
 import (
-	"fmt"
 	"os"
 
 	"k8s.io/client-go/1.5/dynamic"
@@ -35,7 +34,7 @@ var aliyunIngressImage string
 func init() {
 	aliyunIngressImage = os.Getenv("INGRESS_ALIYUN_IMAGE")
 	if aliyunIngressImage == "" {
-		aliyunIngressImage = "cargo.caicloud.io/caicloud/aliyun-ingress-controller:v0.0.1"
+		aliyunIngressImage = "cargo.caicloud.io/caicloud/ingress-aliyun:v0.1.0"
 	}
 }
 
@@ -97,14 +96,14 @@ func (p *aliyunLoadBalancerProvisioner) Provision(clientset *kubernetes.Clientse
 	}()
 
 	if err != nil {
-		if err := clientset.Core().ReplicationControllers("kube-system").Delete(rc.Name, &api.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Failed do delete rc due to: %v", err)
+		if err = clientset.Core().ReplicationControllers("kube-system").Delete(rc.Name, &api.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete rc due to: %v", err)
 		}
-		if err := dynamicClient.Resource(lbresource, "kube-system").Delete(lbUnstructed.GetName(), &v1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Failed do delete lb due to: %v", err)
+		if err = dynamicClient.Resource(lbresource, "kube-system").Delete(lbUnstructed.GetName(), &v1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			glog.Errorf("failed to delete lb due to: %v", err)
 		}
 
-		return "", fmt.Errorf("Failed to provision loadbalancer due to: %v", err)
+		return "", err
 	}
 
 	return p.options.LoadBalancerName, nil
@@ -154,7 +153,7 @@ func (p *aliyunLoadBalancerProvisioner) getReplicationController() *v1.Replicati
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Containers: []v1.Container{
 						{
-							Name:            "aliyun-ingress-controller",
+							Name:            "ingress-aliyun",
 							Image:           aliyunIngressImage,
 							ImagePullPolicy: v1.PullAlways,
 							Resources:       p.options.Resources,
