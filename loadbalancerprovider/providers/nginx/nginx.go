@@ -22,11 +22,11 @@ import (
 	"github.com/caicloud/loadbalancer-controller/controller"
 	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/api/errors"
 
 	"k8s.io/client-go/1.5/dynamic"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/api/errors"
 	"k8s.io/client-go/1.5/pkg/api/resource"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/pkg/api/v1"

@@ -18,18 +18,17 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/util/workqueue"
-
 	"k8s.io/client-go/1.5/dynamic"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/1.5/pkg/runtime"
+	utilruntime "k8s.io/client-go/1.5/pkg/util/runtime"
 	"k8s.io/client-go/1.5/pkg/util/wait"
 	"k8s.io/client-go/1.5/pkg/watch"
 	"k8s.io/client-go/1.5/tools/cache"
+	"k8s.io/kubernetes/pkg/util/workqueue"
 
 	tpapi "github.com/caicloud/loadbalancer-controller/api"
 	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
