@@ -33,26 +33,18 @@ import (
 	"k8s.io/client-go/1.5/pkg/util/intstr"
 )
 
-const (
-	defaultKeepalivedImage   string = "index.caicloud.io/caicloud/ingress-keepalived-vip:v0.0.1"
-	defaultNginxIngressImage string = "index.caicloud.io/caicloud/nginx-ingress-controller:v0.0.1"
-
-	nginxLoadBalancerPluginName = "ingress.alpha.k8s.io/ingress-nginx"
-	ingressRoleLabelKey         = "ingress.alpha.k8s.io/role"
-)
-
-var keepalivedImage, nginxIngressImage string
+var keepalibedImage, nginxIngressImage string
 
 // read keepalivedImage and nginxIngressImage from environment variable; or
 // fallover to default images.
 func init() {
-	keepalivedImage = os.Getenv("INGRESS_KEEPALIVED_IMAGE")
-	if keepalivedImage == "" {
-		keepalivedImage = defaultKeepalivedImage
+	keepalibedImage = os.Getenv("INGRESS_KEEPALIVED_IMAGE")
+	if keepalibedImage == "" {
+		keepalibedImage = "cargo.caicloud.io/caicloud/ingress-keepalived-vip:v0.0.1"
 	}
 	nginxIngressImage = os.Getenv("INGRESS_NGINX_IMAGE")
 	if nginxIngressImage == "" {
-		nginxIngressImage = defaultNginxIngressImage
+		nginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:v0.0.1"
 	}
 }
 
@@ -60,6 +52,11 @@ func init() {
 func ProbeLoadBalancerPlugin() loadbalancerprovider.LoadBalancerPlugin {
 	return &nginxLoadBalancerPlugin{}
 }
+
+const (
+	nginxLoadBalancerPluginName = "ingress.alpha.k8s.io/ingress-nginx"
+	ingressRoleLabelKey         = "ingress.alpha.k8s.io/role"
+)
 
 var (
 	lbresource = &unversioned.APIResource{Name: "loadbalancers", Kind: "loadbalancer", Namespaced: true}
@@ -75,7 +72,6 @@ func (plugin *nginxLoadBalancerPlugin) GetPluginName() string {
 }
 
 // CanSupport implement LoadBalancerPlugin interface.
-// It returns true if LoadBalancerClaim claims a nginx type loadbalancer.
 func (plugin *nginxLoadBalancerPlugin) CanSupport(claim *tprapi.LoadBalancerClaim) bool {
 	if claim == nil || claim.Annotations == nil {
 		return false
@@ -125,16 +121,16 @@ func (p *nginxLoadbalancerProvisioner) Provision(clientset *kubernetes.Clientset
 
 	if err != nil {
 		if err := clientset.Core().Services("kube-system").Delete(service.Name, nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Faile do delete service due to: %v", err)
+			glog.Errorf("Failed do delete service due to: %v", err)
 		}
 		if err := clientset.Core().ReplicationControllers("kube-system").Delete(rc.Name, nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Faile do delete rc due to: %v", err)
+			glog.Errorf("Failed do delete rc due to: %v", err)
 		}
 		if err := clientset.Core().ConfigMaps("kube-system").Delete(configmap.Name, nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Faile do delete configmap due to: %v", err)
+			glog.Errorf("Failed do delete configmap due to: %v", err)
 		}
 		if err := dynamicClient.Resource(lbresource, "kube-system").Delete(lbUnstructed.GetName(), nil); err != nil && !errors.IsNotFound(err) {
-			glog.Errorf("Faile do delete lb due to: %v", err)
+			glog.Errorf("Failed do delete lb due to: %v", err)
 		}
 
 		return "", fmt.Errorf("Failed to provision loadbalancer due to: %v", err)
@@ -152,7 +148,7 @@ func (p *nginxLoadbalancerProvisioner) getLoadBalancer() *tprapi.LoadBalancer {
 		ObjectMeta: v1.ObjectMeta{
 			Name: p.options.LoadBalancerName,
 			Labels: map[string]string{
-				ProvisionerCreateByKey: ProvisionerCreateByValue,
+				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
 			},
 			Annotations: map[string]string{
 				controller.IngressParameterVIPKey: p.options.LoadBalancerVIP,
@@ -177,10 +173,11 @@ func (p *nginxLoadbalancerProvisioner) getService() *v1.Service {
 		ObjectMeta: v1.ObjectMeta{
 			Name: p.options.LoadBalancerName,
 			Labels: map[string]string{
-				ProvisionerCreateByKey: ProvisionerCreateByValue,
+				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
 			},
 			Annotations: map[string]string{
-				controller.IngressParameterVIPKey: p.options.LoadBalancerVIP,
+				controller.IngressParameterVIPKey:  p.options.LoadBalancerVIP,
+				controller.IngressParameterVRIDKey: p.options.LoadBalancerVRID,
 			},
 		},
 		Spec: v1.ServiceSpec{
@@ -204,8 +201,8 @@ func (p *nginxLoadbalancerProvisioner) getConfigMap() *v1.ConfigMap {
 		ObjectMeta: v1.ObjectMeta{
 			Name: p.options.LoadBalancerName,
 			Labels: map[string]string{
-				"k8s-app":              p.options.LoadBalancerName,
-				ProvisionerCreateByKey: ProvisionerCreateByValue,
+				"k8s-app":                 p.options.LoadBalancerName,
+				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
 			},
 		},
 		Data: map[string]string{
@@ -248,8 +245,8 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 		ObjectMeta: v1.ObjectMeta{
 			Name: p.options.LoadBalancerName,
 			Labels: map[string]string{
-				"k8s-app":              p.options.LoadBalancerName,
-				ProvisionerCreateByKey: ProvisionerCreateByValue,
+				"k8s-app":                 p.options.LoadBalancerName,
+				"kubernetes.io/createdby": "loadbalancer-nginx-dynamic-provisioner",
 			},
 		},
 		Spec: v1.ReplicationControllerSpec{
@@ -270,7 +267,7 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 					Containers: []v1.Container{
 						{
 							Name:            "keepalived",
-							Image:           keepalivedImage,
+							Image:           keepalibedImage,
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
@@ -352,11 +349,13 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 							Ports: []v1.ContainerPort{
 								{
 									ContainerPort: 80,
-									HostIP:        p.options.LoadBalancerVIP,
+									//HostPort:      80,
+									HostIP: p.options.LoadBalancerVIP,
 								},
 								{
 									ContainerPort: 443,
-									HostIP:        p.options.LoadBalancerVIP,
+									//HostPort:      443,
+									HostIP: p.options.LoadBalancerVIP,
 								},
 							},
 							Args: []string{

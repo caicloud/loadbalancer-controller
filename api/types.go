@@ -29,12 +29,18 @@ type LoadBalancer struct {
 type LoadBalancerSpec struct {
 	NginxLoadBalancer *NginxLoadBalancer `json:"nginxLoadBalancer,omitempty"`
 	//HaproxyLoadBalancer *HaproxyLoadBalancer
-	//AliyunLoadBalancer *AliyunLoadBalancer
+	AliyunLoadBalancer *AliyunLoadBalancer `json:"aliyunLoadBalancer,omitempty"`
 	//AnchnetLoadBalancer *AnchnetLoadBalancer
 }
 
 type NginxLoadBalancer struct {
 	Service v1.ObjectReference `json:"service,omitempty"`
+}
+
+type AliyunLoadBalancer struct {
+	LoadBalancerName string `json:"loadbalancerName,omitempty"`
+	LoadBalancerID   string `json:"loadbalancerID,omitempty"`
+	LoadBalancerIP   string `json:"loadbalancerIP,omitempty"`
 }
 
 type LoadBalancerStatus struct {

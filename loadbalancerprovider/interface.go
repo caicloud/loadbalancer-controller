@@ -37,7 +37,17 @@ type LoadBalancerPlugin interface {
 type LoadBalancerOptions struct {
 	Resources        v1.ResourceRequirements
 	LoadBalancerName string
+
+	// Options for ginx ingress-controller
 	LoadBalancerVIP  string
+	LoadBalancerVRID string
+
+	// Options for aliyun ingress-controller
+	ClusterName           string
+	AliyunAccessKeyID     string
+	AliyunAccessKeySecret string
+	AliyunReginonID       string
+	AliyunZoneID          string
 }
 
 // Provisioner knows how to provision LoadBalancer.

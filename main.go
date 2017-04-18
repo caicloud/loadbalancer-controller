@@ -33,7 +33,8 @@ import (
 
 	"github.com/caicloud/loadbalancer-controller/controller"
 	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
-	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers/aliyun"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers/nginx"
 )
 
 const (
@@ -52,6 +53,8 @@ func init() {
 	flag.Set("logtostderr", "true")
 	flag.Parse()
 	go wait.Until(glog.Flush, 10*time.Second, wait.NeverStop)
+	loadbalancerprovider.RegisterPlugin(nginx.ProbeLoadBalancerPlugin())
+	loadbalancerprovider.RegisterPlugin(aliyun.ProbeLoadBalancerPlugin())
 }
 
 var defaultBackendName string
