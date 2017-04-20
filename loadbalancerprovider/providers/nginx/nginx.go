@@ -410,7 +410,7 @@ func (p *nginxLoadbalancerProvisioner) getReplicationController() *v1.Replicatio
 								"/nginx-ingress-controller",
 								"--default-backend-service=default/default-http-backend",
 								"--configmap=kube-system/" + p.options.LoadBalancerName,
-								"--ingress-class=" + p.options.LoadBalancerName,
+								"--ingress-class=" + p.options.LoadBalancerOriginalName,
 								"--tcp-services-configmap=kube-system/" + p.options.LoadBalancerName + "-tcp",
 								"--udp-services-configmap=kube-system/" + p.options.LoadBalancerName + "-udp",
 								"--healthz-port=" + "10254",

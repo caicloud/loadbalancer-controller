@@ -178,12 +178,13 @@ func (pc *ProvisionController) provision(claim *tpapi.LoadBalancerClaim) (string
 	var provisioner loadbalancerprovider.Provisioner
 	if claim.Annotations[IngressProvisioningClassKey] == "ingress.alpha.k8s.io/ingress-aliyun" {
 		provisioner = plugin.NewProvisioner(loadbalancerprovider.LoadBalancerOptions{
-			LoadBalancerName:      getAliyunLoadBalancerName(claim),
-			ClusterName:           claim.Annotations[ingressParameterClusterNameKey],
-			AliyunAccessKeyID:     claim.Annotations[ingressParameterAliyunAccessKeyIDKey],
-			AliyunAccessKeySecret: claim.Annotations[ingressParameterAliyunAccessKeySecretKey],
-			AliyunReginonID:       claim.Annotations[ingressParameterAliyunRegionIDKey],
-			AliyunZoneID:          claim.Annotations[ingressParameterAliyunZoneIDKey],
+			LoadBalancerOriginalName: claim.Name,
+			LoadBalancerName:         getAliyunLoadBalancerName(claim),
+			ClusterName:              claim.Annotations[ingressParameterClusterNameKey],
+			AliyunAccessKeyID:        claim.Annotations[ingressParameterAliyunAccessKeyIDKey],
+			AliyunAccessKeySecret:    claim.Annotations[ingressParameterAliyunAccessKeySecretKey],
+			AliyunReginonID:          claim.Annotations[ingressParameterAliyunRegionIDKey],
+			AliyunZoneID:             claim.Annotations[ingressParameterAliyunZoneIDKey],
 		})
 	} else {
 		resourceList, err := getResourceList(claim.Annotations)
@@ -195,9 +196,10 @@ func (pc *ProvisionController) provision(claim *tpapi.LoadBalancerClaim) (string
 				Requests: *resourceList,
 				Limits:   *resourceList,
 			},
-			LoadBalancerName: getNginxLoadBalancerName(claim),
-			LoadBalancerVIP:  claim.Annotations[IngressParameterVIPKey],
-			LoadBalancerVRID: claim.Annotations[IngressParameterVRIDKey],
+			LoadBalancerOriginalName: claim.Name,
+			LoadBalancerName:         getNginxLoadBalancerName(claim),
+			LoadBalancerVIP:          claim.Annotations[IngressParameterVIPKey],
+			LoadBalancerVRID:         claim.Annotations[IngressParameterVRIDKey],
 		})
 	}
 

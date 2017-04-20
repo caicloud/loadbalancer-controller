@@ -35,8 +35,9 @@ type LoadBalancerPlugin interface {
 
 // LoadBalancerOptions contains options for provisioning new LoadBalancer.
 type LoadBalancerOptions struct {
-	Resources        v1.ResourceRequirements
-	LoadBalancerName string
+	Resources                v1.ResourceRequirements
+	LoadBalancerOriginalName string
+	LoadBalancerName         string
 
 	// Options for ginx ingress-controller
 	LoadBalancerVIP  string
