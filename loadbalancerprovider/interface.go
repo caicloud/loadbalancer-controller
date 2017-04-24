@@ -47,7 +47,7 @@ type LoadBalancerOptions struct {
 	ClusterName           string
 	AliyunAccessKeyID     string
 	AliyunAccessKeySecret string
-	AliyunReginonID       string
+	AliyunRegionID        string
 	AliyunZoneID          string
 }
 

@@ -31,11 +31,19 @@ import (
 
 var aliyunIngressImage string
 
+// Aliyun custom variables.
+var aliyunCustomSlbEndpoint string
+var aliyunCustomRegion string
+var aliyunCustomZone string
+
 func init() {
 	aliyunIngressImage = os.Getenv("INGRESS_ALIYUN_IMAGE")
 	if aliyunIngressImage == "" {
 		aliyunIngressImage = "cargo.caicloud.io/caicloud/ingress-aliyun:v0.1.0"
 	}
+	aliyunCustomSlbEndpoint = os.Getenv("ALIYUN_CUSTOM_SLB_ENDPOINT")
+	aliyunCustomRegion = os.Getenv("ALIYUN_CUSTOM_REGION_ID")
+	aliyunCustomZone = os.Getenv("ALIYUN_CUSTOM_ZONE_ID")
 }
 
 func ProbeLoadBalancerPlugin() loadbalancerprovider.LoadBalancerPlugin {
@@ -66,6 +74,12 @@ func (plugin *aliyunLoadBalancerPlugin) CanSupport(claim *tprapi.LoadBalancerCla
 }
 
 func (plugin *aliyunLoadBalancerPlugin) NewProvisioner(options loadbalancerprovider.LoadBalancerOptions) loadbalancerprovider.Provisioner {
+	if aliyunCustomRegion != "" {
+		options.AliyunRegionID = aliyunCustomRegion
+	}
+	if aliyunCustomZone != "" {
+		options.AliyunZoneID = aliyunCustomZone
+	}
 	return &aliyunLoadBalancerProvisioner{
 		options: options,
 	}
@@ -176,11 +190,15 @@ func (p *aliyunLoadBalancerProvisioner) getReplicationController() *v1.Replicati
 								},
 								{
 									Name:  "ALIYUN_REGION_ID",
-									Value: p.options.AliyunReginonID,
+									Value: p.options.AliyunRegionID,
 								},
 								{
 									Name:  "ALIYUN_ZONE_ID",
 									Value: p.options.AliyunZoneID,
+								},
+								{
+									Name:  "SLB_ENDPOINT",
+									Value: aliyunCustomSlbEndpoint,
 								},
 							},
 						},

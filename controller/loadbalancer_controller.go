@@ -183,7 +183,7 @@ func (pc *ProvisionController) provision(claim *tpapi.LoadBalancerClaim) (string
 			ClusterName:              claim.Annotations[ingressParameterClusterNameKey],
 			AliyunAccessKeyID:        claim.Annotations[ingressParameterAliyunAccessKeyIDKey],
 			AliyunAccessKeySecret:    claim.Annotations[ingressParameterAliyunAccessKeySecretKey],
-			AliyunReginonID:          claim.Annotations[ingressParameterAliyunRegionIDKey],
+			AliyunRegionID:           claim.Annotations[ingressParameterAliyunRegionIDKey],
 			AliyunZoneID:             claim.Annotations[ingressParameterAliyunZoneIDKey],
 		})
 	} else {
