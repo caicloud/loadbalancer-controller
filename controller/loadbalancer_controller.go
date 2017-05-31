@@ -18,18 +18,17 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/util/workqueue"
-
 	"k8s.io/client-go/1.5/dynamic"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/api/unversioned"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/1.5/pkg/runtime"
+	utilruntime "k8s.io/client-go/1.5/pkg/util/runtime"
 	"k8s.io/client-go/1.5/pkg/util/wait"
 	"k8s.io/client-go/1.5/pkg/watch"
 	"k8s.io/client-go/1.5/tools/cache"
+	"k8s.io/kubernetes/pkg/util/workqueue"
 
 	tpapi "github.com/caicloud/loadbalancer-controller/api"
 	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
@@ -176,19 +175,33 @@ func (pc *ProvisionController) provision(claim *tpapi.LoadBalancerClaim) (string
 		return "", err
 	}
 
-	resourceList, err := getResourceList(claim.Annotations)
-	if err != nil {
-		return "", err
+	var provisioner loadbalancerprovider.Provisioner
+	if claim.Annotations[IngressProvisioningClassKey] == "ingress.alpha.k8s.io/ingress-aliyun" {
+		provisioner = plugin.NewProvisioner(loadbalancerprovider.LoadBalancerOptions{
+			LoadBalancerOriginalName: claim.Name,
+			LoadBalancerName:         getAliyunLoadBalancerName(claim),
+			ClusterName:              claim.Annotations[ingressParameterClusterNameKey],
+			AliyunAccessKeyID:        claim.Annotations[ingressParameterAliyunAccessKeyIDKey],
+			AliyunAccessKeySecret:    claim.Annotations[ingressParameterAliyunAccessKeySecretKey],
+			AliyunRegionID:           claim.Annotations[ingressParameterAliyunRegionIDKey],
+			AliyunZoneID:             claim.Annotations[ingressParameterAliyunZoneIDKey],
+		})
+	} else {
+		resourceList, err := getResourceList(claim.Annotations)
+		if err != nil {
+			return "", err
+		}
+		provisioner = plugin.NewProvisioner(loadbalancerprovider.LoadBalancerOptions{
+			Resources: v1.ResourceRequirements{
+				Requests: *resourceList,
+				Limits:   *resourceList,
+			},
+			LoadBalancerOriginalName: claim.Name,
+			LoadBalancerName:         getNginxLoadBalancerName(claim),
+			LoadBalancerVIP:          claim.Annotations[IngressParameterVIPKey],
+			LoadBalancerVRID:         claim.Annotations[IngressParameterVRIDKey],
+		})
 	}
-
-	provisioner := plugin.NewProvisioner(loadbalancerprovider.LoadBalancerOptions{
-		Resources: v1.ResourceRequirements{
-			Requests: *resourceList,
-			Limits:   *resourceList,
-		},
-		LoadBalancerName: generateLoadBalancerName(claim),
-		LoadBalancerVIP:  claim.Annotations[IngressParameterVIPKey],
-	})
 
 	return provisioner.Provision(pc.clientset, pc.dynamicClient)
 }
@@ -229,7 +242,7 @@ func (pc *ProvisionController) updateLoadBalancerClaimStatus(claim *tpapi.LoadBa
 
 			return nil
 		}(); err != nil {
-			glog.Errorf("filed to update loadbalancer due to: %v", err)
+			glog.Errorf("failed to update loadbalancer due to: %v", err)
 			time.Sleep(updateLoadBalancerClaimInterval)
 		}
 

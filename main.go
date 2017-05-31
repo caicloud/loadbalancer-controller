@@ -33,7 +33,8 @@ import (
 
 	"github.com/caicloud/loadbalancer-controller/controller"
 	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider"
-	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers/aliyun"
+	"github.com/caicloud/loadbalancer-controller/loadbalancerprovider/providers/nginx"
 )
 
 const (
@@ -52,6 +53,8 @@ func init() {
 	flag.Set("logtostderr", "true")
 	flag.Parse()
 	go wait.Until(glog.Flush, 10*time.Second, wait.NeverStop)
+	loadbalancerprovider.RegisterPlugin(nginx.ProbeLoadBalancerPlugin())
+	loadbalancerprovider.RegisterPlugin(aliyun.ProbeLoadBalancerPlugin())
 }
 
 var defaultBackendName string
@@ -61,7 +64,7 @@ var defaultBackendLabelSelector map[string]string
 func init() {
 	defaultBackendImage = os.Getenv("INGRESS_DEFAULT_BACKEND_IMAGE")
 	if defaultBackendImage == "" {
-		defaultBackendImage = "index.caicloud.io/caicloud/default-http-backend:v0.0.1"
+		defaultBackendImage = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
 	}
 	defaultBackendName = "default-http-backend"
 	defaultBackendLabelSelector = map[string]string{"app": "default-http-backend"}
