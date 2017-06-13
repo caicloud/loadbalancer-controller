@@ -17,6 +17,7 @@ limitations under the License.
 package nginx
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -36,9 +37,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
@@ -49,10 +50,17 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 )
 
-const defaultNginxIngressImage = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+const (
+	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+	tcpConfigMapName         = "%s-tcp"
+	udpConfigMapName         = "%s-udp"
+	proxyNameSuffix          = "-proxy-nginx"
+)
 
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = netv1alpha1.SchemeGroupVersion.WithKind(netv1alpha1.LoadBalancerKind)
+var (
+	// controllerKind contains the schema.GroupVersionKind for this controller type.
+	controllerKind = netv1alpha1.SchemeGroupVersion.WithKind(netv1alpha1.LoadBalancerKind)
+)
 
 func init() {
 	proxy.RegisterPlugin("nginx", NewNginx())
@@ -118,7 +126,7 @@ func (f *nginx) Init(sif informers.SharedInformerFactory) {
 	f.dListerSynced = dInformer.Informer().HasSynced
 
 	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "proxy-nginx")
-	f.helper = controllerutil.NewHelperForObj(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer)
+	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
 	f.eventHandler = lbutil.NewEventHandlerForDeployment(lbInformer, dInformer, f.helper, f.filtered)
 
 	dInformer.Informer().AddEventHandler(f.eventHandler)
@@ -134,7 +142,6 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 	}
 
 	defer utilruntime.HandleCrash()
-	defer f.queue.ShutDown()
 
 	log.Info("Starting nginx proxy", log.Fields{"workers": workers, "image": f.image})
 	defer log.Info("Shutting down nginx proxy")
@@ -144,9 +151,12 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	for i := 0; i < workers; i++ {
-		go wait.Until(f.helper.Worker, time.Second, stopCh)
-	}
+	defer func() {
+		log.Info("Shutting down nginx proxy")
+		f.helper.ShutDown()
+	}()
+
+	f.helper.Run(workers, stopCh)
 
 	<-stopCh
 
@@ -274,7 +284,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 		dpNames = append(dpNames, dp.Name)
 
 		// auto generate deployment has this prefix
-		if !strings.HasPrefix(dp.Name, lb.Name+"-proxy-nginx") {
+		if !strings.HasPrefix(dp.Name, lb.Name+proxyNameSuffix) {
 			if *dp.Spec.Replicas == 0 {
 				continue
 			}
@@ -302,13 +312,25 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	if !updated {
 		// create configmap
 		cm, tcpcm, udpcm := f.GenerateConfigMap(lb)
-		f.client.CoreV1().ConfigMaps(lb.Namespace).Create(cm)
-		f.client.CoreV1().ConfigMaps(lb.Namespace).Create(tcpcm)
-		f.client.CoreV1().ConfigMaps(lb.Namespace).Create(udpcm)
+		log.Info("About to create ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
+		_, err = f.client.CoreV1().ConfigMaps(lb.Namespace).Create(cm)
+		if err != nil {
+			return err
+		}
+		log.Info("About to create TCP ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
+		_, err = f.client.CoreV1().ConfigMaps(lb.Namespace).Create(tcpcm)
+		if err != nil {
+			return err
+		}
+		log.Info("About to create UDP ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
+		_, err := f.client.CoreV1().ConfigMaps(lb.Namespace).Create(udpcm)
+		if err != nil {
+			return nil
+		}
 
 		// create deployment
 		log.Info("Create deployment for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
-		_, err := f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
+		_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
@@ -320,15 +342,18 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	proxyStatus := netv1alpha1.ProxyStatus{
 		Replicas:     *desiredDeploy.Spec.Replicas,
 		Deployments:  dpNames,
-		IngressClass: lb.Name,
-		ConfigMap:    lb.Namespace + "/" + lb.Name,
-		TCPConfigMap: lb.Namespace + "/" + lb.Name + "-tcp",
-		UDPConfigMap: lb.Namespace + "/" + lb.Name + "-udp",
+		IngressClass: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		ConfigMap:    lb.Name,
+		TCPConfigMap: fmt.Sprintf(tcpConfigMapName, lb.Name),
+		UDPConfigMap: fmt.Sprintf(udpConfigMapName, lb.Name),
 	}
 
 	if !reflect.DeepEqual(lb.Status.ProxyStatus, proxyStatus) {
-		lb.Status.ProxyStatus = proxyStatus
-		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Update(lb)
+		js, _ := json.Marshal(proxyStatus)
+		replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
+		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
+		// lb.Status.ProxyStatus = proxyStatus
+		// _, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Update(lb)
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
@@ -382,7 +407,7 @@ func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment
 // cleanup deployment and other resource controlled by lb proxy
 func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 
-	labels := labels.Set{
+	selector := labels.Set{
 		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 		netv1alpha1.LabelKeyProxy:     "nginx",
 	}
@@ -393,12 +418,43 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 	}
 
 	for _, d := range ds {
-		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
+		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			log.Warn("Cleanup proxy error", log.Fields{"ns": d.Namespace, "d.name": d.Name, "err": err})
+			return err
+		}
 	}
 	// clean up config map
-	f.client.CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
-		LabelSelector: labels.String(),
+	err = f.client.CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
+		LabelSelector: selector.String(),
 	})
+	if err != nil {
+		log.Warn("Cleanup ConfigMap error", log.Fields{"err": err})
+		return err
+	}
+
+	selector = labels.Set{
+		// createdby ingressClass
+		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+	}
+
+	// clean up ingress
+	ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err != nil {
+		log.Warn("Cleanup Ingress error", log.Fields{"err": err})
+		return err
+	}
+
+	for _, ingress := range ingresses.Items {
+		err = f.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			log.Warn("Cleanup Ingress error", log.Fields{"err": err})
+			return err
+		}
+	}
 
 	return nil
 }
@@ -421,7 +477,7 @@ func (f *nginx) GenerateConfigMap(lb *netv1alpha1.LoadBalancer) (cm, tcpcm, udpc
 
 	tcpcm = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   lb.Name + "-tcp",
+			Name:   fmt.Sprintf(tcpConfigMapName, lb.Name),
 			Labels: labels,
 		},
 		Data: map[string]string{},
@@ -429,7 +485,7 @@ func (f *nginx) GenerateConfigMap(lb *netv1alpha1.LoadBalancer) (cm, tcpcm, udpc
 
 	udpcm = &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   lb.Name + "-ucp",
+			Name:   fmt.Sprintf(udpConfigMapName, lb.Name),
 			Labels: labels,
 		},
 		Data: map[string]string{},
@@ -487,7 +543,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 
 	deploy := &extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   lb.Name + "-proxy-nginx-" + lbutil.RandStringBytesRmndr(5),
+			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -539,10 +595,10 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 							Args: []string{
 								"/nginx-ingress-controller",
 								"--default-backend-service=default/default-http-backend",
+								"--ingress-class=" + fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 								"--configmap=" + lb.Namespace + "/" + lb.Name,
-								"--ingress-class=" + lb.Name,
-								"--tcp-services-configmap=" + lb.Namespace + "/" + lb.Name + "-tcp",
-								"--udp-services-configmap=" + lb.Namespace + "/" + lb.Name + "-udp",
+								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
+								"--udp-services-configmap=" + fmt.Sprintf("%s/"+udpConfigMapName, lb.Namespace, lb.Name),
 								"--healthz-port=" + "10254",
 								"--health-check-path=" + "/healthz",
 							},
