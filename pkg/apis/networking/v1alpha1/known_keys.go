@@ -29,15 +29,15 @@ var (
 
 	// LabelKeyCreatedBy - loadbalancer.alpha.caicloud.io/created-by
 	LabelKeyCreatedBy = fmt.Sprintf("%s.%s/created-by", LoadBalancerName, AlphaGroupName)
-	// LabelValueFormatCreateby - default_lbName
-	LabelValueFormatCreateby = "%s_%s"
+	// LabelValueFormatCreateby - namespace.name
+	LabelValueFormatCreateby = "%s.%s"
 
 	// UniqueLabelKeyFormat ...
-	// loadbalancer.alpha.caicloud.io/namespace-lbname
-	UniqueLabelKeyFormat = LoadBalancerName + "." + AlphaGroupName + "/" + "%s_%s"
+	// loadbalancer.alpha.caicloud.io/namespace.name
+	UniqueLabelKeyFormat = LoadBalancerName + "." + AlphaGroupName + "/" + "%s.%s"
 
 	// TaintKey ...
 	TaintKey = fmt.Sprintf("%s.%s/dedicated", LoadBalancerName, AlphaGroupName)
-	// TaintValueFormat ...
-	TaintValueFormat = "%s_%s"
+	// TaintValueFormat - namespace.name
+	TaintValueFormat = "%s.%s"
 )

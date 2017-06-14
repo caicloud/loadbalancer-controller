@@ -17,6 +17,7 @@ limitations under the License.
 package ipvsdr
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -38,8 +39,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
@@ -49,7 +50,10 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 )
 
-const defaultImage = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+const (
+	defaultImage       = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+	providerNameSuffix = "-provider-ipvsdr"
+)
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = netv1alpha1.SchemeGroupVersion.WithKind(netv1alpha1.LoadBalancerKind)
@@ -119,7 +123,7 @@ func (f *ipvsdr) Init(sif informers.SharedInformerFactory) {
 	f.dListerSynced = dInformer.Informer().HasSynced
 
 	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "provider-ipvsdr")
-	f.helper = controllerutil.NewHelperForObj(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer)
+	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
 	f.eventHandler = lbutil.NewEventHandlerForDeployment(lbInformer, dInformer, f.helper, f.filtered)
 
 	dInformer.Informer().AddEventHandler(f.eventHandler)
@@ -137,7 +141,6 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 	}
 
 	defer utilruntime.HandleCrash()
-	defer f.queue.ShutDown()
 
 	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
 	defer log.Info("Shutting down ipvsdr provider")
@@ -147,12 +150,14 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	for i := 0; i < workers; i++ {
-		go wait.Until(f.helper.Worker, time.Second, stopCh)
-	}
+	defer func() {
+		log.Info("Shutting down ipvsdr provider")
+		f.helper.ShutDown()
+	}()
+
+	f.helper.Run(workers, stopCh)
 
 	<-stopCh
-
 }
 
 func (f *ipvsdr) filtered(obj *extensions.Deployment) bool {
@@ -263,7 +268,7 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 	var err error
 	for _, dp := range dps {
 		// auto generate deployment has this prefix
-		if !strings.HasPrefix(dp.Name, lb.Name+"-provider-ipvsdr") {
+		if !strings.HasPrefix(dp.Name, lb.Name+providerNameSuffix) {
 			if *dp.Spec.Replicas == 0 {
 				continue
 			}
@@ -301,8 +306,11 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 	}
 
 	if !reflect.DeepEqual(lb.Status.ProvidersStatuses.Ipvsdr, ipvsStatus) {
-		lb.Status.ProvidersStatuses.Ipvsdr = ipvsStatus
-		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Update(lb)
+		js, _ := json.Marshal(ipvsStatus)
+		replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
+		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
+		// lb.Status.ProvidersStatuses.Ipvsdr = ipvsStatus
+		// _, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Update(lb)
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
@@ -408,7 +416,7 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 
 	deploy := &extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   lb.Name + "-provider-ipvsdr-" + lbutil.RandStringBytesRmndr(5),
+			Name:   lb.Name + providerNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
 			OwnerReferences: []metav1.OwnerReference{
 				{

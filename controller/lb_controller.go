@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -31,12 +32,12 @@ import (
 	"github.com/caicloud/loadbalancer-controller/provider"
 	"github.com/caicloud/loadbalancer-controller/proxy"
 	log "github.com/zoumo/logdog"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -76,7 +77,7 @@ func NewLoadBalancerController(client kubernetes.Interface, tprClient tprclient.
 	}
 
 	// setup lb controller helper
-	lbc.helper = controllerutil.NewHelperForObj(&netv1alpha1.LoadBalancer{}, lbc.queue, lbc.syncLoadBalancer)
+	lbc.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, lbc.queue, lbc.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
 
 	// setup informer
 	lbinformer := lbc.factory.Networking().V1alpha1().LoadBalancer()
@@ -100,7 +101,6 @@ func NewLoadBalancerController(client kubernetes.Interface, tprClient tprclient.
 // Run begins watching and syncing.
 func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer lbc.queue.ShutDown()
 
 	log.Info("Startting loadbalancer controller")
 	defer log.Info("Shutting down loadbalancer controller")
@@ -126,10 +126,13 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 	}
 	log.Info("All caches have synced, Running LoadBalancer Controller ...", log.Fields{"worker": workers})
 
+	defer func() {
+		log.Info("Shuttingdown controller queue")
+		lbc.helper.ShutDown()
+	}()
+
 	// start loadbalancer worker
-	for i := 0; i < workers; i++ {
-		go wait.Until(lbc.helper.Worker, time.Second, stopCh)
-	}
+	lbc.helper.Run(workers, stopCh)
 
 	// run proxy
 	proxy.Run(stopCh)
@@ -255,8 +258,7 @@ func (lbc *LoadBalancerController) syncNodes(lb *netv1alpha1.LoadBalancer) error
 	}
 	// compute diff
 	nodesToDelete := lbc.nodesDiff(oldNodes, desiredNodes.Nodes)
-	lbc.doLabelAndTaints(nodesToDelete, desiredNodes)
-	return nil
+	return lbc.doLabelAndTaints(nodesToDelete, desiredNodes)
 }
 
 func (lbc *LoadBalancerController) getNodesForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*apiv1.Node, error) {
@@ -362,7 +364,7 @@ func (lbc *LoadBalancerController) clone(lb *netv1alpha1.LoadBalancer) (*netv1al
 
 // doLabelAndTaints delete label and taints in nodesToDelete
 // add label and taints in nodes
-func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node, desiredNodes *VerifiedNodes) {
+func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node, desiredNodes *VerifiedNodes) error {
 	// delete labels and taints from old nodes
 	for _, node := range nodesToDelete {
 		copy, _ := scheme.Scheme.DeepCopy(node)
@@ -384,13 +386,22 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 		labelChanged := !reflect.DeepEqual(node.Labels, copyNode.Labels)
 		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
 		if labelChanged || taintChanged {
-			log.Debug("Delete labels and taints from old nodes", log.Fields{
-				"node": node.Name,
-			})
-			_, err := lbc.kubeClient.CoreV1().Nodes().Update(copyNode)
+
+			orginal, _ := json.Marshal(node)
+			modified, _ := json.Marshal(copyNode)
+			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
+			if err != nil {
+				return err
+			}
+			_, err = lbc.kubeClient.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
 			if err != nil {
 				log.Errorf("update node err: %v", err)
+				return err
 			}
+			log.Notice("Delete labels and taints from old nodes", log.Fields{
+				"node":  node.Name,
+				"patch": string(patch),
+			})
 		}
 
 	}
@@ -416,15 +427,25 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 		labelChanged := !reflect.DeepEqual(node.Labels, copyNode.Labels)
 		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
 		if labelChanged || taintChanged {
-			log.Debug("Ensure labels and taints for requested nodes", log.Fields{
-				"node":         node.Name,
-				"labels":       node.Labels,
-				"taints":       newTaints,
-				"labelChanged": labelChanged,
-				"taintChanged": taintChanged,
+
+			orginal, _ := json.Marshal(node)
+			modified, _ := json.Marshal(copyNode)
+			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
+			if err != nil {
+				return err
+			}
+			_, err = lbc.kubeClient.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+			if err != nil {
+				log.Errorf("update node err: %v", err)
+				return err
+			}
+			log.Notice("Ensure labels and taints for requested nodes", log.Fields{
+				"node":  node.Name,
+				"patch": string(patch),
 			})
-			lbc.kubeClient.CoreV1().Nodes().Update(copyNode)
 		}
 	}
+
+	return nil
 
 }

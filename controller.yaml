@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: loadbalancer-controller
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: loadbalancer-controller
+    spec:
+      containers:
+        - resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          image: cargo.caicloudprivatetest.com/caicloud/loadbalancer-controller:latest
+          name: controller

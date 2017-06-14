@@ -19,12 +19,14 @@ package controller
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -39,14 +41,21 @@ var (
 )
 
 // SyncHandler ...
-type SyncHandler func(key interface{}) error
+type syncHandler func(key interface{}) error
+type keyFunc func(obj interface{}) (interface{}, error)
 
 // Helper is a helper for creating a k8s controller easily
 type Helper struct {
 	SyncType reflect.Type
-	Queue    workqueue.RateLimitingInterface
+	// queue is the work queue the worker polls
+	Queue workqueue.RateLimitingInterface
+	// SyncHandler is called for each item in the queue
+	SyncHandler syncHandler
+	// KeyFunc is called to get key from obj
+	keyFunc keyFunc
 
-	SyncHandler         SyncHandler
+	waitGroup sync.WaitGroup
+
 	Enqueue             func(obj interface{})
 	EnqueueRateLimited  func(obj interface{})
 	EnqueueAfter        func(obj interface{}, after time.Duration)
@@ -54,11 +63,18 @@ type Helper struct {
 }
 
 // NewHelper returns a new helper, enqueue key of obj
-func NewHelper(syncObject runtime.Object, queue workqueue.RateLimitingInterface, syncHandler SyncHandler) *Helper {
+func NewHelper(syncObject runtime.Object, queue workqueue.RateLimitingInterface, syncHandler syncHandler) *Helper {
+	return NewHelperForKeyFunc(syncObject, queue, syncHandler, nil)
+}
+
+// NewHelperForKeyFunc returns a new helper using custom keyfunc
+func NewHelperForKeyFunc(syncObject runtime.Object, queue workqueue.RateLimitingInterface, syncHandler syncHandler, keyFunc keyFunc) *Helper {
 	helper := &Helper{
 		SyncType:    reflect.TypeOf(syncObject),
 		Queue:       queue,
 		SyncHandler: syncHandler,
+		keyFunc:     keyFunc,
+		waitGroup:   sync.WaitGroup{},
 	}
 
 	helper.Enqueue = helper.enqueue
@@ -66,28 +82,36 @@ func NewHelper(syncObject runtime.Object, queue workqueue.RateLimitingInterface,
 	helper.EnqueueAfter = helper.enqueueAfter
 	helper.ProcessNextWorkItem = helper.processNextWorkItem
 
+	if keyFunc == nil {
+		helper.keyFunc = helper.defaultKeyFunc
+	}
+
 	return helper
 }
 
-// NewHelperForObj returns a new helper, enqueue whole obj
-func NewHelperForObj(syncObject runtime.Object, queue workqueue.RateLimitingInterface, syncHandler SyncHandler) *Helper {
-	helper := &Helper{
-		SyncType:    reflect.TypeOf(syncObject),
-		Queue:       queue,
-		SyncHandler: syncHandler,
+// Run starts n workers to sync
+func (helper *Helper) Run(workers int, stopCh <-chan struct{}) {
+	for i := 0; i < workers; i++ {
+		go wait.Until(helper.worker, time.Second, stopCh)
 	}
+}
 
-	helper.Enqueue = helper.Queue.Add
-	helper.EnqueueRateLimited = helper.Queue.AddRateLimited
-	helper.EnqueueAfter = helper.Queue.AddAfter
-	helper.ProcessNextWorkItem = helper.processNextWorkItem
-
-	return helper
+func (helper *Helper) defaultKeyFunc(obj interface{}) (interface{}, error) {
+	key, err := KeyFunc(obj)
+	if err != nil {
+		return "", err
+	}
+	return key, nil
 }
 
 // Enqueue wraps queue.Add
 func (helper *Helper) enqueue(obj interface{}) {
-	key, err := KeyFunc(obj)
+
+	if helper.IsShuttingDown() {
+		return
+	}
+
+	key, err := helper.keyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", helper.SyncType, obj, err))
 		return
@@ -98,7 +122,12 @@ func (helper *Helper) enqueue(obj interface{}) {
 // EnqueueRateLimited wraps queue.AddRateLimited. It adds an item to the workqueue
 // after the rate limiter says its ok
 func (helper *Helper) enqueueRateLimited(obj interface{}) {
-	key, err := KeyFunc(obj)
+
+	if helper.IsShuttingDown() {
+		return
+	}
+
+	key, err := helper.keyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", helper.SyncType, obj, err))
 		return
@@ -108,7 +137,12 @@ func (helper *Helper) enqueueRateLimited(obj interface{}) {
 
 // EnqueueAfter wraps queue.AddAfter. It adds an item to the workqueue after the indicated duration has passed
 func (helper *Helper) enqueueAfter(obj interface{}, after time.Duration) {
-	key, err := KeyFunc(obj)
+
+	if helper.IsShuttingDown() {
+		return
+	}
+
+	key, err := helper.keyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", helper.SyncType, obj, err))
 		return
@@ -119,13 +153,15 @@ func (helper *Helper) enqueueAfter(obj interface{}, after time.Duration) {
 // Worker is a common worker for controllers
 // worker runs a worker thread that just dequeues items, processes them, and marks them done.
 // It enforces that the syncHandler is never invoked concurrently with the same key.
-func (helper *Helper) Worker() {
+func (helper *Helper) worker() {
+	helper.waitGroup.Add(1)
+	defer helper.waitGroup.Done()
 	// invoked oncely process any until exhausted
 	for helper.ProcessNextWorkItem() {
 	}
 }
 
-// ProcessNextWorkItem process next item in queue by syncHandler
+// ProcessNextWorkItem processes next item in queue by syncHandler
 func (helper *Helper) processNextWorkItem() bool {
 	obj, quit := helper.Queue.Get()
 	if quit {
@@ -148,6 +184,8 @@ func (helper *Helper) HandleSyncError(err error, obj interface{}) {
 	}
 
 	var key interface{}
+
+	// get short key no matter what the keyfunc is
 	key, kerr := KeyFunc(obj)
 	if kerr != nil {
 		key = obj
@@ -162,4 +200,22 @@ func (helper *Helper) HandleSyncError(err error, obj interface{}) {
 	utilruntime.HandleError(err)
 	log.Warn("Dropping object out of queue", log.Fields{"type": helper.SyncType, "obj": key, "err": err})
 	helper.Queue.Forget(obj)
+}
+
+// ShutDown shuts down the work queue and waits for the worker to ACK
+func (helper *Helper) ShutDown() {
+	// helper shutdown the queue, then worker can't get key from queue
+	// processNextWorkItem return false, and then waitGroup -1
+	helper.Queue.ShutDown()
+	helper.waitGroup.Wait()
+}
+
+// IsShuttingDown returns if the method Shutdown was invoked
+func (helper *Helper) IsShuttingDown() bool {
+	return helper.Queue.ShuttingDown()
+}
+
+// PassthroughKeyFunc is a keyFunc which returns the original obj
+func PassthroughKeyFunc(obj interface{}) (interface{}, error) {
+	return obj, nil
 }
