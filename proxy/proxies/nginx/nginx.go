@@ -38,7 +38,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -310,6 +309,13 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
+		// create deployment
+		log.Info("Create deployment for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
+		if err != nil {
+			return err
+		}
+
 		// create configmap
 		cm, tcpcm, udpcm := f.GenerateConfigMap(lb)
 		log.Info("About to create ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
@@ -326,13 +332,6 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 		_, err := f.client.CoreV1().ConfigMaps(lb.Namespace).Create(udpcm)
 		if err != nil {
 			return nil
-		}
-
-		// create deployment
-		log.Info("Create deployment for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
-		_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
-		if err != nil {
-			return err
 		}
 
 		dpNames = append(dpNames, desiredDeploy.Name)
@@ -424,6 +423,14 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 			return err
 		}
 	}
+
+	// clean up rs
+	// there is a bug in k8s, deployment can not cleanup all replicasets sometimes
+	// so we do it, but it is unnecessary, so we don't care whether it succeeded
+	f.client.ExtensionsV1beta1().ReplicaSets(lb.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
 	// clean up config map
 	err = f.client.CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
 		LabelSelector: selector.String(),
@@ -530,7 +537,9 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 		RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 			{
 				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: labels,
+					MatchLabels: map[string]string{
+						netv1alpha1.LabelKeyProxy: "nginx",
+					},
 				},
 				TopologyKey: metav1.LabelHostname,
 			},
@@ -540,6 +549,9 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 	// privileged := true
 
 	t := true
+
+	// TODO delete me
+	// hostNetwork = false
 
 	deploy := &extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -591,6 +603,24 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 									ContainerPort: 443,
 								},
 							},
+							Env: []v1.EnvVar{
+								{
+									Name: "POD_NAME",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: "POD_NAMESPACE",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+							},
 							// TODO
 							Args: []string{
 								"/nginx-ingress-controller",
@@ -602,24 +632,24 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 								"--healthz-port=" + "10254",
 								"--health-check-path=" + "/healthz",
 							},
-							ReadinessProbe: &v1.Probe{
-								Handler: v1.Handler{
-									HTTPGet: &v1.HTTPGetAction{
-										Path:   "/ingress-controller-healthz",
-										Port:   intstr.FromInt(10254),
-										Scheme: v1.URISchemeHTTP,
-									},
-								},
-							},
-							LivenessProbe: &v1.Probe{
-								Handler: v1.Handler{
-									HTTPGet: &v1.HTTPGetAction{
-										Path:   "/ingress-controller-healthz",
-										Port:   intstr.FromInt(10254),
-										Scheme: v1.URISchemeHTTP,
-									},
-								},
-							},
+							// ReadinessProbe: &v1.Probe{
+							// 	Handler: v1.Handler{
+							// 		HTTPGet: &v1.HTTPGetAction{
+							// 			Path:   "/ingress-controller-healthz",
+							// 			Port:   intstr.FromInt(10254),
+							// 			Scheme: v1.URISchemeHTTP,
+							// 		},
+							// 	},
+							// },
+							// LivenessProbe: &v1.Probe{
+							// 	Handler: v1.Handler{
+							// 		HTTPGet: &v1.HTTPGetAction{
+							// 			Path:   "/ingress-controller-healthz",
+							// 			Port:   intstr.FromInt(10254),
+							// 			Scheme: v1.URISchemeHTTP,
+							// 		},
+							// 	},
+							// },
 						},
 					},
 				},

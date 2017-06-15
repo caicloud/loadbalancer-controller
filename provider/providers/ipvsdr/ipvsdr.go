@@ -367,6 +367,18 @@ func (f *ipvsdr) cleanup(lb *netv1alpha1.LoadBalancer) error {
 		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
 	}
 
+	// clean up rs
+	// there is a bug in k8s, deployment can not cleanup all replicasets sometimes
+	// so we do it, but it is unnecessary, so we don't care whether it succeeded
+	selector := labels.Set{
+		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		netv1alpha1.LabelKeyProvider:  "ipvsdr",
+	}
+
+	f.client.ExtensionsV1beta1().ReplicaSets(lb.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
 	return nil
 }
 
@@ -403,7 +415,9 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 		RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
 			{
 				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: labels,
+					MatchLabels: map[string]string{
+						netv1alpha1.LabelKeyProvider: "ipvsdr",
+					},
 				},
 				TopologyKey: metav1.LabelHostname,
 			},
@@ -460,20 +474,12 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
 								Limits: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("1000m"),
-									v1.ResourceMemory: resource.MustParse("500Mi"),
+									v1.ResourceCPU:    resource.MustParse("200m"),
+									v1.ResourceMemory: resource.MustParse("50Mi"),
 								},
 							},
 							SecurityContext: &v1.SecurityContext{
 								Privileged: &privileged,
-							},
-							Ports: []v1.ContainerPort{
-								{
-									ContainerPort: 80,
-								},
-								{
-									ContainerPort: 443,
-								},
 							},
 							// TODO
 							Args: []string{
