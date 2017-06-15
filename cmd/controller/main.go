@@ -29,6 +29,7 @@ import (
 	_ "github.com/caicloud/loadbalancer-controller/provider/providers"
 	"github.com/caicloud/loadbalancer-controller/proxy"
 	_ "github.com/caicloud/loadbalancer-controller/proxy/proxies"
+	"github.com/caicloud/loadbalancer-controller/version"
 	log "github.com/zoumo/logdog"
 	"gopkg.in/urfave/cli.v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,6 +39,12 @@ import (
 
 // RunController start lb controller
 func RunController(opts *Options, stopCh <-chan struct{}) error {
+
+	log.Notice("Controller Build Information", log.Fields{
+		"release": version.RELEASE,
+		"commit":  version.COMMIT,
+		"repo":    version.REPO,
+	})
 
 	log.Info("Controller Running with", log.Fields{
 		"debug":     opts.Debug,
