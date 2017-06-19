@@ -481,11 +481,36 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 							SecurityContext: &v1.SecurityContext{
 								Privileged: &privileged,
 							},
-							// TODO
-							Args: []string{
-								// watch on which lb
-								"--loadbalancer=" + lb.Namespace + "/" + lb.Name,
+							Env: []v1.EnvVar{
+								{
+									Name: "POD_NAME",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: "POD_NAMESPACE",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name:  "LOADBALANCER_NAMESPACE",
+									Value: lb.Namespace,
+								},
+								{
+									Name:  "LOADBALANCER_NAME",
+									Value: lb.Name,
+								},
 							},
+							// TODO
+							// Args: []string{
+							// // watch on which lb
+							// },
 							// ReadinessProbe: &v1.Probe{
 							// 	Handler: v1.Handler{
 							// 		HTTPGet: &v1.HTTPGetAction{
