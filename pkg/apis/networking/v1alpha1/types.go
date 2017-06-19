@@ -205,7 +205,8 @@ type ServiceProviderStatus struct {
 
 // IpvsdrProviderStatus represents the current status of the ipvsdr provider
 type IpvsdrProviderStatus struct {
-	Vip string `json:"vip"`
+	Vip  string `json:"vip"`
+	Vrid *int   `json:"vrid"`
 }
 
 // AliyunProviderStatus represents the current status of the aliyun provider

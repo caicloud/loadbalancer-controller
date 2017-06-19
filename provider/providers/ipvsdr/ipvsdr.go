@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/zoumo/logdog"
@@ -81,12 +82,15 @@ type ipvsdr struct {
 	dListerSynced  cache.InformerSynced
 
 	queue workqueue.RateLimitingInterface
+
+	vridLock *sync.Mutex
 }
 
 // NewIpvsdr creates a new ipvsdr provider plugin
 func NewIpvsdr() provider.Plugin {
 	return &ipvsdr{
-		image: defaultImage,
+		image:    defaultImage,
+		vridLock: &sync.Mutex{},
 	}
 }
 
@@ -300,17 +304,28 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 		return err
 	}
 
+	ipvsdrstatus := lb.Status.ProvidersStatuses.Ipvsdr
 	// update status
 	ipvsStatus := &netv1alpha1.IpvsdrProviderStatus{
 		Vip: lb.Spec.Providers.Ipvsdr.Vip,
 	}
+	// the following loadbalancer need to get a valid vrid
+	// 1. a new lb need to get a valid vrid
+	// 2. a old lb didn't have a valid vrid
+	if !updated || ipvsdrstatus == nil || ipvsdrstatus.Vrid == nil || *ipvsdrstatus.Vrid == -1 {
+		f.vridLock.Lock()
+		defer f.vridLock.Unlock()
+		vrid := f.getValidVRID()
+		ipvsStatus.Vrid = &vrid
+	} else {
+		ipvsStatus.Vrid = ipvsdrstatus.Vrid
+	}
 
-	if !reflect.DeepEqual(lb.Status.ProvidersStatuses.Ipvsdr, ipvsStatus) {
+	if !reflect.DeepEqual(ipvsdrstatus, ipvsStatus) {
 		js, _ := json.Marshal(ipvsStatus)
 		replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
+		log.Debug("patch ipvsdr", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
 		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
-		// lb.Status.ProvidersStatuses.Ipvsdr = ipvsStatus
-		// _, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Update(lb)
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
@@ -537,4 +552,29 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 	}
 
 	return deploy
+}
+
+func (f *ipvsdr) getValidVRID() int {
+	lbs, err := f.lbLister.List(labels.Everything())
+	if err != nil {
+		return -1
+	}
+	used := map[int]bool{}
+
+	for _, lb := range lbs {
+		if lb.Status.ProvidersStatuses.Ipvsdr != nil {
+			ipvsdr := lb.Status.ProvidersStatuses.Ipvsdr
+			if ipvsdr.Vrid != nil && *ipvsdr.Vrid >= 0 && *ipvsdr.Vrid <= 255 {
+				used[*ipvsdr.Vrid] = true
+			}
+		}
+	}
+
+	for i := 0; i <= 255; i++ {
+		if _, ok := used[i]; !ok {
+			return i
+		}
+	}
+
+	return -1
 }

@@ -350,9 +350,8 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	if !reflect.DeepEqual(lb.Status.ProxyStatus, proxyStatus) {
 		js, _ := json.Marshal(proxyStatus)
 		replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
+		log.Debug("patch nginx", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
 		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
-		// lb.Status.ProxyStatus = proxyStatus
-		// _, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Update(lb)
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
