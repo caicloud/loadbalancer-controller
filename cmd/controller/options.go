@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	log "github.com/zoumo/logdog"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -44,6 +45,11 @@ func (opts *Options) AddFlags(app *cli.App) {
 			Name:        "debug",
 			Usage:       "run with debug mode",
 			Destination: &opts.Debug,
+		},
+		cli.BoolFlag{
+			Name:        "log-force-color",
+			Usage:       "force log to output with colore",
+			Destination: &log.ForceColor,
 		},
 	}
 

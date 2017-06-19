@@ -18,5 +18,5 @@ spec:
             requests:
               cpu: 200m
               memory: 200Mi
-          image: cargo.caicloudprivatetest.com/caicloud/loadbalancer-controller:latest
+          image: cargo.caicloud.io/caicloud/loadbalancer-controller:v0.1.0
           name: controller
