@@ -52,8 +52,13 @@ import (
 )
 
 const (
-	defaultImage       = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+	defaultImage       = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.1.0"
 	providerNameSuffix = "-provider-ipvsdr"
+)
+
+var (
+	maxVrid = 255
+	minVrid = 1
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
@@ -104,6 +109,20 @@ func (f *ipvsdr) AddFlags(app *cli.App) {
 			Value:       defaultImage,
 			Destination: &f.image,
 		},
+		cli.IntFlag{
+			Name:        "min-vrid",
+			Usage:       "specified the minimun value of vrid, used to differentiate multiple instances of vrrpd, must be between 1 & 255",
+			EnvVar:      "MIN-VRID",
+			Value:       1,
+			Destination: &minVrid,
+		},
+		cli.IntFlag{
+			Name:        "max-vrid",
+			Usage:       "specified the maximun value of vrid, used to differentiate multiple instances of vrrpd, must be between 1 & 255",
+			EnvVar:      "MAX-VRID",
+			Value:       255,
+			Destination: &maxVrid,
+		},
 	}
 	app.Flags = append(app.Flags, flags...)
 }
@@ -146,7 +165,7 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
+	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image, "vrid.min": minVrid, "vrid.max": maxVrid})
 	defer log.Info("Shutting down ipvsdr provider")
 
 	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
@@ -439,8 +458,6 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 		},
 	}
 
-	// privileged := true
-
 	t := true
 
 	deploy := &extensions.Deployment{
@@ -544,6 +561,23 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 							// 		},
 							// 	},
 							// },
+							VolumeMounts: []v1.VolumeMount{
+								{
+									Name:      "modules",
+									MountPath: "/lib/modules",
+									ReadOnly:  true,
+								},
+							},
+						},
+					},
+					Volumes: []v1.Volume{
+						{
+							Name: "modules",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/lib/modules",
+								},
+							},
 						},
 					},
 				},
@@ -564,13 +598,13 @@ func (f *ipvsdr) getValidVRID() int {
 	for _, lb := range lbs {
 		if lb.Status.ProvidersStatuses.Ipvsdr != nil {
 			ipvsdr := lb.Status.ProvidersStatuses.Ipvsdr
-			if ipvsdr.Vrid != nil && *ipvsdr.Vrid >= 0 && *ipvsdr.Vrid <= 255 {
+			if ipvsdr.Vrid != nil && *ipvsdr.Vrid >= minVrid && *ipvsdr.Vrid <= maxVrid {
 				used[*ipvsdr.Vrid] = true
 			}
 		}
 	}
 
-	for i := 0; i <= 255; i++ {
+	for i := minVrid; i <= maxVrid; i++ {
 		if _, ok := used[i]; !ok {
 			return i
 		}
