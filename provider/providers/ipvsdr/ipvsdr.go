@@ -397,21 +397,10 @@ func (f *ipvsdr) cleanup(lb *netv1alpha1.LoadBalancer) error {
 		return err
 	}
 
+	policy := metav1.DeletePropagationForeground
 	for _, d := range ds {
-		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
+		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &policy})
 	}
-
-	// clean up rs
-	// there is a bug in k8s, deployment can not cleanup all replicasets sometimes
-	// so we do it, but it is unnecessary, so we don't care whether it succeeded
-	selector := labels.Set{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProvider:  "ipvsdr",
-	}
-
-	f.client.ExtensionsV1beta1().ReplicaSets(lb.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
 
 	return nil
 }

@@ -415,20 +415,14 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 		return err
 	}
 
+	policy := metav1.DeletePropagationForeground
 	for _, d := range ds {
-		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
+		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &policy})
 		if err != nil {
 			log.Warn("Cleanup proxy error", log.Fields{"ns": d.Namespace, "d.name": d.Name, "err": err})
 			return err
 		}
 	}
-
-	// clean up rs
-	// there is a bug in k8s, deployment can not cleanup all replicasets sometimes
-	// so we do it, but it is unnecessary, so we don't care whether it succeeded
-	f.client.ExtensionsV1beta1().ReplicaSets(lb.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
 
 	// clean up config map
 	err = f.client.CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
