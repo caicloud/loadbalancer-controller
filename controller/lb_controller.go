@@ -305,6 +305,11 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 		return
 	}
 
+	if reflect.DeepEqual(old.Spec, cur.Spec) {
+		log.Notice("LoadBalancer.Spec doesn't changed, ignore this update", log.Fields{"lb.name": cur.Name, "lb.ns": cur.Namespace})
+		return
+	}
+
 	// can not change loadbalancer type from internal to external
 	if old.Spec.Type == netv1alpha1.LoadBalancerTypeInternal && cur.Spec.Type == netv1alpha1.LoadBalancerTypeExternal {
 		log.Warn("Forbidden to change the type of loadblancer, revert it", log.Fields{"from": old.Spec.Type, "to": cur.Spec.Type})
@@ -322,7 +327,7 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 	}
 
 	log.Info("Updating LoadBalancer", log.Fields{"name": old.Name})
-	lbc.helper.Enqueue(cur)
+	lbc.helper.EnqueueAfter(cur, 1*time.Second)
 }
 
 func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
