@@ -416,8 +416,13 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 	}
 
 	policy := metav1.DeletePropagationForeground
+	gracePeriodSeconds := int64(30)
+
 	for _, d := range ds {
-		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &policy})
+		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriodSeconds,
+			PropagationPolicy:  &policy,
+		})
 		if err != nil {
 			log.Warn("Cleanup proxy error", log.Fields{"ns": d.Namespace, "d.name": d.Name, "err": err})
 			return err

@@ -398,8 +398,12 @@ func (f *ipvsdr) cleanup(lb *netv1alpha1.LoadBalancer) error {
 	}
 
 	policy := metav1.DeletePropagationForeground
+	gracePeriodSeconds := int64(30)
 	for _, d := range ds {
-		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{PropagationPolicy: &policy})
+		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriodSeconds,
+			PropagationPolicy:  &policy,
+		})
 	}
 
 	return nil

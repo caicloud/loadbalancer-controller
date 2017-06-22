@@ -306,7 +306,7 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 	}
 
 	if reflect.DeepEqual(old.Spec, cur.Spec) {
-		log.Notice("LoadBalancer.Spec doesn't changed, ignore this update", log.Fields{"lb.name": cur.Name, "lb.ns": cur.Namespace})
+		log.Notice("LoadBalancer.Spec doesn't change, ignore this update", log.Fields{"lb.name": cur.Name, "lb.ns": cur.Namespace})
 		return
 	}
 
