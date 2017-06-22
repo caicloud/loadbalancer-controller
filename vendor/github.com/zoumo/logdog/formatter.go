@@ -82,7 +82,7 @@ type TextFormatter struct {
 
 const (
 	// DefaultFmtTemplate is the default log string format value for TextFormatter
-	DefaultFmtTemplate = "%(color)[%(time)] [%(levelname)] [%(filename):%(lineno)]%(endColor) %(message)"
+	DefaultFmtTemplate = "[%(time)] [%(color)%(levelname)%(endColor)] [%(filename):%(lineno)] %(message)"
 	// DefaultDateFmtTemplate is the default log time string format value for TextFormatter
 	DefaultDateFmtTemplate = "%Y-%m-%d %H:%M:%S"
 	// colors
@@ -181,7 +181,7 @@ func (tf *TextFormatter) parse() {
 	}
 
 	// append fields to Fmt no matter what it is
-	tf.Fmt += " %(color)%(fields)%(endColor)"
+	tf.Fmt += " %(fields)"
 
 	// replace %(field) with %s && add field name to sequence
 	// e.g. covert %(name) %(message) to %s %s
@@ -246,7 +246,7 @@ func (tf *TextFormatter) Format(record *LogRecord) (string, error) {
 		case "endColor":
 			sequnce = append(sequnce, endColor)
 		case "fields":
-			sequnce = append(sequnce, record.Fields.ToKVString())
+			sequnce = append(sequnce, record.Fields.ToKVString(color, endColor))
 		}
 	}
 	return fmt.Sprintf(tf.fmtTeplate, sequnce...), nil

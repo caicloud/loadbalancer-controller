@@ -139,6 +139,17 @@ func (lg *Logger) callHandlers(record *LogRecord) {
 	}
 }
 
+// Flush flushes the file system's in-memory copy to disk
+func (lg *Logger) Flush() error {
+	for _, hdlr := range lg.Handlers {
+		err := hdlr.Flush()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Flush handler failed, [%v]", err)
+		}
+	}
+	return nil
+}
+
 // Close closes output stream
 func (lg *Logger) Close() error {
 	for _, hdlr := range lg.Handlers {

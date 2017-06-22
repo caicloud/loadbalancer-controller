@@ -38,7 +38,7 @@ func (f Fields) String() string {
 }
 
 // ToKVString convert Fields to string likes k1=v1 k2=v2
-func (f Fields) ToKVString() string {
+func (f Fields) ToKVString(color, endColor string) string {
 
 	if len(f) == 0 {
 		return ""
@@ -54,10 +54,10 @@ func (f Fields) ToKVString() string {
 		}
 
 		if first {
-			fmt.Fprintf(b, "%s=%+v", k, v)
+			fmt.Fprintf(b, "%s%s%s=%+v", color, k, endColor, v)
 			first = false
 		} else {
-			fmt.Fprintf(b, " %s=%+v", k, v)
+			fmt.Fprintf(b, " %s%s%s=%+v", color, k, endColor, v)
 		}
 	}
 	fmt.Fprint(b, "}")
