@@ -9,9 +9,9 @@ spec:
 
   nodes:
     replicas: 3
-    dedicated: NoSchedule
+    dedicated: PreferNoSchedule
     names:
-    - kube-node-87
+    - kube-node-85
 
   # actually proxy is an ingress controller
   proxy: 
