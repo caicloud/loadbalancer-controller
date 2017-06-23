@@ -17,6 +17,7 @@ package logdog
 import (
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 )
@@ -45,22 +46,30 @@ func (f Fields) ToKVString(color, endColor string) string {
 	}
 
 	b := &buffer{}
-	fmt.Fprint(b, "{")
+	fmt.Fprint(b, " | ")
+
+	sorted := make([]string, 0, len(f))
+	for k := range f {
+		sorted = append(sorted, k)
+	}
+	sort.Strings(sorted)
+
 	first := true
-	for k, v := range f {
+	for _, k := range sorted {
+		v := f[k]
 		// auto format time to RFC3339
 		if vv, ok := v.(time.Time); ok {
 			v = vv.Format(time.RFC3339)
 		}
 
 		if first {
-			fmt.Fprintf(b, "%s%s%s=%+v", color, k, endColor, v)
+			fmt.Fprintf(b, "%s=%s%+v%s", k, color, v, endColor)
 			first = false
 		} else {
-			fmt.Fprintf(b, " %s%s%s=%+v", color, k, endColor, v)
+			fmt.Fprintf(b, " %s=%s%+v%s", k, color, v, endColor)
 		}
 	}
-	fmt.Fprint(b, "}")
+
 	return string(*b)
 }
 

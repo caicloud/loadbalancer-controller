@@ -136,7 +136,7 @@ memo = "f0df83c277475f663b28aea8f6838beadaf436c6ea4566a94c7f81f09fe8f98e"
   branch = "master"
   name = "github.com/zoumo/logdog"
   packages = [".","pkg/pythonic","pkg/when"]
-  revision = "f50341a45a498fa5fc9149573cdf49cfb888851e"
+  revision = "e6d405c08f7c230cf5bb845e3b0686059a633477"
 
 [[projects]]
   branch = "master"
