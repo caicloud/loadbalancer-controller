@@ -216,7 +216,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Info("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -343,7 +343,7 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 	if !reflect.DeepEqual(ipvsdrstatus, ipvsStatus) {
 		js, _ := json.Marshal(ipvsStatus)
 		replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
-		log.Debug("patch ipvsdr", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
+		log.Notice("update ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
 		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})

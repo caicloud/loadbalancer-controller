@@ -190,7 +190,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Info("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Now().Sub(startTime)})
 	}()
 
 	nlb, err := lbc.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -306,7 +306,7 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 	}
 
 	if reflect.DeepEqual(old.Spec, cur.Spec) {
-		log.Notice("LoadBalancer.Spec doesn't change, ignore this update", log.Fields{"lb.name": cur.Name, "lb.ns": cur.Namespace})
+		log.Debug("LoadBalancer.Spec doesn't change, ignore this update", log.Fields{"lb.name": cur.Name, "lb.ns": cur.Namespace})
 		return
 	}
 
@@ -346,7 +346,7 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 		}
 	}
 
-	log.Info("Deleting LoadBalancer", log.Fields{"name": lb.Name})
+	log.Info("Deleting LoadBalancer", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 
 	lbc.helper.Enqueue(lb)
 }

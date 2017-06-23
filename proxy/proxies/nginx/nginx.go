@@ -50,7 +50,7 @@ import (
 )
 
 const (
-	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.8"
 	tcpConfigMapName         = "%s-tcp"
 	udpConfigMapName         = "%s-udp"
 	proxyNameSuffix          = "-proxy-nginx"
@@ -198,7 +198,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Info("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -350,7 +350,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	if !reflect.DeepEqual(lb.Status.ProxyStatus, proxyStatus) {
 		js, _ := json.Marshal(proxyStatus)
 		replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
-		log.Debug("patch nginx", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
+		log.Notice("update nginx status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
 		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
