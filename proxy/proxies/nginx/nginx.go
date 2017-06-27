@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +39,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -54,6 +56,8 @@ const (
 	tcpConfigMapName         = "%s-tcp"
 	udpConfigMapName         = "%s-udp"
 	proxyNameSuffix          = "-proxy-nginx"
+	// ingress controller use this port to export metrics and pprof information
+	ingressControllerPort = 8282
 )
 
 var (
@@ -600,6 +604,9 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 								{
 									ContainerPort: 443,
 								},
+								{
+									ContainerPort: ingressControllerPort,
+								},
 							},
 							Env: []v1.EnvVar{
 								{
@@ -627,27 +634,27 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 								"--configmap=" + lb.Namespace + "/" + lb.Name,
 								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
 								"--udp-services-configmap=" + fmt.Sprintf("%s/"+udpConfigMapName, lb.Namespace, lb.Name),
-								"--healthz-port=" + "10254",
+								"--healthz-port=" + strconv.Itoa(ingressControllerPort),
 								"--health-check-path=" + "/healthz",
 							},
-							// ReadinessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
-							// LivenessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
+							ReadinessProbe: &v1.Probe{
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(80),
+										Scheme: v1.URISchemeHTTP,
+									},
+								},
+							},
+							LivenessProbe: &v1.Probe{
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(80),
+										Scheme: v1.URISchemeHTTP,
+									},
+								},
+							},
 						},
 					},
 				},
