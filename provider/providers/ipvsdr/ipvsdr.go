@@ -532,28 +532,6 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 									Value: lb.Name,
 								},
 							},
-							// TODO
-							// Args: []string{
-							// // watch on which lb
-							// },
-							// ReadinessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
-							// LivenessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
 							VolumeMounts: []v1.VolumeMount{
 								{
 									Name:      "modules",

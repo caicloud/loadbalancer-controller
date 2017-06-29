@@ -72,8 +72,9 @@ func init() {
 var _ proxy.Plugin = &nginx{}
 
 type nginx struct {
-	initialized bool
-	image       string
+	initialized        bool
+	image              string
+	defaultHTTPbackend string
 
 	client    kubernetes.Interface
 	tprclient tprclient.Interface
@@ -105,6 +106,13 @@ func (f *nginx) AddFlags(app *cli.App) {
 			EnvVar:      "PROXY_NGINX",
 			Value:       defaultNginxIngressImage,
 			Destination: &f.image,
+		},
+		cli.StringFlag{
+			Name:        "default-http-backend",
+			Usage:       "default http backend for ingress controller",
+			EnvVar:      "DEFAULT_HTTP_BACKEND",
+			Value:       defaultHTTPBackendImage,
+			Destination: &f.defaultHTTPbackend,
 		},
 	}
 	app.Flags = append(app.Flags, flags...)
@@ -146,8 +154,13 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting nginx proxy", log.Fields{"workers": workers, "image": f.image})
+	log.Info("Starting nginx proxy", log.Fields{"workers": workers, "image": f.image, "default-http-backend": f.defaultHTTPbackend})
 	defer log.Info("Shutting down nginx proxy")
+
+	if err := f.ensureDefaultHTTPBackend(); err != nil {
+		log.Error("ensure default http backend service error", log.Fields{"err": err})
+		return
+	}
 
 	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
 		log.Error("Wait for cache sync timeout")
@@ -629,7 +642,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 							// TODO
 							Args: []string{
 								"/nginx-ingress-controller",
-								"--default-backend-service=default/default-http-backend",
+								"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
 								"--ingress-class=" + fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 								"--configmap=" + lb.Namespace + "/" + lb.Name,
 								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
