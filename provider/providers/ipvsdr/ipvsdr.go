@@ -216,7 +216,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)

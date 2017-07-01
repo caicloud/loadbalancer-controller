@@ -33,3 +33,10 @@ debug:
 	$(PKG)/cmd/controller
 
 	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color --min-vrid=100
+
+lint:
+	cat .gofmt | xargs -I {} gofmt -w -s -d -r {}  $$(find . -name "*.go" -not -path "./vendor/*" -not -path ".git/*")
+	gosimple $$(go list ./... | grep -v vendor)
+
+tool:
+	go get honnef.co/go/tools/cmd/gosimple

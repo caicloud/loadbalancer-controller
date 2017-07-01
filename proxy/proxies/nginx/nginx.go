@@ -215,7 +215,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)

@@ -190,7 +190,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := lbc.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
