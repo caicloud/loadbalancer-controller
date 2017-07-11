@@ -52,8 +52,13 @@ import (
 )
 
 const (
-	defaultImage       = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+	defaultImage       = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.1.0"
 	providerNameSuffix = "-provider-ipvsdr"
+)
+
+var (
+	maxVrid = 255
+	minVrid = 1
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
@@ -104,6 +109,20 @@ func (f *ipvsdr) AddFlags(app *cli.App) {
 			Value:       defaultImage,
 			Destination: &f.image,
 		},
+		cli.IntFlag{
+			Name:        "min-vrid",
+			Usage:       "specified the minimun value of vrid, used to differentiate multiple instances of vrrpd, must be between 1 & 255",
+			EnvVar:      "MIN-VRID",
+			Value:       1,
+			Destination: &minVrid,
+		},
+		cli.IntFlag{
+			Name:        "max-vrid",
+			Usage:       "specified the maximun value of vrid, used to differentiate multiple instances of vrrpd, must be between 1 & 255",
+			EnvVar:      "MAX-VRID",
+			Value:       255,
+			Destination: &maxVrid,
+		},
 	}
 	app.Flags = append(app.Flags, flags...)
 }
@@ -146,7 +165,7 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
+	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image, "vrid.min": minVrid, "vrid.max": maxVrid})
 	defer log.Info("Shutting down ipvsdr provider")
 
 	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
@@ -197,7 +216,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Info("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -324,7 +343,7 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 	if !reflect.DeepEqual(ipvsdrstatus, ipvsStatus) {
 		js, _ := json.Marshal(ipvsStatus)
 		replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
-		log.Debug("patch ipvsdr", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
+		log.Notice("update ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
 		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
@@ -378,21 +397,14 @@ func (f *ipvsdr) cleanup(lb *netv1alpha1.LoadBalancer) error {
 		return err
 	}
 
+	policy := metav1.DeletePropagationForeground
+	gracePeriodSeconds := int64(30)
 	for _, d := range ds {
-		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
+		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriodSeconds,
+			PropagationPolicy:  &policy,
+		})
 	}
-
-	// clean up rs
-	// there is a bug in k8s, deployment can not cleanup all replicasets sometimes
-	// so we do it, but it is unnecessary, so we don't care whether it succeeded
-	selector := labels.Set{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProvider:  "ipvsdr",
-	}
-
-	f.client.ExtensionsV1beta1().ReplicaSets(lb.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
 
 	return nil
 }
@@ -438,8 +450,6 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 			},
 		},
 	}
-
-	// privileged := true
 
 	t := true
 
@@ -522,28 +532,23 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 									Value: lb.Name,
 								},
 							},
-							// TODO
-							// Args: []string{
-							// // watch on which lb
-							// },
-							// ReadinessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
-							// LivenessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
+							VolumeMounts: []v1.VolumeMount{
+								{
+									Name:      "modules",
+									MountPath: "/lib/modules",
+									ReadOnly:  true,
+								},
+							},
+						},
+					},
+					Volumes: []v1.Volume{
+						{
+							Name: "modules",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/lib/modules",
+								},
+							},
 						},
 					},
 				},
@@ -564,13 +569,13 @@ func (f *ipvsdr) getValidVRID() int {
 	for _, lb := range lbs {
 		if lb.Status.ProvidersStatuses.Ipvsdr != nil {
 			ipvsdr := lb.Status.ProvidersStatuses.Ipvsdr
-			if ipvsdr.Vrid != nil && *ipvsdr.Vrid >= 0 && *ipvsdr.Vrid <= 255 {
+			if ipvsdr.Vrid != nil && *ipvsdr.Vrid >= minVrid && *ipvsdr.Vrid <= maxVrid {
 				used[*ipvsdr.Vrid] = true
 			}
 		}
 	}
 
-	for i := 0; i <= 255; i++ {
+	for i := minVrid; i <= maxVrid; i++ {
 		if _, ok := used[i]; !ok {
 			return i
 		}

@@ -101,7 +101,6 @@ func (f *sharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) map[ref
 
 	res := map[reflect.Type]bool{}
 	for informType, informer := range informers {
-		log.Debug("Wait for cache syncing", log.Fields{"type": informType})
 		res[informType] = cache.WaitForCacheSync(stopCh, informer.HasSynced)
 		log.Debug("Cache has synced", log.Fields{"type": informType, "result": res[informType]})
 

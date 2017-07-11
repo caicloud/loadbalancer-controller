@@ -1,4 +1,4 @@
-memo = "938a0e6e1fd4910b6bbcbc7b0eed0b3dbd41e094680f9aedcdf01a3d86342134"
+memo = "f0df83c277475f663b28aea8f6838beadaf436c6ea4566a94c7f81f09fe8f98e"
 
 [[projects]]
   name = "github.com/PuerkitoBio/purell"
@@ -136,7 +136,7 @@ memo = "938a0e6e1fd4910b6bbcbc7b0eed0b3dbd41e094680f9aedcdf01a3d86342134"
   branch = "master"
   name = "github.com/zoumo/logdog"
   packages = [".","pkg/pythonic","pkg/when"]
-  revision = "67918dd205592ef54049d063fdaa57cddd51309d"
+  revision = "e6d405c08f7c230cf5bb845e3b0686059a633477"
 
 [[projects]]
   branch = "master"

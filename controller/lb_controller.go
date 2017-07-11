@@ -190,7 +190,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Info("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := lbc.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -305,6 +305,11 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 		return
 	}
 
+	if reflect.DeepEqual(old.Spec, cur.Spec) {
+		log.Debug("LoadBalancer.Spec doesn't change, ignore this update", log.Fields{"lb.name": cur.Name, "lb.ns": cur.Namespace})
+		return
+	}
+
 	// can not change loadbalancer type from internal to external
 	if old.Spec.Type == netv1alpha1.LoadBalancerTypeInternal && cur.Spec.Type == netv1alpha1.LoadBalancerTypeExternal {
 		log.Warn("Forbidden to change the type of loadblancer, revert it", log.Fields{"from": old.Spec.Type, "to": cur.Spec.Type})
@@ -322,7 +327,7 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 	}
 
 	log.Info("Updating LoadBalancer", log.Fields{"name": old.Name})
-	lbc.helper.Enqueue(cur)
+	lbc.helper.EnqueueAfter(cur, 1*time.Second)
 }
 
 func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
@@ -341,7 +346,7 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 		}
 	}
 
-	log.Info("Deleting LoadBalancer", log.Fields{"name": lb.Name})
+	log.Info("Deleting LoadBalancer", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 
 	lbc.helper.Enqueue(lb)
 }

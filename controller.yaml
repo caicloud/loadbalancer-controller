@@ -19,4 +19,7 @@ spec:
               cpu: 200m
               memory: 200Mi
           image: cargo.caicloud.io/caicloud/loadbalancer-controller:v0.1.0
+          args:
+          - --debug
+          - --min-vrid=100
           name: controller

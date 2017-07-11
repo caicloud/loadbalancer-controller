@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +39,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -50,10 +52,12 @@ import (
 )
 
 const (
-	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/ingress-nginx:v0.1.0"
+	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.8"
 	tcpConfigMapName         = "%s-tcp"
 	udpConfigMapName         = "%s-udp"
 	proxyNameSuffix          = "-proxy-nginx"
+	// ingress controller use this port to export metrics and pprof information
+	ingressControllerPort = 8282
 )
 
 var (
@@ -68,8 +72,9 @@ func init() {
 var _ proxy.Plugin = &nginx{}
 
 type nginx struct {
-	initialized bool
-	image       string
+	initialized        bool
+	image              string
+	defaultHTTPbackend string
 
 	client    kubernetes.Interface
 	tprclient tprclient.Interface
@@ -101,6 +106,13 @@ func (f *nginx) AddFlags(app *cli.App) {
 			EnvVar:      "PROXY_NGINX",
 			Value:       defaultNginxIngressImage,
 			Destination: &f.image,
+		},
+		cli.StringFlag{
+			Name:        "default-http-backend",
+			Usage:       "default http backend for ingress controller",
+			EnvVar:      "DEFAULT_HTTP_BACKEND",
+			Value:       defaultHTTPBackendImage,
+			Destination: &f.defaultHTTPbackend,
 		},
 	}
 	app.Flags = append(app.Flags, flags...)
@@ -142,8 +154,13 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting nginx proxy", log.Fields{"workers": workers, "image": f.image})
+	log.Info("Starting nginx proxy", log.Fields{"workers": workers, "image": f.image, "default-http-backend": f.defaultHTTPbackend})
 	defer log.Info("Shutting down nginx proxy")
+
+	if err := f.ensureDefaultHTTPBackend(); err != nil {
+		log.Error("ensure default http backend service error", log.Fields{"err": err})
+		return
+	}
 
 	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
 		log.Error("Wait for cache sync timeout")
@@ -198,7 +215,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Info("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Now().Sub(startTime)})
+		log.Debug("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -350,7 +367,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	if !reflect.DeepEqual(lb.Status.ProxyStatus, proxyStatus) {
 		js, _ := json.Marshal(proxyStatus)
 		replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
-		log.Debug("patch nginx", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
+		log.Notice("update nginx status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
 		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
@@ -415,20 +432,19 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 		return err
 	}
 
+	policy := metav1.DeletePropagationForeground
+	gracePeriodSeconds := int64(30)
+
 	for _, d := range ds {
-		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{})
+		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriodSeconds,
+			PropagationPolicy:  &policy,
+		})
 		if err != nil {
 			log.Warn("Cleanup proxy error", log.Fields{"ns": d.Namespace, "d.name": d.Name, "err": err})
 			return err
 		}
 	}
-
-	// clean up rs
-	// there is a bug in k8s, deployment can not cleanup all replicasets sometimes
-	// so we do it, but it is unnecessary, so we don't care whether it succeeded
-	f.client.ExtensionsV1beta1().ReplicaSets(lb.Namespace).DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
 
 	// clean up config map
 	err = f.client.CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
@@ -601,6 +617,9 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 								{
 									ContainerPort: 443,
 								},
+								{
+									ContainerPort: ingressControllerPort,
+								},
 							},
 							Env: []v1.EnvVar{
 								{
@@ -623,32 +642,32 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 							// TODO
 							Args: []string{
 								"/nginx-ingress-controller",
-								"--default-backend-service=default/default-http-backend",
+								"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
 								"--ingress-class=" + fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 								"--configmap=" + lb.Namespace + "/" + lb.Name,
 								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
 								"--udp-services-configmap=" + fmt.Sprintf("%s/"+udpConfigMapName, lb.Namespace, lb.Name),
-								"--healthz-port=" + "10254",
+								"--healthz-port=" + strconv.Itoa(ingressControllerPort),
 								"--health-check-path=" + "/healthz",
 							},
-							// ReadinessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
-							// LivenessProbe: &v1.Probe{
-							// 	Handler: v1.Handler{
-							// 		HTTPGet: &v1.HTTPGetAction{
-							// 			Path:   "/ingress-controller-healthz",
-							// 			Port:   intstr.FromInt(10254),
-							// 			Scheme: v1.URISchemeHTTP,
-							// 		},
-							// 	},
-							// },
+							ReadinessProbe: &v1.Probe{
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(80),
+										Scheme: v1.URISchemeHTTP,
+									},
+								},
+							},
+							LivenessProbe: &v1.Probe{
+								Handler: v1.Handler{
+									HTTPGet: &v1.HTTPGetAction{
+										Path:   "/healthz",
+										Port:   intstr.FromInt(80),
+										Scheme: v1.URISchemeHTTP,
+									},
+								},
+							},
 						},
 					},
 				},

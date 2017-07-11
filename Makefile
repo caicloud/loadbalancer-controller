@@ -17,7 +17,9 @@ target=loadbalancer-controller
 
 
 build:
-	GOOS=${GOOS} go build -i -v -o $(target) $(PKG)/cmd/controller
+	GOOS=${GOOS} go build -i -v -o $(target) \
+	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
+	$(PKG)/cmd/controller
 
 image: build
 	docker build -t $(PREFIX):$(RELEASE) .
@@ -30,4 +32,11 @@ debug:
 	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller
 
-	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color
+	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color --min-vrid=100
+
+lint:
+	cat .gofmt | xargs -I {} gofmt -w -s -d -r {}  $$(find . -name "*.go" -not -path "./vendor/*" -not -path ".git/*")
+	gosimple $$(go list ./... | grep -v vendor)
+
+tool:
+	go get honnef.co/go/tools/cmd/gosimple
