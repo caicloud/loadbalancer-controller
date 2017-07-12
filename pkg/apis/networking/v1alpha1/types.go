@@ -93,6 +93,8 @@ type NodesSpec struct {
 // ProxySpec is a description of a proxy
 type ProxySpec struct {
 	Type ProxyType `json:"type"`
+	// Config contains the optional config of proxy
+	Config map[string]string `json:"config,omitempty"`
 	// Compute Resources required by this container.
 	// Cannot be updated.
 	// +optional
