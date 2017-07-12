@@ -52,9 +52,10 @@ import (
 )
 
 const (
-	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.8"
-	tcpConfigMapName         = "%s-tcp"
-	udpConfigMapName         = "%s-udp"
+	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.10"
+	configMapName            = "%s-proxy-nginx-config"
+	tcpConfigMapName         = "%s-proxy-nginx-tcp"
+	udpConfigMapName         = "%s-proxy-nginx-udp"
 	proxyNameSuffix          = "-proxy-nginx"
 	// ingress controller use this port to export metrics and pprof information
 	ingressControllerPort = 8282
@@ -332,26 +333,12 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 		if err != nil {
 			return err
 		}
-
-		// create configmap
-		cm, tcpcm, udpcm := f.GenerateConfigMap(lb)
-		log.Info("About to create ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
-		_, err = f.client.CoreV1().ConfigMaps(lb.Namespace).Create(cm)
-		if err != nil {
-			return err
-		}
-		log.Info("About to create TCP ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
-		_, err = f.client.CoreV1().ConfigMaps(lb.Namespace).Create(tcpcm)
-		if err != nil {
-			return err
-		}
-		log.Info("About to create UDP ConfigMap for proxy", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name, "cm.name": cm.Name})
-		_, err := f.client.CoreV1().ConfigMaps(lb.Namespace).Create(udpcm)
-		if err != nil {
-			return nil
-		}
-
 		dpNames = append(dpNames, desiredDeploy.Name)
+	}
+
+	err = f.ensureConfigMaps(lb)
+	if err != nil {
+		return err
 	}
 
 	// update status
@@ -359,7 +346,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 		Replicas:     *desiredDeploy.Spec.Replicas,
 		Deployments:  dpNames,
 		IngressClass: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		ConfigMap:    lb.Name,
+		ConfigMap:    fmt.Sprintf(configMapName, lb.Name),
 		TCPConfigMap: fmt.Sprintf(tcpConfigMapName, lb.Name),
 		UDPConfigMap: fmt.Sprintf(udpConfigMapName, lb.Name),
 	}
@@ -479,41 +466,6 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 	}
 
 	return nil
-}
-
-func (f *nginx) GenerateConfigMap(lb *netv1alpha1.LoadBalancer) (cm, tcpcm, udpcm *v1.ConfigMap) {
-	labels := map[string]string{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProxy:     "nginx",
-	}
-
-	cm = &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   lb.Name,
-			Labels: labels,
-		},
-		Data: map[string]string{
-			"enable-sticky-sessions": "true",
-		},
-	}
-
-	tcpcm = &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf(tcpConfigMapName, lb.Name),
-			Labels: labels,
-		},
-		Data: map[string]string{},
-	}
-
-	udpcm = &v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   fmt.Sprintf(udpConfigMapName, lb.Name),
-			Labels: labels,
-		},
-		Data: map[string]string{},
-	}
-
-	return
 }
 
 func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Deployment {
@@ -644,7 +596,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 								"/nginx-ingress-controller",
 								"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
 								"--ingress-class=" + fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-								"--configmap=" + lb.Namespace + "/" + lb.Name,
+								"--configmap=" + fmt.Sprintf("%s/"+configMapName, lb.Namespace, lb.Name),
 								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
 								"--udp-services-configmap=" + fmt.Sprintf("%s/"+udpConfigMapName, lb.Namespace, lb.Name),
 								"--healthz-port=" + strconv.Itoa(ingressControllerPort),
