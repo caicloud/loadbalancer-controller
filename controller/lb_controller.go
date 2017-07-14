@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/caicloud/loadbalancer-controller/config"
 	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
 	"github.com/caicloud/loadbalancer-controller/pkg/informers"
 	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
@@ -32,6 +33,7 @@ import (
 	"github.com/caicloud/loadbalancer-controller/provider"
 	"github.com/caicloud/loadbalancer-controller/proxy"
 	log "github.com/zoumo/logdog"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -66,13 +68,13 @@ type LoadBalancerController struct {
 }
 
 // NewLoadBalancerController creates a new LoadBalancerController.
-func NewLoadBalancerController(client kubernetes.Interface, tprClient tprclient.Interface) *LoadBalancerController {
+func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController {
 	// TODO register metrics
 
 	lbc := &LoadBalancerController{
-		kubeClient: client,
-		tprClient:  tprClient,
-		factory:    informers.NewSharedInformerFactory(client, tprClient, 0),
+		kubeClient: cfg.Client,
+		tprClient:  cfg.TPRClient,
+		factory:    informers.NewSharedInformerFactory(cfg.Client, cfg.TPRClient, 0),
 		queue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "loadbalancer"),
 	}
 
@@ -91,9 +93,9 @@ func NewLoadBalancerController(client kubernetes.Interface, tprClient tprclient.
 	lbc.nodeLister = lbc.factory.Core().V1().Nodes().Lister()
 
 	// setup proxies
-	proxy.Init(lbc.factory)
+	proxy.Init(cfg, lbc.factory)
 	// setup providers
-	provider.Init(lbc.factory)
+	provider.Init(cfg, lbc.factory)
 
 	return lbc
 }

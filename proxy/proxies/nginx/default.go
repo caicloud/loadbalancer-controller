@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	defaultHTTPBackendImage     = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
 	defaultHTTPBackendName      = "default-http-backend"
 	defaultHTTPBackendNamespace = "default"
 )

@@ -25,11 +25,12 @@ import (
 	"time"
 
 	log "github.com/zoumo/logdog"
-	cli "gopkg.in/urfave/cli.v1"
 
+	"github.com/caicloud/loadbalancer-controller/config"
 	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
 	"github.com/caicloud/loadbalancer-controller/pkg/informers"
 	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
+	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
 	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
@@ -52,7 +53,6 @@ import (
 )
 
 const (
-	defaultImage       = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.1.0"
 	providerNameSuffix = "-provider-ipvsdr"
 )
 
@@ -86,35 +86,23 @@ type ipvsdr struct {
 
 // NewIpvsdr creates a new ipvsdr provider plugin
 func NewIpvsdr() provider.Plugin {
-	return &ipvsdr{
-		image: defaultImage,
-	}
+	return &ipvsdr{}
 }
 
-func (f *ipvsdr) AddFlags(app *cli.App) {
-
-	flags := []cli.Flag{
-		cli.StringFlag{
-			Name:        "provider-ipvsdr",
-			Usage:       "ipvsdr provider image",
-			EnvVar:      "PROVIDER_IPVS_DR",
-			Value:       defaultImage,
-			Destination: &f.image,
-		},
-	}
-	app.Flags = append(app.Flags, flags...)
-}
-
-func (f *ipvsdr) Init(sif informers.SharedInformerFactory) {
+func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFactory) {
 	if f.initialized {
 		return
 	}
+	f.initialized = true
 
 	log.Info("Initialize the ipvsdr provider")
 
-	f.client = sif.Client()
-	f.tprclient = sif.TPRClient()
+	// set config
+	f.image = cfg.Providers.Ipvsdr.Image
+	f.client = cfg.Client
+	f.tprclient = cfg.TPRClient
 
+	// initialize controller
 	lbInformer := sif.Networking().V1alpha1().LoadBalancer()
 	dInformer := sif.Extensions().V1beta1().Deployments()
 
@@ -129,7 +117,6 @@ func (f *ipvsdr) Init(sif informers.SharedInformerFactory) {
 
 	dInformer.Informer().AddEventHandler(f.eventHandler)
 
-	f.initialized = true
 }
 
 func (f *ipvsdr) Run(stopCh <-chan struct{}) {
@@ -463,12 +450,7 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 						PodAntiAffinity: podAffinity,
 					},
 					// tolerate taints
-					Tolerations: []v1.Toleration{
-						{
-							Key:      netv1alpha1.TaintKey,
-							Operator: v1.TolerationOpExists,
-						},
-					},
+					Tolerations: toleration.GenerateTolerations(),
 					Containers: []v1.Container{
 						{
 							Name:            "ipvsdr",
