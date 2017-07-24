@@ -44,8 +44,9 @@ type Configuration struct {
 
 // Proxies contains all cli flags of proxies
 type Proxies struct {
-	DefaultHTTPBackend string
-	Nginx              ProxyNginx
+	DefaultHTTPBackend    string
+	DefaultSSLCertificate string
+	Nginx                 ProxyNginx
 }
 
 // ProxyNginx contains all cli flags of nginx proxy
@@ -81,6 +82,12 @@ func (c *Configuration) AddFlags(app *cli.App) {
 			EnvVar:      "DEFAULT_HTTP_BACKEND",
 			Value:       defaultHTTPBackendImage,
 			Destination: &c.Proxies.DefaultHTTPBackend,
+		},
+		cli.StringFlag{
+			Name:        "default-ssl-certificate",
+			Usage:       "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server",
+			EnvVar:      "DEFAULT_SSL_CERTIFICATE",
+			Destination: &c.Proxies.DefaultSSLCertificate,
 		},
 		// nginx
 		cli.StringFlag{

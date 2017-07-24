@@ -32,7 +32,7 @@ debug:
 	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller
 
-	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color --min-vrid=100
+	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color
 
 lint:
 	cat .gofmt | xargs -I {} gofmt -w -s -d -r {}  $$(find . -name "*.go" -not -path "./vendor/*" -not -path ".git/*")

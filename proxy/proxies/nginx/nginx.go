@@ -73,9 +73,10 @@ func init() {
 var _ proxy.Plugin = &nginx{}
 
 type nginx struct {
-	initialized        bool
-	image              string
-	defaultHTTPbackend string
+	initialized           bool
+	image                 string
+	defaultHTTPbackend    string
+	defaultSSLCertificate string
 
 	client    kubernetes.Interface
 	tprclient tprclient.Interface
@@ -105,6 +106,7 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	log.Info("Initialize the nginx proxy")
 	// set config
 	f.defaultHTTPbackend = cfg.Proxies.DefaultHTTPBackend
+	f.defaultSSLCertificate = cfg.Proxies.DefaultSSLCertificate
 	f.image = cfg.Proxies.Nginx.Image
 	f.client = cfg.Client
 	f.tprclient = cfg.TPRClient
@@ -605,6 +607,13 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 	if needNodeAffinity {
 		// decide running on which node
 		deploy.Spec.Template.Spec.Affinity.NodeAffinity = nodeAffinity
+	}
+
+	if f.defaultSSLCertificate != "" {
+		deploy.Spec.Template.Spec.Containers[0].Args = append(
+			deploy.Spec.Template.Spec.Containers[0].Args,
+			"--default-ssl-certificate="+f.defaultSSLCertificate,
+		)
 	}
 
 	return deploy
