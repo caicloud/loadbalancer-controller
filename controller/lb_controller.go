@@ -49,10 +49,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const (
-	maxRetries = 5
-)
-
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
