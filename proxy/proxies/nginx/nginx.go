@@ -506,6 +506,10 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
+			Annotations: map[string]string{
+				"prometheus.io/port":   strconv.Itoa(ingressControllerPort),
+				"prometheus.io/scrape": "true",
+			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         controllerKind.GroupVersion().String(),
