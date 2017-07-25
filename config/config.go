@@ -40,8 +40,8 @@ func (a *additionalTolerations) Set(value string) error {
 		return nil
 	}
 	*a = append(*a, values...)
-	// set key here
-	toleration.AdditionalTolerationKeys = *a
+	// add additional keys
+	toleration.AddAdditionalTolerationKeys(*a)
 	return nil
 }
 

@@ -22,20 +22,19 @@ import (
 )
 
 var (
-	defaultTolerationKey = []string{netv1alpha1.TaintKey}
+	tolerationKeys = []string{netv1alpha1.TaintKey}
 )
-var (
-	// AdditionalTolerationKeys contains additional toleration keys which
-	// loadbalancer should tolerate
-	AdditionalTolerationKeys = []string{}
-)
+
+// AddAdditionalTolerationKeys append additional toleration keys which loadbalancer should tolerate
+func AddAdditionalTolerationKeys(keys []string) {
+	tolerationKeys = append(tolerationKeys, keys...)
+}
 
 // GenerateTolerations generates the tolerations
 func GenerateTolerations() []v1.Toleration {
-	keys := append(defaultTolerationKey, AdditionalTolerationKeys...)
 	tolerations := make([]v1.Toleration, 0)
 
-	for _, key := range keys {
+	for _, key := range tolerationKeys {
 		tolerations = append(tolerations, v1.Toleration{
 			Key:      key,
 			Operator: v1.TolerationOpExists,
