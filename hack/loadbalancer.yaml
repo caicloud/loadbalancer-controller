@@ -30,6 +30,6 @@ spec:
     service:
       name: xxxx
     ipvsdr:
-      vip: 192.168.99.200
+      vip: 192.168.18.213
       scheduler: rr
 

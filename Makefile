@@ -3,7 +3,7 @@ all: push
 
 # TODO git describe --tags --abbrev=0
 # get release from tags
-RELEASE?=v0.1.0
+RELEASE?=v0.1.1
 GOOS?=linux
 PREFIX?=cargo.caicloud.io/caicloud/loadbalancer-controller
 
@@ -32,7 +32,7 @@ debug:
 	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller
 
-	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color --min-vrid=100
+	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color
 
 lint:
 	cat .gofmt | xargs -I {} gofmt -w -s -d -r {}  $$(find . -name "*.go" -not -path "./vendor/*" -not -path ".git/*")

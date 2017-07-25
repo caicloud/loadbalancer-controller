@@ -19,17 +19,18 @@ package ipvsdr
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/zoumo/logdog"
-	cli "gopkg.in/urfave/cli.v1"
 
+	"github.com/caicloud/loadbalancer-controller/config"
 	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
 	"github.com/caicloud/loadbalancer-controller/pkg/informers"
 	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
+	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
 	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
@@ -52,13 +53,7 @@ import (
 )
 
 const (
-	defaultImage       = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.1.0"
 	providerNameSuffix = "-provider-ipvsdr"
-)
-
-var (
-	maxVrid = 255
-	minVrid = 1
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
@@ -87,56 +82,27 @@ type ipvsdr struct {
 	dListerSynced  cache.InformerSynced
 
 	queue workqueue.RateLimitingInterface
-
-	vridLock *sync.Mutex
 }
 
 // NewIpvsdr creates a new ipvsdr provider plugin
 func NewIpvsdr() provider.Plugin {
-	return &ipvsdr{
-		image:    defaultImage,
-		vridLock: &sync.Mutex{},
-	}
+	return &ipvsdr{}
 }
 
-func (f *ipvsdr) AddFlags(app *cli.App) {
-
-	flags := []cli.Flag{
-		cli.StringFlag{
-			Name:        "provider-ipvsdr",
-			Usage:       "ipvsdr provider image",
-			EnvVar:      "PROVIDER_IPVS_DR",
-			Value:       defaultImage,
-			Destination: &f.image,
-		},
-		cli.IntFlag{
-			Name:        "min-vrid",
-			Usage:       "specified the minimun value of vrid, used to differentiate multiple instances of vrrpd, must be between 1 & 255",
-			EnvVar:      "MIN-VRID",
-			Value:       1,
-			Destination: &minVrid,
-		},
-		cli.IntFlag{
-			Name:        "max-vrid",
-			Usage:       "specified the maximun value of vrid, used to differentiate multiple instances of vrrpd, must be between 1 & 255",
-			EnvVar:      "MAX-VRID",
-			Value:       255,
-			Destination: &maxVrid,
-		},
-	}
-	app.Flags = append(app.Flags, flags...)
-}
-
-func (f *ipvsdr) Init(sif informers.SharedInformerFactory) {
+func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFactory) {
 	if f.initialized {
 		return
 	}
+	f.initialized = true
 
 	log.Info("Initialize the ipvsdr provider")
 
-	f.client = sif.Client()
-	f.tprclient = sif.TPRClient()
+	// set config
+	f.image = cfg.Providers.Ipvsdr.Image
+	f.client = cfg.Client
+	f.tprclient = cfg.TPRClient
 
+	// initialize controller
 	lbInformer := sif.Networking().V1alpha1().LoadBalancer()
 	dInformer := sif.Extensions().V1beta1().Deployments()
 
@@ -151,7 +117,6 @@ func (f *ipvsdr) Init(sif informers.SharedInformerFactory) {
 
 	dInformer.Informer().AddEventHandler(f.eventHandler)
 
-	f.initialized = true
 }
 
 func (f *ipvsdr) Run(stopCh <-chan struct{}) {
@@ -165,7 +130,7 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image, "vrid.min": minVrid, "vrid.max": maxVrid})
+	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
 	defer log.Info("Shutting down ipvsdr provider")
 
 	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
@@ -332,8 +297,7 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 	// 1. a new lb need to get a valid vrid
 	// 2. a old lb didn't have a valid vrid
 	if !updated || ipvsdrstatus == nil || ipvsdrstatus.Vrid == nil || *ipvsdrstatus.Vrid == -1 {
-		f.vridLock.Lock()
-		defer f.vridLock.Unlock()
+		// keepalived use unicast now. so vrid will not be conflict
 		vrid := f.getValidVRID()
 		ipvsStatus.Vrid = &vrid
 	} else {
@@ -486,12 +450,7 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 						PodAntiAffinity: podAffinity,
 					},
 					// tolerate taints
-					Tolerations: []v1.Toleration{
-						{
-							Key:      netv1alpha1.TaintKey,
-							Operator: v1.TolerationOpExists,
-						},
-					},
+					Tolerations: toleration.GenerateTolerations(),
 					Containers: []v1.Container{
 						{
 							Name:            "ipvsdr",
@@ -560,26 +519,5 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 }
 
 func (f *ipvsdr) getValidVRID() int {
-	lbs, err := f.lbLister.List(labels.Everything())
-	if err != nil {
-		return -1
-	}
-	used := map[int]bool{}
-
-	for _, lb := range lbs {
-		if lb.Status.ProvidersStatuses.Ipvsdr != nil {
-			ipvsdr := lb.Status.ProvidersStatuses.Ipvsdr
-			if ipvsdr.Vrid != nil && *ipvsdr.Vrid >= minVrid && *ipvsdr.Vrid <= maxVrid {
-				used[*ipvsdr.Vrid] = true
-			}
-		}
-	}
-
-	for i := minVrid; i <= maxVrid; i++ {
-		if _, ok := used[i]; !ok {
-			return i
-		}
-	}
-
-	return -1
+	return rand.Intn(254) + 1
 }

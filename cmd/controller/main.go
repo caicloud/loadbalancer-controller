@@ -25,9 +25,7 @@ import (
 
 	lbcontroller "github.com/caicloud/loadbalancer-controller/controller"
 	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
-	"github.com/caicloud/loadbalancer-controller/provider"
 	_ "github.com/caicloud/loadbalancer-controller/provider/providers"
-	"github.com/caicloud/loadbalancer-controller/proxy"
 	_ "github.com/caicloud/loadbalancer-controller/proxy/proxies"
 	"github.com/caicloud/loadbalancer-controller/version"
 	log "github.com/zoumo/logdog"
@@ -47,8 +45,9 @@ func RunController(opts *Options, stopCh <-chan struct{}) error {
 	})
 
 	log.Info("Controller Running with", log.Fields{
-		"debug":     opts.Debug,
-		"kubconfig": opts.Kubeconfig,
+		"debug":                 opts.Debug,
+		"kubconfig":             opts.Kubeconfig,
+		"additionalTolerations": opts.Cfg.AdditionalTolerations,
 	})
 
 	if opts.Debug {
@@ -79,8 +78,10 @@ func RunController(opts *Options, stopCh <-chan struct{}) error {
 		return err
 	}
 
+	opts.Cfg.Client = clientset
+	opts.Cfg.TPRClient = tprclientset
 	// start a controller on instances of lb
-	controller := lbcontroller.NewLoadBalancerController(clientset, tprclientset)
+	controller := lbcontroller.NewLoadBalancerController(opts.Cfg)
 
 	controller.Run(5, stopCh)
 
@@ -93,15 +94,13 @@ func main() {
 
 	app := cli.NewApp()
 	app.Name = "loadbalancer-controller"
-	app.Version = "v0.1.0"
+	app.Version = version.RELEASE
 	app.Compiled = time.Now()
 	app.Usage = "k8s loadbalancer resource controller"
 
 	// add flags to app
 	opts := NewOptions()
 	opts.AddFlags(app)
-	proxy.AddFlags(app)
-	provider.AddFlags(app)
 
 	app.Action = func(c *cli.Context) error {
 		if err := RunController(opts, wait.NeverStop); err != nil {

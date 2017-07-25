@@ -24,16 +24,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/caicloud/loadbalancer-controller/config"
 	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
 	"github.com/caicloud/loadbalancer-controller/pkg/informers"
 	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
+	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
 	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	"github.com/caicloud/loadbalancer-controller/proxy"
 	log "github.com/zoumo/logdog"
-	cli "gopkg.in/urfave/cli.v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,11 +53,10 @@ import (
 )
 
 const (
-	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.10"
-	configMapName            = "%s-proxy-nginx-config"
-	tcpConfigMapName         = "%s-proxy-nginx-tcp"
-	udpConfigMapName         = "%s-proxy-nginx-udp"
-	proxyNameSuffix          = "-proxy-nginx"
+	configMapName    = "%s-proxy-nginx-config"
+	tcpConfigMapName = "%s-proxy-nginx-tcp"
+	udpConfigMapName = "%s-proxy-nginx-udp"
+	proxyNameSuffix  = "-proxy-nginx"
 	// ingress controller use this port to export metrics and pprof information
 	ingressControllerPort = 8282
 )
@@ -73,9 +73,10 @@ func init() {
 var _ proxy.Plugin = &nginx{}
 
 type nginx struct {
-	initialized        bool
-	image              string
-	defaultHTTPbackend string
+	initialized           bool
+	image                 string
+	defaultHTTPbackend    string
+	defaultSSLCertificate string
 
 	client    kubernetes.Interface
 	tprclient tprclient.Interface
@@ -93,42 +94,24 @@ type nginx struct {
 
 // NewNginx creates a new nginx proxy plugin
 func NewNginx() proxy.Plugin {
-	return &nginx{
-		image: defaultNginxIngressImage,
-	}
+	return &nginx{}
 }
 
-func (f *nginx) AddFlags(app *cli.App) {
-
-	flags := []cli.Flag{
-		cli.StringFlag{
-			Name:        "proxy-nginx",
-			Usage:       "nginx ingress controller image",
-			EnvVar:      "PROXY_NGINX",
-			Value:       defaultNginxIngressImage,
-			Destination: &f.image,
-		},
-		cli.StringFlag{
-			Name:        "default-http-backend",
-			Usage:       "default http backend for ingress controller",
-			EnvVar:      "DEFAULT_HTTP_BACKEND",
-			Value:       defaultHTTPBackendImage,
-			Destination: &f.defaultHTTPbackend,
-		},
-	}
-	app.Flags = append(app.Flags, flags...)
-}
-
-func (f *nginx) Init(sif informers.SharedInformerFactory) {
+func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFactory) {
 	if f.initialized {
 		return
 	}
+	f.initialized = true
 
 	log.Info("Initialize the nginx proxy")
+	// set config
+	f.defaultHTTPbackend = cfg.Proxies.DefaultHTTPBackend
+	f.defaultSSLCertificate = cfg.Proxies.DefaultSSLCertificate
+	f.image = cfg.Proxies.Nginx.Image
+	f.client = cfg.Client
+	f.tprclient = cfg.TPRClient
 
-	f.client = sif.Client()
-	f.tprclient = sif.TPRClient()
-
+	// initialize controller
 	lbInformer := sif.Networking().V1alpha1().LoadBalancer()
 	dInformer := sif.Extensions().V1beta1().Deployments()
 
@@ -143,7 +126,6 @@ func (f *nginx) Init(sif informers.SharedInformerFactory) {
 
 	dInformer.Informer().AddEventHandler(f.eventHandler)
 
-	f.initialized = true
 }
 
 func (f *nginx) Run(stopCh <-chan struct{}) {
@@ -524,6 +506,10 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
+			Annotations: map[string]string{
+				"prometheus.io/port":   strconv.Itoa(ingressControllerPort),
+				"prometheus.io/scrape": "true",
+			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         controllerKind.GroupVersion().String(),
@@ -550,12 +536,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 						// don't co-locate pods of this deployment in same node
 						PodAntiAffinity: podAffinity,
 					},
-					Tolerations: []v1.Toleration{
-						{
-							Key:      netv1alpha1.TaintKey,
-							Operator: v1.TolerationOpExists,
-						},
-					},
+					Tolerations: toleration.GenerateTolerations(),
 					Containers: []v1.Container{
 						{
 							Name:            "ingress-nginx-controller",
@@ -630,6 +611,13 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 	if needNodeAffinity {
 		// decide running on which node
 		deploy.Spec.Template.Spec.Affinity.NodeAffinity = nodeAffinity
+	}
+
+	if f.defaultSSLCertificate != "" {
+		deploy.Spec.Template.Spec.Containers[0].Args = append(
+			deploy.Spec.Template.Spec.Containers[0].Args,
+			"--default-ssl-certificate="+f.defaultSSLCertificate,
+		)
 	}
 
 	return deploy

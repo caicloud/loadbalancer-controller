@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/caicloud/loadbalancer-controller/config"
 	log "github.com/zoumo/logdog"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -25,6 +26,7 @@ import (
 type Options struct {
 	Kubeconfig string
 	Debug      bool
+	Cfg        config.Configuration
 }
 
 // NewOptions reutrns a new Options
@@ -34,6 +36,7 @@ func NewOptions() *Options {
 
 // AddFlags add flags to app
 func (opts *Options) AddFlags(app *cli.App) {
+	opts.Cfg.AddFlags(app)
 
 	flags := []cli.Flag{
 		cli.StringFlag{
@@ -43,12 +46,12 @@ func (opts *Options) AddFlags(app *cli.App) {
 		},
 		cli.BoolFlag{
 			Name:        "debug",
-			Usage:       "run with debug mode",
+			Usage:       "Run with debug mode",
 			Destination: &opts.Debug,
 		},
 		cli.BoolFlag{
 			Name:        "log-force-color",
-			Usage:       "force log to output with colore",
+			Usage:       "Force log to output with colore",
 			Destination: &log.ForceColor,
 		},
 	}

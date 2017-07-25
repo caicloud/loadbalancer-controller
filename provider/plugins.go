@@ -17,10 +17,10 @@ limitations under the License.
 package provider
 
 import (
+	"github.com/caicloud/loadbalancer-controller/config"
 	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
 	"github.com/caicloud/loadbalancer-controller/pkg/informers"
 	"github.com/zoumo/register"
-	"gopkg.in/urfave/cli.v1"
 )
 
 var (
@@ -29,8 +29,7 @@ var (
 
 // Plugin defines a pluggable provider interface
 type Plugin interface {
-	AddFlags(app *cli.App)
-	Init(informers.SharedInformerFactory)
+	Init(config.Configuration, informers.SharedInformerFactory)
 	Run(stopCh <-chan struct{})
 	OnSync(*netv1alpha1.LoadBalancer)
 }
@@ -61,19 +60,11 @@ func Plugins() []string {
 	return plugins.Keys()
 }
 
-// AddFlags calls all registered provider plugins AddFlags func
-func AddFlags(app *cli.App) {
-	for _, v := range plugins.Iter() {
-		f := v.(Plugin)
-		f.AddFlags(app)
-	}
-}
-
 // Init calls all registered provider plugins Init func
-func Init(sif informers.SharedInformerFactory) {
+func Init(c config.Configuration, sif informers.SharedInformerFactory) {
 	for _, v := range plugins.Iter() {
 		f := v.(Plugin)
-		f.Init(sif)
+		f.Init(c, sif)
 	}
 }
 
