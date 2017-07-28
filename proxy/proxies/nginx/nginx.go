@@ -17,7 +17,6 @@ limitations under the License.
 package nginx
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -39,11 +38,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -59,6 +58,7 @@ const (
 	proxyNameSuffix  = "-proxy-nginx"
 	// ingress controller use this port to export metrics and pprof information
 	ingressControllerPort = 8282
+	proxyName             = "nginx"
 )
 
 var (
@@ -67,7 +67,7 @@ var (
 )
 
 func init() {
-	proxy.RegisterPlugin("nginx", NewNginx())
+	proxy.RegisterPlugin(proxyName, NewNginx())
 }
 
 var _ proxy.Plugin = &nginx{}
@@ -81,13 +81,14 @@ type nginx struct {
 	client    kubernetes.Interface
 	tprclient tprclient.Interface
 
-	helper       *controllerutil.Helper
-	eventHandler *lbutil.EventHandlerForDeployment
+	helper *controllerutil.Helper
 
-	lbLister       netlisters.LoadBalancerLister
-	dLister        extensionslisters.DeploymentLister
-	lbListerSynced cache.InformerSynced
-	dListerSynced  cache.InformerSynced
+	lbLister        netlisters.LoadBalancerLister
+	dLister         extensionslisters.DeploymentLister
+	podLister       corelisters.PodLister
+	lbListerSynced  cache.InformerSynced
+	dListerSynced   cache.InformerSynced
+	podListerSynced cache.InformerSynced
 
 	queue workqueue.RateLimitingInterface
 }
@@ -114,18 +115,17 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	// initialize controller
 	lbInformer := sif.Networking().V1alpha1().LoadBalancer()
 	dInformer := sif.Extensions().V1beta1().Deployments()
+	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
-	f.lbListerSynced = lbInformer.Informer().HasSynced
-	f.dListerSynced = dInformer.Informer().HasSynced
+	f.podLister = podInfomer.Lister()
 
 	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "proxy-nginx")
 	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
-	f.eventHandler = lbutil.NewEventHandlerForDeployment(lbInformer, dInformer, f.helper, f.filtered)
 
-	dInformer.Informer().AddEventHandler(f.eventHandler)
-
+	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.helper, f.deploymentFiltered))
+	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.helper, f.podFiltered))
 }
 
 func (f *nginx) Run(stopCh <-chan struct{}) {
@@ -145,10 +145,8 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
-		log.Error("Wait for cache sync timeout")
-		return
-	}
+	// lb controller has waited all the informer synced
+	// there is no need to wait again here
 
 	defer func() {
 		log.Info("Shutting down nginx proxy")
@@ -161,11 +159,26 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 }
 
+func (f *nginx) selector(lb *netv1alpha1.LoadBalancer) labels.Set {
+	return labels.Set{
+		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		netv1alpha1.LabelKeyProxy:     proxyName,
+	}
+}
+
 // filter Deployment that controller does not care
-func (f *nginx) filtered(obj *extensions.Deployment) bool {
+func (f *nginx) deploymentFiltered(obj *extensions.Deployment) bool {
+	return f.filteredByLabel(obj)
+}
+
+func (f *nginx) podFiltered(obj *v1.Pod) bool {
+	return f.filteredByLabel(obj)
+}
+
+func (f *nginx) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 	// obj.Labels
-	selector := labels.Set{netv1alpha1.LabelKeyProxy: "nginx"}.AsSelector()
-	match := selector.Matches(labels.Set(obj.Labels))
+	selector := labels.Set{netv1alpha1.LabelKeyProxy: proxyName}.AsSelector()
+	match := selector.Matches(labels.Set(obj.GetObjectMeta().GetLabels()))
 
 	return !match
 }
@@ -240,10 +253,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 func (f *nginx) getDeploymentsForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*extensions.Deployment, error) {
 
 	// construct selector
-	selector := labels.Set{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProxy:     "nginx",
-	}.AsSelector()
+	selector := f.selector(lb).AsSelector()
 
 	// list all
 	dList, err := f.dLister.Deployments(lb.Namespace).List(selector)
@@ -275,15 +285,17 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	desiredDeploy := f.GenerateDeployment(lb)
 
 	// update
-	updated := false
 	var err error
-	var dpNames []string
+	updated := false
+	activeDeploy := desiredDeploy
 
 	for _, dp := range dps {
-		dpNames = append(dpNames, dp.Name)
 
-		// auto generate deployment has this prefix
-		if !strings.HasPrefix(dp.Name, lb.Name+proxyNameSuffix) {
+		// two conditions will trigger controller to scale down deployment
+		// 1. deployment does not have auto-generated prefix
+		// 2. if there are more than one active controllers, there may be many valid deployments.
+		//    But we only need one.
+		if !strings.HasPrefix(dp.Name, lb.Name+proxyNameSuffix) || updated {
 			if *dp.Spec.Replicas == 0 {
 				continue
 			}
@@ -295,6 +307,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 			f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
+
 		updated = true
 		copyDp, changed, newErr := f.ensureDeployment(desiredDeploy, dp)
 		if newErr != nil {
@@ -302,20 +315,23 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 			continue
 		}
 		if changed {
-			log.Info("Sync deployment for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+			log.Info("Sync nginx for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
 			_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copyDp)
+			if err != nil {
+				return err
+			}
 		}
+		activeDeploy = copyDp
 	}
 
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create deployment for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		log.Info("Create nginx for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
 		_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
-		dpNames = append(dpNames, desiredDeploy.Name)
 	}
 
 	err = f.ensureConfigMaps(lb)
@@ -324,27 +340,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 	}
 
 	// update status
-	proxyStatus := netv1alpha1.ProxyStatus{
-		Replicas:     *desiredDeploy.Spec.Replicas,
-		Deployments:  dpNames,
-		IngressClass: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		ConfigMap:    fmt.Sprintf(configMapName, lb.Name),
-		TCPConfigMap: fmt.Sprintf(tcpConfigMapName, lb.Name),
-		UDPConfigMap: fmt.Sprintf(udpConfigMapName, lb.Name),
-	}
-
-	if !reflect.DeepEqual(lb.Status.ProxyStatus, proxyStatus) {
-		js, _ := json.Marshal(proxyStatus)
-		replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
-		log.Notice("update nginx status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
-		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
-		if err != nil {
-			log.Error("Update loadbalancer status error", log.Fields{"err": err})
-			return err
-		}
-	}
-
-	return err
+	return f.syncStatus(lb, activeDeploy)
 }
 
 func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment) (*extensions.Deployment, bool, error) {
@@ -391,10 +387,7 @@ func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment
 // cleanup deployment and other resource controlled by lb proxy
 func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 
-	selector := labels.Set{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProxy:     "nginx",
-	}
+	selector := f.selector(lb)
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
@@ -424,12 +417,11 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 		return err
 	}
 
+	// clean up ingress
 	selector = labels.Set{
 		// createdby ingressClass
 		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 	}
-
-	// clean up ingress
 	ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
@@ -459,12 +451,9 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 		hostNetwork = true
 	}
 
-	labels := map[string]string{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProxy:     "nginx",
-	}
+	labels := f.selector(lb)
 
-	// run in this node
+	// run on this node
 	nodeAffinity := &v1.NodeAffinity{
 		RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
 			NodeSelectorTerms: []v1.NodeSelectorTerm{
@@ -487,7 +476,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 			{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						netv1alpha1.LabelKeyProxy: "nginx",
+						netv1alpha1.LabelKeyProxy: proxyName,
 					},
 				},
 				TopologyKey: metav1.LabelHostname,
@@ -495,12 +484,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 		},
 	}
 
-	// privileged := true
-
 	t := true
-
-	// TODO delete me
-	// hostNetwork = false
 
 	deploy := &extensions.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

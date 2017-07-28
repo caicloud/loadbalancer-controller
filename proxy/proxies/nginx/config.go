@@ -50,10 +50,8 @@ func merge(dst, src map[string]string) map[string]string {
 }
 
 func (f *nginx) ensureConfigMaps(lb *netv1alpha1.LoadBalancer) error {
-	labels := map[string]string{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProxy:     "nginx",
-	}
+	labels := f.selector(lb)
+
 	cmName := fmt.Sprintf(configMapName, lb.Name)
 	config := merge(defaultConfig, lb.Spec.Proxy.Config)
 	err := f.ensureConfigMap(cmName, lb.Namespace, labels, config)
