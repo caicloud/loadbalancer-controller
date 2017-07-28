@@ -46,7 +46,6 @@ import (
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -75,12 +74,9 @@ type ipvsdr struct {
 
 	helper *controllerutil.Helper
 
-	lbLister        netlisters.LoadBalancerLister
-	dLister         extensionslisters.DeploymentLister
-	podLister       corelisters.PodLister
-	lbListerSynced  cache.InformerSynced
-	dListerSynced   cache.InformerSynced
-	podListerSynced cache.InformerSynced
+	lbLister  netlisters.LoadBalancerLister
+	dLister   extensionslisters.DeploymentLister
+	podLister corelisters.PodLister
 
 	queue workqueue.RateLimitingInterface
 }
@@ -111,9 +107,6 @@ func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFact
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
 	f.podLister = podInfomer.Lister()
-	f.lbListerSynced = lbInformer.Informer().HasSynced
-	f.dListerSynced = dInformer.Informer().HasSynced
-	f.podListerSynced = podInfomer.Informer().HasSynced
 
 	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "provider-ipvsdr")
 	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
@@ -136,10 +129,8 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
 	defer log.Info("Shutting down ipvsdr provider")
 
-	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced) {
-		log.Error("Wait for cache sync timeout")
-		return
-	}
+	// lb controller has waited all the informer synced
+	// there is no need to wait again here
 
 	defer func() {
 		log.Info("Shutting down ipvsdr provider")

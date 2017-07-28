@@ -120,9 +120,6 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
 	f.podLister = podInfomer.Lister()
-	f.lbListerSynced = lbInformer.Informer().HasSynced
-	f.dListerSynced = dInformer.Informer().HasSynced
-	f.podListerSynced = podInfomer.Informer().HasSynced
 
 	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "proxy-nginx")
 	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
@@ -148,10 +145,8 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 		return
 	}
 
-	if !cache.WaitForCacheSync(stopCh, f.lbListerSynced, f.dListerSynced, f.podListerSynced) {
-		log.Error("Wait for cache sync timeout")
-		return
-	}
+	// lb controller has waited all the informer synced
+	// there is no need to wait again here
 
 	defer func() {
 		log.Info("Shutting down nginx proxy")
