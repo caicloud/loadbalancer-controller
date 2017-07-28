@@ -20,23 +20,24 @@ import "fmt"
 
 var (
 	// LabelKeyProxy for all loadbalancer proxies
-	// loadbalancer.alpha.caicloud.io/proxy
+	// loadbalancer.net.alpha.caicloud.io/proxy
 	LabelKeyProxy = fmt.Sprintf("%s.%s/%s", LoadBalancerName, AlphaGroupName, "proxy")
 
 	// LabelKeyProvider for all loadbalancer providers
-	// loadbalancer.alpha.caicloud.io/provider
+	// loadbalancer.net.alpha.caicloud.io/provider
 	LabelKeyProvider = fmt.Sprintf("%s.%s/%s", LoadBalancerName, AlphaGroupName, "provider")
 
-	// LabelKeyCreatedBy - loadbalancer.alpha.caicloud.io/created-by
+	// LabelKeyCreatedBy - loadbalancer.net.alpha.caicloud.io/created-by
 	LabelKeyCreatedBy = fmt.Sprintf("%s.%s/created-by", LoadBalancerName, AlphaGroupName)
 	// LabelValueFormatCreateby - namespace.name
 	LabelValueFormatCreateby = "%s.%s"
 
 	// UniqueLabelKeyFormat ...
-	// loadbalancer.alpha.caicloud.io/namespace.name
+	// loadbalancer.net.alpha.caicloud.io/namespace.name
 	UniqueLabelKeyFormat = LoadBalancerName + "." + AlphaGroupName + "/" + "%s.%s"
 
 	// TaintKey ...
+	// loadbalancer.net.alpha.caicloud.io/dedicated
 	TaintKey = fmt.Sprintf("%s.%s/dedicated", LoadBalancerName, AlphaGroupName)
 	// TaintValueFormat - namespace.name
 	TaintValueFormat = "%s.%s"

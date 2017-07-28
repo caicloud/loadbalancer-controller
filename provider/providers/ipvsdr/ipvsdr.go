@@ -17,7 +17,6 @@ limitations under the License.
 package ipvsdr
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -41,9 +40,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -54,13 +53,14 @@ import (
 
 const (
 	providerNameSuffix = "-provider-ipvsdr"
+	providerName       = "ipvsdr"
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = netv1alpha1.SchemeGroupVersion.WithKind(netv1alpha1.LoadBalancerKind)
 
 func init() {
-	provider.RegisterPlugin("ipvsdr", NewIpvsdr())
+	provider.RegisterPlugin(providerName, NewIpvsdr())
 }
 
 var _ provider.Plugin = &ipvsdr{}
@@ -73,13 +73,14 @@ type ipvsdr struct {
 	client    kubernetes.Interface
 	tprclient tprclient.Interface
 
-	helper       *controllerutil.Helper
-	eventHandler *lbutil.EventHandlerForDeployment
+	helper *controllerutil.Helper
 
-	lbLister       netlisters.LoadBalancerLister
-	dLister        extensionslisters.DeploymentLister
-	lbListerSynced cache.InformerSynced
-	dListerSynced  cache.InformerSynced
+	lbLister        netlisters.LoadBalancerLister
+	dLister         extensionslisters.DeploymentLister
+	podLister       corelisters.PodLister
+	lbListerSynced  cache.InformerSynced
+	dListerSynced   cache.InformerSynced
+	podListerSynced cache.InformerSynced
 
 	queue workqueue.RateLimitingInterface
 }
@@ -105,18 +106,20 @@ func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFact
 	// initialize controller
 	lbInformer := sif.Networking().V1alpha1().LoadBalancer()
 	dInformer := sif.Extensions().V1beta1().Deployments()
+	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
+	f.podLister = podInfomer.Lister()
 	f.lbListerSynced = lbInformer.Informer().HasSynced
 	f.dListerSynced = dInformer.Informer().HasSynced
+	f.podListerSynced = podInfomer.Informer().HasSynced
 
 	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "provider-ipvsdr")
 	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
-	f.eventHandler = lbutil.NewEventHandlerForDeployment(lbInformer, dInformer, f.helper, f.filtered)
 
-	dInformer.Informer().AddEventHandler(f.eventHandler)
-
+	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.helper, f.deploymentFiltered))
+	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.helper, f.podFiltered))
 }
 
 func (f *ipvsdr) Run(stopCh <-chan struct{}) {
@@ -148,10 +151,26 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (f *ipvsdr) filtered(obj *extensions.Deployment) bool {
+func (f *ipvsdr) selector(lb *netv1alpha1.LoadBalancer) labels.Set {
+	return labels.Set{
+		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		netv1alpha1.LabelKeyProvider:  providerName,
+	}
+}
+
+// filter Deployment that controller does not care
+func (f *ipvsdr) deploymentFiltered(obj *extensions.Deployment) bool {
+	return f.filteredByLabel(obj)
+}
+
+func (f *ipvsdr) podFiltered(obj *v1.Pod) bool {
+	return f.filteredByLabel(obj)
+}
+
+func (f *ipvsdr) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 	// obj.Labels
-	selector := labels.Set{netv1alpha1.LabelKeyProvider: "ipvsdr"}.AsSelector()
-	match := selector.Matches(labels.Set(obj.Labels))
+	selector := labels.Set{netv1alpha1.LabelKeyProvider: providerName}.AsSelector()
+	match := selector.Matches(labels.Set(obj.GetObjectMeta().GetLabels()))
 
 	return !match
 }
@@ -217,10 +236,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*extensions.Deployment, error) {
 
 	// construct selector
-	selector := labels.Set{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProvider:  "ipvsdr",
-	}.AsSelector()
+	selector := f.selector(lb).AsSelector()
 
 	// list all
 	dList, err := f.dLister.Deployments(lb.Namespace).List(selector)
@@ -253,10 +269,14 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 
 	// update
 	updated := false
-	var err error
+	activeDeploy := desiredDeploy
+
 	for _, dp := range dps {
-		// auto generate deployment has this prefix
-		if !strings.HasPrefix(dp.Name, lb.Name+providerNameSuffix) {
+		// two conditions will trigger controller to scale down deployment
+		// 1. deployment does not have auto-generated prefix
+		// 2. if there are more than one active controllers, there may be many valid deployments.
+		//    But we only need one.
+		if !strings.HasPrefix(dp.Name, lb.Name+providerNameSuffix) || updated {
 			if *dp.Spec.Replicas == 0 {
 				continue
 			}
@@ -268,54 +288,34 @@ func (f *ipvsdr) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment
 			f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
+
 		updated = true
-		copyDp, changed, newErr := f.ensureDeployment(desiredDeploy, dp)
-		if newErr != nil {
-			err = newErr
+		copyDp, changed, err := f.ensureDeployment(desiredDeploy, dp)
+		if err != nil {
 			continue
 		}
 		if changed {
-			log.Info("Sync deployment for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+			log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
 			_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copyDp)
+			if err != nil {
+				return err
+			}
 		}
+
+		activeDeploy = copyDp
 	}
 
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create deployment for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		log.Info("Create ipvsdr for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
 		_, err := f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
-		return err
-	}
-
-	ipvsdrstatus := lb.Status.ProvidersStatuses.Ipvsdr
-	// update status
-	ipvsStatus := &netv1alpha1.IpvsdrProviderStatus{
-		Vip: lb.Spec.Providers.Ipvsdr.Vip,
-	}
-	// the following loadbalancer need to get a valid vrid
-	// 1. a new lb need to get a valid vrid
-	// 2. a old lb didn't have a valid vrid
-	if !updated || ipvsdrstatus == nil || ipvsdrstatus.Vrid == nil || *ipvsdrstatus.Vrid == -1 {
-		// keepalived use unicast now. so vrid will not be conflict
-		vrid := f.getValidVRID()
-		ipvsStatus.Vrid = &vrid
-	} else {
-		ipvsStatus.Vrid = ipvsdrstatus.Vrid
-	}
-
-	if !reflect.DeepEqual(ipvsdrstatus, ipvsStatus) {
-		js, _ := json.Marshal(ipvsStatus)
-		replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
-		log.Notice("update ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "patch": replacePatch})
-		_, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		if err != nil {
-			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
 		}
 	}
 
-	return err
+	return f.syncStatus(lb, activeDeploy)
 }
 
 func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment) (*extensions.Deployment, bool, error) {
@@ -379,10 +379,7 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	privileged := true
 
-	labels := map[string]string{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProvider:  "ipvsdr",
-	}
+	labels := f.selector(lb)
 
 	// run in this node
 	nodeAffinity := &v1.NodeAffinity{
@@ -407,7 +404,7 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 			{
 				LabelSelector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{
-						netv1alpha1.LabelKeyProvider: "ipvsdr",
+						netv1alpha1.LabelKeyProvider: providerName,
 					},
 				},
 				TopologyKey: metav1.LabelHostname,
@@ -453,7 +450,7 @@ func (f *ipvsdr) generateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.De
 					Tolerations: toleration.GenerateTolerations(),
 					Containers: []v1.Container{
 						{
-							Name:            "ipvsdr",
+							Name:            providerName,
 							Image:           f.image,
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
