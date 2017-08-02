@@ -24,9 +24,14 @@ import (
 	"time"
 
 	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	netclient "github.com/caicloud/loadbalancer-controller/pkg/tprclient/networking/v1alpha1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/kubernetes/pkg/client/retry"
 )
 
 const (
@@ -36,6 +41,20 @@ const (
 	// copy from k8s.io/kubernetes/pkg/util/node
 	NodeUnreachablePodReason = "NodeLost"
 )
+
+type SortPodStatusByName []netv1alpha1.PodStatus
+
+func (s SortPodStatusByName) Len() int {
+	return len(s)
+}
+
+func (s SortPodStatusByName) Less(i, j int) bool {
+	return s[i].Name < s[j].Name
+}
+
+func (s SortPodStatusByName) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
 
 // SplitNamespaceAndNameByDot returns the namespace and name that
 // encoded into the label or value by dot
@@ -198,4 +217,26 @@ func ComputePodStatus(pod *v1.Pod) netv1alpha1.PodStatus {
 		Reason:          reason,
 	}
 	return status
+}
+
+type updateLBFunc func(lb *netv1alpha1.LoadBalancer) error
+
+func UpdateLBWithRetries(lbClient netclient.LoadBalancerInterface, namespace, name string, applyUpdate updateLBFunc) (*netv1alpha1.LoadBalancer, error) {
+	var lb *netv1alpha1.LoadBalancer
+	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		var err error
+		lb, err = lbClient.Get(name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if applyErr := applyUpdate(lb); applyErr != nil {
+			return applyErr
+		}
+		lb, err = lbClient.Update(lb)
+		return err
+	})
+	if retryErr == errors.ErrPreconditionViolated {
+		retryErr = nil
+	}
+	return lb, retryErr
 }

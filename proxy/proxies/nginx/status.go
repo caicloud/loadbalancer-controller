@@ -17,8 +17,8 @@ limitations under the License.
 package nginx
 
 import (
-	"encoding/json"
 	"fmt"
+	"sort"
 
 	log "github.com/zoumo/logdog"
 
@@ -27,7 +27,6 @@ import (
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
@@ -66,12 +65,24 @@ func (f *nginx) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extension
 		proxyStatus.Statuses = append(proxyStatus.Statuses, status)
 	}
 
+	sort.Sort(lbutil.SortPodStatusByName(proxyStatus.Statuses))
+
 	// check whether the statuses are equal
 	if !lbutil.ProxyStatusEqual(lb.Status.ProxyStatus, proxyStatus) {
-		js, _ := json.Marshal(proxyStatus)
-		replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
+		// js, _ := json.Marshal(proxyStatus)
+		// replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
 		log.Notice("update nginx proxy status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
-		_, err := f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
+		// _, err := f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
+		_, err := lbutil.UpdateLBWithRetries(
+			f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace),
+			lb.Namespace,
+			lb.Name,
+			func(lb *netv1alpha1.LoadBalancer) error {
+				lb.Status.ProxyStatus = proxyStatus
+				return nil
+			},
+		)
+
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
