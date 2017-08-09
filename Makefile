@@ -3,7 +3,7 @@ all: push
 
 # TODO git describe --tags --abbrev=0
 # get release from tags
-RELEASE?=v0.1.1
+RELEASE?=v0.2.0
 GOOS?=linux
 PREFIX?=cargo.caicloud.io/caicloud/loadbalancer-controller
 
