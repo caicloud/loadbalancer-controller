@@ -319,25 +319,27 @@ func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deploymen
 	for k, v := range desiredDeploy.Labels {
 		copyDp.Labels[k] = v
 	}
-
 	// ensure replicas
 	copyDp.Spec.Replicas = desiredDeploy.Spec.Replicas
+	// ensure image
+	copyDp.Spec.Template.Spec.Containers[0].Image = desiredDeploy.Spec.Template.Spec.Containers[0].Image
+	// ensure nodeaffinity
+	copyDp.Spec.Template.Spec.Affinity.NodeAffinity = desiredDeploy.Spec.Template.Spec.Affinity.NodeAffinity
 
+	// check if changed
+	nodeAffinityChanged := !reflect.DeepEqual(copyDp.Spec.Template.Spec.Affinity.NodeAffinity, oldDeploy.Spec.Template.Spec.Affinity.NodeAffinity)
 	imageChanged := copyDp.Spec.Template.Spec.Containers[0].Image != oldDeploy.Spec.Template.Spec.Containers[0].Image
-	if imageChanged {
-		copyDp.Spec.Template.Spec.Containers[0].Image = oldDeploy.Spec.Template.Spec.Containers[0].Image
-	}
+	labelChanged := !reflect.DeepEqual(copyDp.Labels, oldDeploy.Labels)
+	replicasChanged := *(copyDp.Spec.Replicas) != *(oldDeploy.Spec.Replicas)
 
-	labelChanged := !reflect.DeepEqual(oldDeploy, copyDp)
-	replicasChanged := *copyDp.Spec.Replicas != *oldDeploy.Spec.Replicas
-
-	changed := labelChanged || replicasChanged || imageChanged
+	changed := labelChanged || replicasChanged || nodeAffinityChanged || imageChanged
 	if changed {
-		log.Info("Abount to change deployment", log.Fields{
-			"dp.name":         copyDp.Name,
-			"labelChanged":    labelChanged,
-			"replicasChanged": replicasChanged,
-			"imageChanged":    imageChanged,
+		log.Info("Abount to correct ipvsdr provider", log.Fields{
+			"dp.name":             copyDp.Name,
+			"labelChanged":        labelChanged,
+			"replicasChanged":     replicasChanged,
+			"nodeAffinityChanged": nodeAffinityChanged,
+			"imageChanged":        imageChanged,
 		})
 	}
 
