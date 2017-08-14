@@ -3,7 +3,7 @@ all: push
 
 # TODO git describe --tags --abbrev=0
 # get release from tags
-RELEASE?=v0.1.1
+RELEASE?=v0.2.0
 GOOS?=linux
 PREFIX?=cargo.caicloud.io/caicloud/loadbalancer-controller
 
@@ -15,8 +15,10 @@ endif
 
 target=loadbalancer-controller
 
+test:
+	go list ./... | grep -v '/vendor/' | grep -v '/tests/' | xargs go test 
 
-build:
+build: test
 	GOOS=${GOOS} go build -i -v -o $(target) \
 	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller
@@ -27,7 +29,7 @@ image: build
 push: image
 	docker push $(PREFIX):$(RELEASE)
 
-debug:
+debug: test
 	go build -i -v -o $(target) \
 	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller

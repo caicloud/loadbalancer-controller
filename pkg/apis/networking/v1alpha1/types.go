@@ -223,10 +223,10 @@ type AzureProviderStatus struct {
 
 // PodStatuses represents the current statuses of a list of pods
 type PodStatuses struct {
-	Replicas      int32       `json:"replicas,omitempty"`
-	TotalReplicas int32       `json:"totalReplicas,omitempty"`
-	ReadyReplicas int32       `json:"readyReplicas,omitempty"`
-	Statuses      []PodStatus `json:"podStatuses,omitempty"`
+	Replicas      int32       `json:"replicas"`
+	TotalReplicas int32       `json:"totalReplicas"`
+	ReadyReplicas int32       `json:"readyReplicas"`
+	Statuses      []PodStatus `json:"podStatuses"`
 }
 
 // PodStatus represents the current status of pods
@@ -238,5 +238,5 @@ type PodStatus struct {
 	TotalContainers int32  `json:"totalContainers"`
 	NodeName        string `json:"nodeName"`
 	Reason          string `json:"reason"`
-	Message         string `json:"message,omitempty"`
+	Message         string `json:"message"`
 }

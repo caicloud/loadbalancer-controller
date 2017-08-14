@@ -25,6 +25,7 @@ import (
 	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
 	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
 	log "github.com/zoumo/logdog"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -386,8 +387,12 @@ func (eh *EventHandlerForSyncStatusWithPod) getLoadbalancerForPod(pod *v1.Pod) *
 	}
 
 	lb, err := eh.lbLister.LoadBalancers(namespace).Get(name)
+	if errors.IsNotFound(err) {
+		// deleted
+		return nil
+	}
 	if err != nil {
-		log.Error("can not find loadbalancer for pod", log.Fields{"lb.name": name, "lb.ns": namespace, "pod.name": pod.Name})
+		log.Error("can not find loadbalancer for pod", log.Fields{"lb.name": name, "lb.ns": namespace, "pod.name": pod.Name, "err": err})
 		return nil
 	}
 	return lb
