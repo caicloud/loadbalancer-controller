@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	defaultIpvsdrImage       = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.2.0"
-	defaultHTTPBackendImage  = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
-	defaultNginxIngressImage = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.11"
+	defaultIpvsdrImage         = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.2.0"
+	defaultHTTPBackendImage    = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
+	defaultNginxIngressImage   = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.11"
+	defaultIngressSidecarImage = "cargo.caicloud.io/caicloud/ingress-controller-sidecar:v0.2.1"
 )
 
 type additionalTolerations []string
@@ -62,7 +63,13 @@ type Configuration struct {
 type Proxies struct {
 	DefaultHTTPBackend    string
 	DefaultSSLCertificate string
+	Sidecar               IngressSidecar
 	Nginx                 ProxyNginx
+}
+
+// IngressSidecar contains all cli flags of ingress controller sidecar
+type IngressSidecar struct {
+	Image string
 }
 
 // ProxyNginx contains all cli flags of nginx proxy
@@ -104,6 +111,13 @@ func (c *Configuration) AddFlags(app *cli.App) {
 			Usage:       "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server",
 			EnvVar:      "DEFAULT_SSL_CERTIFICATE",
 			Destination: &c.Proxies.DefaultSSLCertificate,
+		},
+		cli.StringFlag{
+			Name:        "proxy-sidecar",
+			Usage:       "`Image` of ingress controller sidecar",
+			EnvVar:      "PROXY_SIDECAR",
+			Value:       defaultIngressSidecarImage,
+			Destination: &c.Proxies.Sidecar.Image,
 		},
 		// nginx
 		cli.StringFlag{

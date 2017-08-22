@@ -36,6 +36,7 @@ import (
 	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -75,6 +76,7 @@ var _ proxy.Plugin = &nginx{}
 type nginx struct {
 	initialized           bool
 	image                 string
+	sidecar               string
 	defaultHTTPbackend    string
 	defaultSSLCertificate string
 
@@ -108,6 +110,7 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	// set config
 	f.defaultHTTPbackend = cfg.Proxies.DefaultHTTPBackend
 	f.defaultSSLCertificate = cfg.Proxies.DefaultSSLCertificate
+	f.sidecar = cfg.Proxies.Sidecar.Image
 	f.image = cfg.Proxies.Nginx.Image
 	f.client = cfg.Client
 	f.tprclient = cfg.TPRClient
@@ -137,7 +140,12 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting nginx proxy", log.Fields{"workers": workers, "image": f.image, "default-http-backend": f.defaultHTTPbackend})
+	log.Info("Starting nginx proxy", log.Fields{
+		"workers":              workers,
+		"image":                f.image,
+		"default-http-backend": f.defaultHTTPbackend,
+		"sidecar":              f.sidecar,
+	})
 	defer log.Info("Shutting down nginx proxy")
 
 	if err := f.ensureDefaultHTTPBackend(); err != nil {
@@ -355,25 +363,50 @@ func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment
 	}
 	// ensure replicas
 	copyDp.Spec.Replicas = desiredDeploy.Spec.Replicas
-	// ensure image
-	copyDp.Spec.Template.Spec.Containers[0].Image = desiredDeploy.Spec.Template.Spec.Containers[0].Image
+	// ensure containers
+	var containersChanged = false
+	copyContainers := copyDp.Spec.Template.Spec.Containers
+	desiredContainers := desiredDeploy.Spec.Template.Spec.Containers
+	if len(copyContainers) != len(desiredContainers) {
+		containersChanged = true
+	} else {
+		for _, c1 := range desiredContainers {
+			found := false
+			for _, c2 := range copyContainers {
+				if c1.Name == c2.Name {
+					found = true
+					if c1.Image != c2.Image {
+						containersChanged = true
+					}
+					break
+				}
+			}
+			if !found {
+				containersChanged = true
+			}
+		}
+	}
+
+	if containersChanged {
+		copyDp.Spec.Template.Spec.Containers = desiredContainers
+	}
+
 	// ensure nodeaffinity
 	copyDp.Spec.Template.Spec.Affinity.NodeAffinity = desiredDeploy.Spec.Template.Spec.Affinity.NodeAffinity
 
 	// check if changed
 	nodeAffinityChanged := !reflect.DeepEqual(copyDp.Spec.Template.Spec.Affinity.NodeAffinity, oldDeploy.Spec.Template.Spec.Affinity.NodeAffinity)
-	imageChanged := copyDp.Spec.Template.Spec.Containers[0].Image != oldDeploy.Spec.Template.Spec.Containers[0].Image
 	labelChanged := !reflect.DeepEqual(copyDp.Labels, oldDeploy.Labels)
 	replicasChanged := *(copyDp.Spec.Replicas) != *(oldDeploy.Spec.Replicas)
 
-	changed := labelChanged || replicasChanged || nodeAffinityChanged || imageChanged
+	changed := labelChanged || replicasChanged || nodeAffinityChanged || containersChanged
 	if changed {
 		log.Info("Abount to correct nginx proxy", log.Fields{
 			"dp.name":             copyDp.Name,
 			"labelChanged":        labelChanged,
 			"replicasChanged":     replicasChanged,
 			"nodeAffinityChanged": nodeAffinityChanged,
-			"imageChanged":        imageChanged,
+			"containersChanged":   containersChanged,
 		})
 	}
 
@@ -579,6 +612,47 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 										Port:   intstr.FromInt(80),
 										Scheme: v1.URISchemeHTTP,
 									},
+								},
+							},
+						},
+						{
+							Name:            "sidecar",
+							Image:           f.sidecar,
+							ImagePullPolicy: v1.PullAlways,
+							Resources: v1.ResourceRequirements{
+								Limits: v1.ResourceList{
+									v1.ResourceCPU:    resource.MustParse("100m"),
+									v1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+							},
+							SecurityContext: &v1.SecurityContext{
+								// ingress controller sidecar need provileged to change sysctl settings
+								Privileged: &t,
+							},
+							Env: []v1.EnvVar{
+								{
+									Name: "POD_NAME",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: "POD_NAMESPACE",
+									ValueFrom: &v1.EnvVarSource{
+										FieldRef: &v1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
+									Name:  "LOADBALANCER_NAMESPACE",
+									Value: lb.Namespace,
+								},
+								{
+									Name:  "LOADBALANCER_NAME",
+									Value: lb.Name,
 								},
 							},
 						},
