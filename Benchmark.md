@@ -19,21 +19,25 @@
 
 在 1000 Concurrency 下
 
-| type      | nginx CPU/Memory | backend pod CPU/Memory | r/s     | wait time(ms) /r | server process time (ms) / r |
-| --------- | ---------------- | ---------------------- | ------- | ---------------- | ---------------------------- |
-| NodePort  | -                | 900m/67MiB             | 3747.75 | 266.826          | 0.267                        |
-| LB - TCP  | 680m/130MiB      | 950m/98MiB             | 3867.60 | 258.558          | 0.259                        |
-| LB - HTTP | 854m/130MiB      | 890m/79Mi              | 1558.15 | 641.787          | 0.642                        |
+| type      | nginx CPU/Memory | backend pod CPU/Memory | r/s     | user wait time(ms) /r | server process time (ms) / r |
+| --------- | ---------------- | ---------------------- | ------- | --------------------- | ---------------------------- |
+| NodePort  | -                | 900m/67MiB             | 3747.75 | 266.826               | 0.267                        |
+| LB - TCP  | 680m/130MiB      | 950m/98MiB             | 3867.60 | 258.558               | 0.259                        |
+| LB - HTTP | 854m/130MiB      | 890m/79Mi              | 1558.15 | 641.787               | 0.642                        |
+
+>   wait time: 为用户平均请求等待时间, 计算公式  (total time / total requests) * concurrency
+>
+>   server process time: 为服务器处理的平均时间, 计算公式 total time / total requests
 
 
 
 在 200 Concurrency 下
 
-| type      | nginx CPU/Memory | backend pod CPU/Memory | r/s     | wait time(ms) /r | server process time (ms) / r |
-| --------- | ---------------- | ---------------------- | ------- | ---------------- | ---------------------------- |
-| NodePort  | -                | 900m/67MiB             | 3463.86 | 577.391          | 0.289                        |
-| LB - TCP  | 544m/135MiB      | 977m/88MiB             | 3153.10 | 634.296          | 0.317                        |
-| LB - HTTP | 887m/136MiB      | 826m/64MiB             | 1525.92 | 1310.685         | 0.655                        |
+| type      | nginx CPU/Memory | backend pod CPU/Memory | r/s     | user wait time(ms) /r | server process time (ms) / r |
+| --------- | ---------------- | ---------------------- | ------- | --------------------- | ---------------------------- |
+| NodePort  | -                | 900m/67MiB             | 3463.86 | 577.391               | 0.289                        |
+| LB - TCP  | 544m/135MiB      | 977m/88MiB             | 3153.10 | 634.296               | 0.317                        |
+| LB - HTTP | 887m/136MiB      | 826m/64MiB             | 1525.92 | 1310.685              | 0.655                        |
 
 
 
@@ -287,6 +291,5 @@ Percentage of the requests served within a certain time (ms)
   98%   4355
   99%   5399
  100%  75000 (longest request)
-
 ```
 
