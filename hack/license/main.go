@@ -42,7 +42,7 @@ func Run(c *cli.Context) {
 		root = "./"
 	}
 
-	licenseBytes, err := ioutil.ReadFile(root + "/LICENCE")
+	licenseBytes, err := ioutil.ReadFile(root + "/LICENSE")
 	if err != nil {
 		log.Fatal(err)
 		return
