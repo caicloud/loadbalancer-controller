@@ -18,17 +18,15 @@ spec:
     type: nginx
     resources:
       limits:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 1
+        memory: 1Gi
       requests:
-        cpu: 500m
-        memory: 500Mi
+        cpu: 1
+        memory: 1Gi
 
   # internal can only use service provider
   # external can use all kind of providers
   providers:
-    service:
-      name: xxxx
     ipvsdr:
       vip: 192.168.18.213
       scheduler: rr

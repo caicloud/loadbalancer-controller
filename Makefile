@@ -3,9 +3,9 @@ all: push
 
 # TODO git describe --tags --abbrev=0
 # get release from tags
-RELEASE?=v0.2.0
+RELEASE?=v0.2.1
 GOOS?=linux
-PREFIX?=cargo.caicloud.io/caicloud/loadbalancer-controller
+PREFIX?=cargo.caicloudprivatetest.com/caicloud/loadbalancer-controller
 
 PKG=github.com/caicloud/loadbalancer-controller
 REPO_INFO=$(shell git config --get remote.origin.url)
