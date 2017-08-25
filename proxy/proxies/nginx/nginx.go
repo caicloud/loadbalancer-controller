@@ -519,10 +519,7 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
-			Annotations: map[string]string{
-				"prometheus.io/port":   strconv.Itoa(ingressControllerPort),
-				"prometheus.io/scrape": "true",
-			},
+
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         controllerKind.GroupVersion().String(),
@@ -539,6 +536,10 @@ func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Dep
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
+					Annotations: map[string]string{
+						"prometheus.io/port":   strconv.Itoa(ingressControllerPort),
+						"prometheus.io/scrape": "true",
+					},
 				},
 				Spec: v1.PodSpec{
 					// host network ?
