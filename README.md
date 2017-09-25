@@ -31,7 +31,7 @@ This project is still in alpha version.
 
 ### Design
 
-Learn more about loadbalancer on [design doc](./docs/design)
+Learn more about loadbalancer on [design doc](./docs/design.md)
 
 ### See also
 
