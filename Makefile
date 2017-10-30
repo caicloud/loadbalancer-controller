@@ -20,7 +20,7 @@ test:
 
 build: test
 	GOOS=${GOOS} go build -i -v -o $(target) \
-	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
+	-ldflags "-s -w -X $(PKG)//pkg/version.RELEASE=$(RELEASE) -X $(PKG)//pkg/version.COMMIT=$(COMMIT) -X $(PKG)//pkg/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller
 
 image: build
@@ -31,7 +31,7 @@ push: image
 
 debug: test
 	go build -i -v -o $(target) \
-	-ldflags "-s -w -X $(PKG)/version.RELEASE=$(RELEASE) -X $(PKG)/version.COMMIT=$(COMMIT) -X $(PKG)/version.REPO=$(REPO_INFO)" \
+	-ldflags "-s -w -X $(PKG)//pkg/version.RELEASE=$(RELEASE) -X $(PKG)//pkg/version.COMMIT=$(COMMIT) -X $(PKG)//pkg/version.REPO=$(REPO_INFO)" \
 	$(PKG)/cmd/controller
 
 	./$(target) --kubeconfig=${HOME}/.kube/config --debug --log-force-color
