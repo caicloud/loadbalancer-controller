@@ -20,12 +20,6 @@
 #
 # The makefile is also responsible to populate project version information.
 
-# TODO git describe --tags --abbrev=0
-# get release from tags
-RELEASE?=v0.2.2
-GOOS?=linux
-PREFIX?=cargo.caicloudprivatetest.com/caicloud/loadbalancer-controller
-
 # Current version of the project.
 VERSION ?= v0.3.0
 
