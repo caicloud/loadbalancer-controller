@@ -230,7 +230,7 @@ func (tf *TextFormatter) Format(record *LogRecord) (string, error) {
 		case "levelno":
 			sequnce = append(sequnce, fmt.Sprintf("%d", record.Level))
 		case "levelname":
-			sequnce = append(sequnce, fmt.Sprintf("%-6s", record.LevelName))
+			sequnce = append(sequnce, fmt.Sprintf("%6s", record.LevelName))
 		case "pathname":
 			sequnce = append(sequnce, record.PathName)
 		case "filename":
