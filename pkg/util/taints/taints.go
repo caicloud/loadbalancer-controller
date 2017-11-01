@@ -24,8 +24,11 @@ import (
 )
 
 const (
-	MODIFIED  = "modified"
-	TAINTED   = "tainted"
+	// MODIFIED ...
+	MODIFIED = "modified"
+	// TAINTED ...
+	TAINTED = "tainted"
+	// UNTAINTED ...
 	UNTAINTED = "untainted"
 )
 
@@ -67,9 +70,9 @@ func DeleteTaints(taintsToRemove []v1.Taint, newTaints *[]v1.Taint) ([]error, bo
 	for _, taintToRemove := range taintsToRemove {
 		removed = false
 		if len(taintToRemove.Effect) > 0 {
-			*newTaints, removed = v1.DeleteTaint(*newTaints, &taintToRemove)
+			*newTaints, removed = DeleteTaint(*newTaints, &taintToRemove)
 		} else {
-			*newTaints, removed = v1.DeleteTaintsByKey(*newTaints, taintToRemove.Key)
+			*newTaints, removed = DeleteTaintsByKey(*newTaints, taintToRemove.Key)
 		}
 		if !removed {
 			allErrs = append(allErrs, fmt.Errorf("taint %q not found", taintToRemove.ToString()))
@@ -94,4 +97,32 @@ func AddTaints(oldTaints []v1.Taint, newTaints *[]v1.Taint) bool {
 		}
 	}
 	return len(oldTaints) != len(*newTaints)
+}
+
+// DeleteTaintsByKey removes all the taints that have the same key to given taintKey
+func DeleteTaintsByKey(taints []v1.Taint, taintKey string) ([]v1.Taint, bool) {
+	newTaints := []v1.Taint{}
+	deleted := false
+	for i := range taints {
+		if taintKey == taints[i].Key {
+			deleted = true
+			continue
+		}
+		newTaints = append(newTaints, taints[i])
+	}
+	return newTaints, deleted
+}
+
+// DeleteTaint removes all the the taints that have the same key and effect to given taintToDelete.
+func DeleteTaint(taints []v1.Taint, taintToDelete *v1.Taint) ([]v1.Taint, bool) {
+	newTaints := []v1.Taint{}
+	deleted := false
+	for i := range taints {
+		if taintToDelete.MatchTaint(&taints[i]) {
+			deleted = true
+			continue
+		}
+		newTaints = append(newTaints, taints[i])
+	}
+	return newTaints, deleted
 }

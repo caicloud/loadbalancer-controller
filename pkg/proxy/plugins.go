@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package proxy
 
 import (
-	"github.com/caicloud/loadbalancer-controller/config"
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
-	"github.com/caicloud/loadbalancer-controller/pkg/informers"
+	"github.com/caicloud/clientset/informers"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
+	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/zoumo/register"
 )
 
@@ -27,11 +27,11 @@ var (
 	plugins = register.NewRegister(nil)
 )
 
-// Plugin defines a pluggable provider interface
+// Plugin defines a pluggable proxy interface
 type Plugin interface {
 	Init(config.Configuration, informers.SharedInformerFactory)
 	Run(stopCh <-chan struct{})
-	OnSync(*netv1alpha1.LoadBalancer)
+	OnSync(*lbapi.LoadBalancer)
 }
 
 // RegisterPlugin registers a Plugin by name.
@@ -55,12 +55,12 @@ func IsPlugin(name string) bool {
 	return plugins.Contains(name)
 }
 
-// Plugins returns the name of all registered provider plugin in a string slice
+// Plugins returns the name of all registered proxy plugin in a string slice
 func Plugins() []string {
 	return plugins.Keys()
 }
 
-// Init calls all registered provider plugins Init func
+// Init calls all registered proxy plugins Init func
 func Init(c config.Configuration, sif informers.SharedInformerFactory) {
 	for _, v := range plugins.Iter() {
 		f := v.(Plugin)
@@ -68,7 +68,7 @@ func Init(c config.Configuration, sif informers.SharedInformerFactory) {
 	}
 }
 
-// Run starts all registered provider plugins
+// Run starts all registered proxy plugins
 // This is expected to happen after Init.
 func Run(stopCh <-chan struct{}) {
 	for _, v := range plugins.Iter() {
@@ -77,8 +77,8 @@ func Run(stopCh <-chan struct{}) {
 	}
 }
 
-// OnSync calls all registered provider plugins OnSync func
-func OnSync(lb *netv1alpha1.LoadBalancer) {
+// OnSync calls all registered proxy plugins OnSync func
+func OnSync(lb *lbapi.LoadBalancer) {
 	for _, v := range plugins.Iter() {
 		f := v.(Plugin)
 		f.OnSync(lb)

@@ -18,5 +18,5 @@ package proxies
 
 import (
 	// nginx proxy
-	_ "github.com/caicloud/loadbalancer-controller/proxy/proxies/nginx"
+	_ "github.com/caicloud/loadbalancer-controller/pkg/proxy/proxies/nginx"
 )

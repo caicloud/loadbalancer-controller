@@ -21,7 +21,7 @@ import (
 
 	log "github.com/zoumo/logdog"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
 
@@ -30,15 +30,15 @@ import (
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-func (f *ipvsdr) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extensions.Deployment) error {
+func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *extensions.Deployment) error {
 
 	// caculate proxy status
-	providerStatus := netv1alpha1.IpvsdrProviderStatus{
-		PodStatuses: netv1alpha1.PodStatuses{
+	providerStatus := lbapi.IpvsdrProviderStatus{
+		PodStatuses: lbapi.PodStatuses{
 			Replicas:      *activeDeploy.Spec.Replicas,
 			ReadyReplicas: 0,
 			TotalReplicas: 0,
-			Statuses:      make([]netv1alpha1.PodStatus, 0),
+			Statuses:      make([]lbapi.PodStatus, 0),
 		},
 		Vip:        lb.Spec.Providers.Ipvsdr.Vip,
 		Deployment: activeDeploy.Name,
@@ -81,10 +81,11 @@ func (f *ipvsdr) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extensio
 		// replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
 		log.Notice("update ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 		_, err := lbutil.UpdateLBWithRetries(
-			f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace),
+			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.lbLister,
 			lb.Namespace,
 			lb.Name,
-			func(lb *netv1alpha1.LoadBalancer) error {
+			func(lb *lbapi.LoadBalancer) error {
 				lb.Status.ProvidersStatuses.Ipvsdr = &providerStatus
 				return nil
 			},
@@ -100,7 +101,7 @@ func (f *ipvsdr) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extensio
 	return nil
 }
 
-func (f *ipvsdr) evictPod(lb *netv1alpha1.LoadBalancer, pod *v1.Pod) {
+func (f *ipvsdr) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
 
 	if len(lb.Spec.Nodes.Names) == 0 {
 		return

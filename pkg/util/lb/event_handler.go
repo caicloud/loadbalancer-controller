@@ -21,10 +21,13 @@ import (
 	"reflect"
 	"time"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
-	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
-	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
+	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
+	controllerutil "github.com/caicloud/clientset/util/controller"
+	"github.com/caicloud/clientset/util/syncqueue"
+	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	log "github.com/zoumo/logdog"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -33,14 +36,10 @@ import (
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/controller"
 )
 
 var _ cache.ResourceEventHandler = &EventHandlerForDeployment{}
 var _ cache.ResourceEventHandler = &EventHandlerForSyncStatusWithPod{}
-
-// controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = netv1alpha1.SchemeGroupVersion.WithKind(netv1alpha1.LoadBalancerKind)
 
 type filterDeploymentFunc func(obj *extensions.Deployment) bool
 type filterPodFunc func(obj *v1.Pod) bool
@@ -48,9 +47,9 @@ type filterPodFunc func(obj *v1.Pod) bool
 // EventHandlerForDeployment helps you create a event handler to handle with
 // deployments event quickly, makes you focus on you own code
 type EventHandlerForDeployment struct {
-	helper *controllerutil.Helper
+	queue *syncqueue.SyncQueue
 
-	lbLister netlisters.LoadBalancerLister
+	lbLister lblisters.LoadBalancerLister
 	dLister  extensionslisters.DeploymentLister
 
 	filtered filterDeploymentFunc
@@ -58,13 +57,13 @@ type EventHandlerForDeployment struct {
 
 // NewEventHandlerForDeployment ...
 func NewEventHandlerForDeployment(
-	lbLister netlisters.LoadBalancerLister,
+	lbLister lblisters.LoadBalancerLister,
 	dLister extensionslisters.DeploymentLister,
-	helper *controllerutil.Helper,
+	queue *syncqueue.SyncQueue,
 	filterFunc filterDeploymentFunc,
 ) *EventHandlerForDeployment {
 	return &EventHandlerForDeployment{
-		helper:   helper,
+		queue:    queue,
 		lbLister: lbLister,
 		dLister:  dLister,
 		filtered: filterFunc,
@@ -89,27 +88,24 @@ func (eh *EventHandlerForDeployment) OnAdd(obj interface{}) {
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	if controllerRef := controller.GetControllerOf(d); controllerRef != nil {
+	if controllerRef := controllerutil.GetControllerOf(d); controllerRef != nil {
 		lb := eh.resolveControllerRef(d.Namespace, controllerRef)
 		if lb == nil {
 			return
 		}
 		log.Info("Deployment added", log.Fields{"d.name": d.Name, "lb.name": lb.Name, "ns": lb.Namespace})
-		eh.helper.Enqueue(lb)
+		eh.queue.Enqueue(lb)
 		return
 	}
 
-	// Otherwise, it's an orphan. Get a list of all matching LoadBalancer for deployment and sync
-	// them to see if anyone wants to adopt it.
-	lbs := eh.GetLoadBalancersForDeplyments(d)
-	if len(lbs) == 0 {
+	// Otherwise, it's an orphan. Get a matching LoadBalancer for deployment
+	lb, err := eh.lbLister.GetLoadBalancerForControllee(d)
+	if err != nil {
 		log.Debug("Can not get loadbalancer for orpha Deployment, ignore it", log.Fields{"d.name": d.Name, "ns": d.Namespace, "labels": d.Labels})
 		return
 	}
 	log.Info("Orphan Deployment added", log.Fields{"d.name": d.Name})
-	for _, lb := range lbs {
-		eh.helper.Enqueue(lb)
-	}
+	eh.queue.Enqueue(lb)
 
 }
 
@@ -133,8 +129,8 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 		return
 	}
 
-	curControllerRef := controller.GetControllerOf(cur)
-	oldControllerRef := controller.GetControllerOf(old)
+	curControllerRef := controllerutil.GetControllerOf(cur)
+	oldControllerRef := controllerutil.GetControllerOf(old)
 	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
 
 	// do not sync deletion update
@@ -144,7 +140,7 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 			if lb := eh.resolveControllerRef(old.Namespace, oldControllerRef); lb != nil {
 				// The ControllerRef was changed. Sync the old controller, if any.
 				log.Info("Deployment updated, ControllerRef changed, sync for old controller", log.Fields{"name": old.Name, "ns": old.Namespace})
-				eh.helper.Enqueue(lb)
+				eh.queue.Enqueue(lb)
 			}
 		}
 	}
@@ -158,7 +154,7 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 				return
 			}
 			log.Info("Deployment updated", log.Fields{"name": cur.Name})
-			eh.helper.Enqueue(lb)
+			eh.queue.Enqueue(lb)
 			return
 		}
 
@@ -167,15 +163,13 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 		labelChanged := !reflect.DeepEqual(cur.Labels, old.Labels)
 
 		if labelChanged || controllerRefChanged {
-			lbs := eh.GetLoadBalancersForDeplyments(cur)
-			if len(lbs) == 0 {
+			lb, err := eh.lbLister.GetLoadBalancerForControllee(cur)
+			if err != nil {
 				log.Debug("Can not get loadbalancer for orpha Deployment, ignore it", log.Fields{"d.name": cur.Name, "ns": cur.Namespace, "labels": cur.Labels})
 				return
 			}
 			log.Info("Orphan Deployment updated", log.Fields{"d.name": cur.Name})
-			for _, lb := range lbs {
-				eh.helper.Enqueue(lb)
-			}
+			eh.queue.Enqueue(lb)
 		}
 	}
 
@@ -204,7 +198,7 @@ func (eh *EventHandlerForDeployment) OnDelete(obj interface{}) {
 		return
 	}
 
-	controllerRef := controller.GetControllerOf(d)
+	controllerRef := controllerutil.GetControllerOf(d)
 	if controllerRef == nil {
 		// No controller should care about orphans being deleted.
 		return
@@ -216,16 +210,16 @@ func (eh *EventHandlerForDeployment) OnDelete(obj interface{}) {
 	}
 
 	log.Info("Deployment deleted", log.Fields{"d.name": d.Name, "lb.name": lb.Name})
-	eh.helper.Enqueue(lb)
+	eh.queue.Enqueue(lb)
 }
 
 // resolveControllerRef returns the controller referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching controller
 // of the corrrect Kind.
-func (eh *EventHandlerForDeployment) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *netv1alpha1.LoadBalancer {
+func (eh *EventHandlerForDeployment) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) *lbapi.LoadBalancer {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
-	if controllerRef.Kind != controllerKind.Kind {
+	if controllerRef.Kind != api.ControllerKind.Kind {
 		return nil
 	}
 	lb, err := eh.lbLister.LoadBalancers(namespace).Get(controllerRef.Name)
@@ -240,48 +234,34 @@ func (eh *EventHandlerForDeployment) resolveControllerRef(namespace string, cont
 	return lb
 }
 
-// GetLoadBalancersForDeplyments get a list of all matching LoadBalancer for deployment
-func (eh *EventHandlerForDeployment) GetLoadBalancersForDeplyments(d *extensions.Deployment) []*netv1alpha1.LoadBalancer {
-	lbs, err := eh.lbLister.GetLoadBalancersForControllee(d)
-	if err != nil || len(lbs) == 0 {
+// GetLoadBalancerForDeployments get a list of all matching LoadBalancer for deployment
+func (eh *EventHandlerForDeployment) GetLoadBalancerForDeployments(d *extensions.Deployment) *lbapi.LoadBalancer {
+	lb, err := eh.lbLister.GetLoadBalancerForControllee(d)
+	if err != nil || lb == nil {
+		log.Error("Error get loadbalancers for deployments")
 		return nil
 	}
-	// Because all deployments's belonging to a loadbalancer should have a unique label key,
-	// there should never be more than one loadbalancer returned by the above method.
-	// If that happens we should probably dynamically repair the situation by ultimately
-	// trying to clean up one of the controllers, for now we just return the older one
-	if len(lbs) > 1 {
-		log.Warn("user error! more than one loadbalancer is selecting deployment with labels", log.Fields{
-			"namespace":        d.Namespace,
-			"deploymentName":   d.Name,
-			"labels":           d.Labels,
-			"loadbalancerName": lbs[0].Name,
-		})
-	}
-
-	return lbs
+	return lb
 }
 
 // EventHandlerForSyncStatusWithPod helps you create a event handler to sync status
 // with pod event quickly, makes you focus on you own code
 type EventHandlerForSyncStatusWithPod struct {
-	helper *controllerutil.Helper
-
-	lbLister  netlisters.LoadBalancerLister
+	queue     *syncqueue.SyncQueue
+	lbLister  lblisters.LoadBalancerLister
 	podLister corelisters.PodLister
-
-	filtered filterPodFunc
+	filtered  filterPodFunc
 }
 
 // NewEventHandlerForSyncStatusWithPod ...
 func NewEventHandlerForSyncStatusWithPod(
-	lbLister netlisters.LoadBalancerLister,
+	lbLister lblisters.LoadBalancerLister,
 	podLister corelisters.PodLister,
-	helper *controllerutil.Helper,
+	queue *syncqueue.SyncQueue,
 	filterFunc filterPodFunc,
 ) *EventHandlerForSyncStatusWithPod {
 	return &EventHandlerForSyncStatusWithPod{
-		helper:    helper,
+		queue:     queue,
 		lbLister:  lbLister,
 		podLister: podLister,
 		filtered:  filterFunc,
@@ -307,7 +287,7 @@ func (eh *EventHandlerForSyncStatusWithPod) OnAdd(obj interface{}) {
 		return
 	}
 
-	eh.helper.Enqueue(lb)
+	eh.queue.Enqueue(lb)
 
 }
 
@@ -335,12 +315,12 @@ func (eh *EventHandlerForSyncStatusWithPod) OnUpdate(oldObj, curObj interface{})
 	if !oldfiltered && oldlb != nil {
 		if curlb == nil || oldlb.Name != curlb.Name || oldlb.Namespace != curlb.Namespace {
 			// lb changed
-			eh.helper.EnqueueAfter(oldlb, time.Second)
+			eh.queue.EnqueueAfter(oldlb, time.Second)
 		}
 	}
 
 	if !curfiltered && curlb != nil {
-		eh.helper.EnqueueAfter(curlb, time.Second)
+		eh.queue.EnqueueAfter(curlb, time.Second)
 	}
 
 }
@@ -371,11 +351,11 @@ func (eh *EventHandlerForSyncStatusWithPod) OnDelete(obj interface{}) {
 		return
 	}
 
-	eh.helper.Enqueue(lb)
+	eh.queue.Enqueue(lb)
 }
 
-func (eh *EventHandlerForSyncStatusWithPod) getLoadbalancerForPod(pod *v1.Pod) *netv1alpha1.LoadBalancer {
-	v, ok := pod.Labels[netv1alpha1.LabelKeyCreatedBy]
+func (eh *EventHandlerForSyncStatusWithPod) getLoadbalancerForPod(pod *v1.Pod) *lbapi.LoadBalancer {
+	v, ok := pod.Labels[lbapi.LabelKeyCreatedBy]
 	if !ok {
 		return nil
 	}

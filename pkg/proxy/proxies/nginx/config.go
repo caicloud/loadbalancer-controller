@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"reflect"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	log "github.com/zoumo/logdog"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,7 +49,7 @@ func merge(dst, src map[string]string) map[string]string {
 	return ret
 }
 
-func (f *nginx) ensureConfigMaps(lb *netv1alpha1.LoadBalancer) error {
+func (f *nginx) ensureConfigMaps(lb *lbapi.LoadBalancer) error {
 	labels := f.selector(lb)
 
 	cmName := fmt.Sprintf(configMapName, lb.Name)
@@ -65,11 +65,8 @@ func (f *nginx) ensureConfigMaps(lb *netv1alpha1.LoadBalancer) error {
 	}
 	udpcmName := fmt.Sprintf(udpConfigMapName, lb.Name)
 	err = f.ensureConfigMap(udpcmName, lb.Namespace, labels, nil)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]string) error {

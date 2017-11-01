@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/caicloud/loadbalancer-controller/config"
+	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	log "github.com/zoumo/logdog"
 	"gopkg.in/urfave/cli.v1"
 )

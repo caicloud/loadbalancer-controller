@@ -19,17 +19,16 @@ package config
 import (
 	"strings"
 
-	"k8s.io/client-go/kubernetes"
+	"github.com/caicloud/clientset/kubernetes"
 
 	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
-	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
 const (
 	defaultIpvsdrImage         = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.2.0"
 	defaultHTTPBackendImage    = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
-	defaultNginxIngressImage   = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.11"
+	defaultNginxIngressImage   = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.15"
 	defaultIngressSidecarImage = "cargo.caicloud.io/caicloud/ingress-controller-sidecar:v0.2.1"
 )
 
@@ -53,7 +52,6 @@ func (a *additionalTolerations) String() string {
 // Configuration contains the global config of controller
 type Configuration struct {
 	Client                kubernetes.Interface
-	TPRClient             tprclient.Interface
 	AdditionalTolerations additionalTolerations
 	Proxies               Proxies
 	Providers             Providers

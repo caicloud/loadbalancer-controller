@@ -22,7 +22,7 @@ import (
 
 	log "github.com/zoumo/logdog"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
 
@@ -31,18 +31,18 @@ import (
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-func (f *nginx) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extensions.Deployment) error {
+func (f *nginx) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *extensions.Deployment) error {
 
 	// caculate proxy status
-	proxyStatus := netv1alpha1.ProxyStatus{
-		PodStatuses: netv1alpha1.PodStatuses{
+	proxyStatus := lbapi.ProxyStatus{
+		PodStatuses: lbapi.PodStatuses{
 			Replicas:      *activeDeploy.Spec.Replicas,
 			ReadyReplicas: 0,
 			TotalReplicas: 0,
-			Statuses:      make([]netv1alpha1.PodStatus, 0),
+			Statuses:      make([]lbapi.PodStatus, 0),
 		},
 		Deployment:   activeDeploy.Name,
-		IngressClass: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		IngressClass: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 		ConfigMap:    fmt.Sprintf(configMapName, lb.Name),
 		TCPConfigMap: fmt.Sprintf(tcpConfigMapName, lb.Name),
 		UDPConfigMap: fmt.Sprintf(udpConfigMapName, lb.Name),
@@ -74,10 +74,11 @@ func (f *nginx) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extension
 		log.Notice("update nginx proxy status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 		// _, err := f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		_, err := lbutil.UpdateLBWithRetries(
-			f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace),
+			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.lbLister,
 			lb.Namespace,
 			lb.Name,
-			func(lb *netv1alpha1.LoadBalancer) error {
+			func(lb *lbapi.LoadBalancer) error {
 				lb.Status.ProxyStatus = proxyStatus
 				return nil
 			},
@@ -91,7 +92,7 @@ func (f *nginx) syncStatus(lb *netv1alpha1.LoadBalancer, activeDeploy *extension
 	return nil
 }
 
-func (f *nginx) evictPod(lb *netv1alpha1.LoadBalancer, pod *v1.Pod) {
+func (f *nginx) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
 
 	if len(lb.Spec.Nodes.Names) == 0 {
 		return

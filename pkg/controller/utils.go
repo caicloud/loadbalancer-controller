@@ -19,7 +19,7 @@ package controller
 import (
 	"fmt"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
@@ -33,7 +33,7 @@ type VerifiedNodes struct {
 	Labels         map[string]string
 }
 
-func (lbc *LoadBalancerController) getVerifiedNodes(lb *netv1alpha1.LoadBalancer) (*VerifiedNodes, error) {
+func (lbc *LoadBalancerController) getVerifiedNodes(lb *lbapi.LoadBalancer) (*VerifiedNodes, error) {
 
 	err := validation.ValidateLoadBalancer(lb)
 	if err != nil {
@@ -48,7 +48,7 @@ func (lbc *LoadBalancerController) getVerifiedNodes(lb *netv1alpha1.LoadBalancer
 	}
 
 	ran.Labels = map[string]string{
-		fmt.Sprintf(netv1alpha1.UniqueLabelKeyFormat, lb.Namespace, lb.Name): "true",
+		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name): "true",
 	}
 
 	if len(lb.Spec.Nodes.Names) == 0 {
@@ -56,15 +56,15 @@ func (lbc *LoadBalancerController) getVerifiedNodes(lb *netv1alpha1.LoadBalancer
 		// no matter what effect it is
 		ran.TaintsToDelete = append(ran.TaintsToDelete, apiv1.Taint{
 			// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
-			Key: netv1alpha1.TaintKey,
+			Key: lbapi.TaintKey,
 		})
 	} else {
 		if lb.Spec.Nodes.Effect != nil {
 			// generate taints to add
 			ran.TaintsToAdd = append(ran.TaintsToAdd, apiv1.Taint{
 				// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
-				Key:    netv1alpha1.TaintKey,
-				Value:  fmt.Sprintf(netv1alpha1.TaintValueFormat, lb.Namespace, lb.Name),
+				Key:    lbapi.TaintKey,
+				Value:  fmt.Sprintf(lbapi.TaintValueFormat, lb.Namespace, lb.Name),
 				Effect: *lb.Spec.Nodes.Effect,
 			})
 		} else {
@@ -72,7 +72,7 @@ func (lbc *LoadBalancerController) getVerifiedNodes(lb *netv1alpha1.LoadBalancer
 			// no matter what effect it is
 			ran.TaintsToDelete = append(ran.TaintsToDelete, apiv1.Taint{
 				// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
-				Key: netv1alpha1.TaintKey,
+				Key: lbapi.TaintKey,
 			})
 		}
 

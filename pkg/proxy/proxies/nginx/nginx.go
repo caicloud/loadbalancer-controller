@@ -19,52 +19,37 @@ package nginx
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/caicloud/loadbalancer-controller/config"
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
-	"github.com/caicloud/loadbalancer-controller/pkg/informers"
-	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
-	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
-	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
-	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
+	"github.com/caicloud/clientset/util/syncqueue"
+
+	"github.com/caicloud/clientset/informers"
+	"github.com/caicloud/clientset/kubernetes"
+	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
+	controllerutil "github.com/caicloud/clientset/util/controller"
+	"github.com/caicloud/loadbalancer-controller/pkg/api"
+	"github.com/caicloud/loadbalancer-controller/pkg/config"
+	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
-	"github.com/caicloud/loadbalancer-controller/proxy"
 	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
 	"k8s.io/client-go/pkg/api/v1"
 	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/controller"
 )
 
 const (
-	configMapName    = "%s-proxy-nginx-config"
-	tcpConfigMapName = "%s-proxy-nginx-tcp"
-	udpConfigMapName = "%s-proxy-nginx-udp"
-	proxyNameSuffix  = "-proxy-nginx"
-	// ingress controller use this port to export metrics and pprof information
-	ingressControllerPort = 8282
-	proxyName             = "nginx"
-)
-
-var (
-	// controllerKind contains the schema.GroupVersionKind for this controller type.
-	controllerKind = netv1alpha1.SchemeGroupVersion.WithKind(netv1alpha1.LoadBalancerKind)
+	proxyNameSuffix = "-proxy-nginx"
+	proxyName       = "nginx"
 )
 
 func init() {
@@ -80,19 +65,12 @@ type nginx struct {
 	defaultHTTPbackend    string
 	defaultSSLCertificate string
 
-	client    kubernetes.Interface
-	tprclient tprclient.Interface
+	client kubernetes.Interface
+	queue  *syncqueue.SyncQueue
 
-	helper *controllerutil.Helper
-
-	lbLister        netlisters.LoadBalancerLister
-	dLister         extensionslisters.DeploymentLister
-	podLister       corelisters.PodLister
-	lbListerSynced  cache.InformerSynced
-	dListerSynced   cache.InformerSynced
-	podListerSynced cache.InformerSynced
-
-	queue workqueue.RateLimitingInterface
+	lbLister  lblisters.LoadBalancerLister
+	dLister   extensionslisters.DeploymentLister
+	podLister corelisters.PodLister
 }
 
 // NewNginx creates a new nginx proxy plugin
@@ -113,10 +91,9 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	f.sidecar = cfg.Proxies.Sidecar.Image
 	f.image = cfg.Proxies.Nginx.Image
 	f.client = cfg.Client
-	f.tprclient = cfg.TPRClient
 
 	// initialize controller
-	lbInformer := sif.Networking().V1alpha1().LoadBalancer()
+	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
 	dInformer := sif.Extensions().V1beta1().Deployments()
 	podInfomer := sif.Core().V1().Pods()
 
@@ -124,11 +101,10 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	f.dLister = dInformer.Lister()
 	f.podLister = podInfomer.Lister()
 
-	f.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "proxy-nginx")
-	f.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, f.queue, f.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
+	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
-	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.helper, f.deploymentFiltered))
-	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.helper, f.podFiltered))
+	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.queue, f.deploymentFiltered))
+	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.queue, f.podFiltered))
 }
 
 func (f *nginx) Run(stopCh <-chan struct{}) {
@@ -158,19 +134,19 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 	defer func() {
 		log.Info("Shutting down nginx proxy")
-		f.helper.ShutDown()
+		f.queue.ShutDown()
 	}()
 
-	f.helper.Run(workers, stopCh)
+	f.queue.Run(workers)
 
 	<-stopCh
 
 }
 
-func (f *nginx) selector(lb *netv1alpha1.LoadBalancer) labels.Set {
+func (f *nginx) selector(lb *lbapi.LoadBalancer) labels.Set {
 	return labels.Set{
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		netv1alpha1.LabelKeyProxy:     proxyName,
+		lbapi.LabelKeyCreatedBy: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		lbapi.LabelKeyProxy:     proxyName,
 	}
 }
 
@@ -185,26 +161,26 @@ func (f *nginx) podFiltered(obj *v1.Pod) bool {
 
 func (f *nginx) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 	// obj.Labels
-	selector := labels.Set{netv1alpha1.LabelKeyProxy: proxyName}.AsSelector()
+	selector := labels.Set{lbapi.LabelKeyProxy: proxyName}.AsSelector()
 	match := selector.Matches(labels.Set(obj.GetObjectMeta().GetLabels()))
 
 	return !match
 }
 
-func (f *nginx) OnSync(lb *netv1alpha1.LoadBalancer) {
-	if lb.Spec.Proxy.Type != netv1alpha1.ProxyTypeNginx {
+func (f *nginx) OnSync(lb *lbapi.LoadBalancer) {
+	if lb.Spec.Proxy.Type != lbapi.ProxyTypeNginx {
 		// It is not my responsible
 		return
 	}
 	log.Info("Syncing proxy, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
-	f.helper.Enqueue(lb)
+	f.queue.Enqueue(lb)
 }
 
 // TODO use event
 // sync deployment with loadbalancer
-// the obj will be *netv1alpha1.LoadBalancer
+// the obj will be *lbapi.LoadBalancer
 func (f *nginx) syncLoadBalancer(obj interface{}) error {
-	lb, ok := obj.(*netv1alpha1.LoadBalancer)
+	lb, ok := obj.(*lbapi.LoadBalancer)
 	if !ok {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
 	}
@@ -215,7 +191,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 		return err
 	}
 
-	key, _ := controllerutil.KeyFunc(lb)
+	key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(lb)
 
 	startTime := time.Now()
 	defer func() {
@@ -239,7 +215,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 		return nil
 	}
 
-	lb, err = f.clone(nlb)
+	lb, err = api.LoadBalancerDeepCopy(nlb)
 	if err != nil {
 		return err
 	}
@@ -258,7 +234,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 }
 
-func (f *nginx) getDeploymentsForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*extensions.Deployment, error) {
+func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*extensions.Deployment, error) {
 
 	// construct selector
 	selector := f.selector(lb).AsSelector()
@@ -271,9 +247,9 @@ func (f *nginx) getDeploymentsForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*
 
 	// If any adoptions are attempted, we should first recheck for deletion with
 	// an uncached quorum read sometime after listing deployment (see kubernetes#42639).
-	canAdoptFunc := controller.RecheckDeletionTimestamp(func() (metav1.Object, error) {
+	canAdoptFunc := controllerutil.RecheckDeletionTimestamp(func() (metav1.Object, error) {
 		// fresh lb
-		fresh, err := f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Get(lb.Name, metav1.GetOptions{})
+		fresh, err := f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace).Get(lb.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -284,13 +260,13 @@ func (f *nginx) getDeploymentsForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*
 		return fresh, nil
 	})
 
-	cm := controllerutil.NewDeploymentControllerRefManager(f.client, lb, selector, controllerKind, canAdoptFunc)
+	cm := controllerutil.NewDeploymentControllerRefManager(f.client, lb, selector, api.ControllerKind, canAdoptFunc)
 	return cm.Claim(dList)
 }
 
 // sync generate desired deployment from lb and compare it with existing deployment
-func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment) error {
-	desiredDeploy := f.GenerateDeployment(lb)
+func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error {
+	desiredDeploy := f.generateDeployment(lb)
 
 	// update
 	var err error
@@ -309,7 +285,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 			}
 			// scale unexpected deployment replicas to zero
 			log.Info("Scale unexpected proxy replicas to zero", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			copy, _ := lbutil.DeploymentDeepCopy(dp)
+			copy, _ := api.DeploymentDeepCopy(dp)
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
 			f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copy)
@@ -352,7 +328,7 @@ func (f *nginx) sync(lb *netv1alpha1.LoadBalancer, dps []*extensions.Deployment)
 }
 
 func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment) (*extensions.Deployment, bool, error) {
-	copyDp, err := lbutil.DeploymentDeepCopy(oldDeploy)
+	copyDp, err := api.DeploymentDeepCopy(oldDeploy)
 	if err != nil {
 		return nil, false, err
 	}
@@ -414,7 +390,7 @@ func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment
 }
 
 // cleanup deployment and other resource controlled by lb proxy
-func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
+func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 
 	selector := f.selector(lb)
 
@@ -449,7 +425,7 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 	// clean up ingress
 	selector = labels.Set{
 		// createdby ingressClass
-		netv1alpha1.LabelKeyCreatedBy: fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		lbapi.LabelKeyCreatedBy: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 	}
 	ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
 		LabelSelector: selector.String(),
@@ -469,227 +445,4 @@ func (f *nginx) cleanup(lb *netv1alpha1.LoadBalancer) error {
 	}
 
 	return nil
-}
-
-func (f *nginx) GenerateDeployment(lb *netv1alpha1.LoadBalancer) *extensions.Deployment {
-	terminationGracePeriodSeconds := int64(30)
-	hostNetwork := false
-	replicas, needNodeAffinity := lbutil.CalculateReplicas(lb)
-
-	if lb.Spec.Type == netv1alpha1.LoadBalancerTypeExternal {
-		hostNetwork = true
-	}
-
-	labels := f.selector(lb)
-
-	// run on this node
-	nodeAffinity := &v1.NodeAffinity{
-		RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-			NodeSelectorTerms: []v1.NodeSelectorTerm{
-				{
-					MatchExpressions: []v1.NodeSelectorRequirement{
-						{
-							Key:      fmt.Sprintf(netv1alpha1.UniqueLabelKeyFormat, lb.Namespace, lb.Name),
-							Operator: v1.NodeSelectorOpIn,
-							Values:   []string{"true"},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// do not run with this pod
-	podAffinity := &v1.PodAntiAffinity{
-		RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
-			{
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						netv1alpha1.LabelKeyProxy: proxyName,
-					},
-				},
-				TopologyKey: metav1.LabelHostname,
-			},
-		},
-	}
-
-	t := true
-
-	deploy := &extensions.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
-			Labels: labels,
-
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         controllerKind.GroupVersion().String(),
-					Kind:               controllerKind.Kind,
-					Name:               lb.Name,
-					UID:                lb.UID,
-					Controller:         &t,
-					BlockOwnerDeletion: &t,
-				},
-			},
-		},
-		Spec: extensions.DeploymentSpec{
-			Replicas: &replicas,
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-					Annotations: map[string]string{
-						"prometheus.io/port":   strconv.Itoa(ingressControllerPort),
-						"prometheus.io/scrape": "true",
-					},
-				},
-				Spec: v1.PodSpec{
-					// host network ?
-					HostNetwork: hostNetwork,
-					// TODO
-					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-					Affinity: &v1.Affinity{
-						// don't co-locate pods of this deployment in same node
-						PodAntiAffinity: podAffinity,
-					},
-					Tolerations: toleration.GenerateTolerations(),
-					Containers: []v1.Container{
-						{
-							Name:            "ingress-nginx-controller",
-							Image:           f.image,
-							ImagePullPolicy: v1.PullAlways,
-							Resources:       lb.Spec.Proxy.Resources,
-							Ports: []v1.ContainerPort{
-								{
-									ContainerPort: 80,
-								},
-								{
-									ContainerPort: 443,
-								},
-								{
-									ContainerPort: ingressControllerPort,
-								},
-							},
-							Env: []v1.EnvVar{
-								{
-									Name: "POD_NAME",
-									ValueFrom: &v1.EnvVarSource{
-										FieldRef: &v1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
-										},
-									},
-								},
-								{
-									Name: "POD_NAMESPACE",
-									ValueFrom: &v1.EnvVarSource{
-										FieldRef: &v1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
-								},
-							},
-							// TODO
-							Args: []string{
-								"/nginx-ingress-controller",
-								"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
-								"--ingress-class=" + fmt.Sprintf(netv1alpha1.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-								"--configmap=" + fmt.Sprintf("%s/"+configMapName, lb.Namespace, lb.Name),
-								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
-								"--udp-services-configmap=" + fmt.Sprintf("%s/"+udpConfigMapName, lb.Namespace, lb.Name),
-								"--healthz-port=" + strconv.Itoa(ingressControllerPort),
-								"--health-check-path=" + "/healthz",
-							},
-							ReadinessProbe: &v1.Probe{
-								Handler: v1.Handler{
-									HTTPGet: &v1.HTTPGetAction{
-										Path:   "/healthz",
-										Port:   intstr.FromInt(80),
-										Scheme: v1.URISchemeHTTP,
-									},
-								},
-							},
-							LivenessProbe: &v1.Probe{
-								Handler: v1.Handler{
-									HTTPGet: &v1.HTTPGetAction{
-										Path:   "/healthz",
-										Port:   intstr.FromInt(80),
-										Scheme: v1.URISchemeHTTP,
-									},
-								},
-							},
-						},
-						{
-							Name:            "sidecar",
-							Image:           f.sidecar,
-							ImagePullPolicy: v1.PullAlways,
-							Resources: v1.ResourceRequirements{
-								Limits: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("100m"),
-									v1.ResourceMemory: resource.MustParse("50Mi"),
-								},
-							},
-							SecurityContext: &v1.SecurityContext{
-								// ingress controller sidecar need provileged to change sysctl settings
-								Privileged: &t,
-							},
-							Env: []v1.EnvVar{
-								{
-									Name: "POD_NAME",
-									ValueFrom: &v1.EnvVarSource{
-										FieldRef: &v1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
-										},
-									},
-								},
-								{
-									Name: "POD_NAMESPACE",
-									ValueFrom: &v1.EnvVarSource{
-										FieldRef: &v1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
-										},
-									},
-								},
-								{
-									Name:  "LOADBALANCER_NAMESPACE",
-									Value: lb.Namespace,
-								},
-								{
-									Name:  "LOADBALANCER_NAME",
-									Value: lb.Name,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if needNodeAffinity {
-		// decide running on which node
-		deploy.Spec.Template.Spec.Affinity.NodeAffinity = nodeAffinity
-	}
-
-	if f.defaultSSLCertificate != "" {
-		deploy.Spec.Template.Spec.Containers[0].Args = append(
-			deploy.Spec.Template.Spec.Containers[0].Args,
-			"--default-ssl-certificate="+f.defaultSSLCertificate,
-		)
-	}
-
-	return deploy
-}
-
-func (f *nginx) clone(lb *netv1alpha1.LoadBalancer) (*netv1alpha1.LoadBalancer, error) {
-	lbi, err := scheme.Scheme.DeepCopy(lb)
-	if err != nil {
-		log.Error("Unable to deepcopy loadbalancer", log.Fields{"lb.name": lb.Name, "err": err})
-		return nil, err
-	}
-
-	nlb, ok := lbi.(*netv1alpha1.LoadBalancer)
-	if !ok {
-		nerr := fmt.Errorf("expected loadbalancer, got %#v", lbi)
-		log.Error(nerr)
-		return nil, err
-	}
-	return nlb, nil
 }

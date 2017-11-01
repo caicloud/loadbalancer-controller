@@ -22,16 +22,17 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/caicloud/loadbalancer-controller/config"
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
-	"github.com/caicloud/loadbalancer-controller/pkg/informers"
-	netlisters "github.com/caicloud/loadbalancer-controller/pkg/listers/networking/v1alpha1"
-	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
-	controllerutil "github.com/caicloud/loadbalancer-controller/pkg/util/controller"
+	"github.com/caicloud/clientset/informers"
+	"github.com/caicloud/clientset/kubernetes"
+	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
+	apiextensions "github.com/caicloud/clientset/pkg/apis/apiextensions/v1beta1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
+	"github.com/caicloud/clientset/util/syncqueue"
+	"github.com/caicloud/loadbalancer-controller/pkg/config"
+	"github.com/caicloud/loadbalancer-controller/pkg/provider"
+	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/taints"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
-	"github.com/caicloud/loadbalancer-controller/provider"
-	"github.com/caicloud/loadbalancer-controller/proxy"
 	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -40,27 +41,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	apiv1 "k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 )
 
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
-	kubeClient kubernetes.Interface
-	tprClient  tprclient.Interface
+	client kubernetes.Interface
 
 	factory    informers.SharedInformerFactory
-	lbLister   netlisters.LoadBalancerLister
+	lbLister   lblisters.LoadBalancerLister
 	nodeLister corelisters.NodeLister
-
-	queue  workqueue.RateLimitingInterface
-	helper *controllerutil.Helper
+	queue      *syncqueue.SyncQueue
 }
 
 // NewLoadBalancerController creates a new LoadBalancerController.
@@ -68,17 +63,14 @@ func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController
 	// TODO register metrics
 
 	lbc := &LoadBalancerController{
-		kubeClient: cfg.Client,
-		tprClient:  cfg.TPRClient,
-		factory:    informers.NewSharedInformerFactory(cfg.Client, cfg.TPRClient, 0),
-		queue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "loadbalancer"),
+		client:  cfg.Client,
+		factory: informers.NewSharedInformerFactory(cfg.Client, 0),
 	}
-
 	// setup lb controller helper
-	lbc.helper = controllerutil.NewHelperForKeyFunc(&netv1alpha1.LoadBalancer{}, lbc.queue, lbc.syncLoadBalancer, controllerutil.PassthroughKeyFunc)
+	lbc.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, lbc.syncLoadBalancer)
 
 	// setup informer
-	lbinformer := lbc.factory.Networking().V1alpha1().LoadBalancer()
+	lbinformer := lbc.factory.Loadbalance().V1alpha2().LoadBalancers()
 	lbinformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    lbc.addLoadBalancer,
 		UpdateFunc: lbc.updateLoadBalancer,
@@ -126,11 +118,11 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 
 	defer func() {
 		log.Info("Shuttingdown controller queue")
-		lbc.helper.ShutDown()
+		lbc.queue.ShutDown()
 	}()
 
 	// start loadbalancer worker
-	lbc.helper.Run(workers, stopCh)
+	lbc.queue.Run(workers)
 
 	// run proxy
 	proxy.Run(stopCh)
@@ -142,22 +134,26 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 
 // ensure loadbalancer tpr initialized
 func (lbc *LoadBalancerController) ensureResource() error {
-	tpr := &v1beta1.ThirdPartyResource{
+	crd := &apiextensions.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			// this kild of objects will be LoadBalancer
-			// More info: https://kubernetes.io/docs/tasks/access-kubernetes-api/extend-api-third-party-resource/
-			Name: netv1alpha1.LoadBalancerTPRName + "." + netv1alpha1.AlphaGroupName,
+			Name: "loadbalancers." + lbapi.GroupName,
 		},
-		Versions: []v1beta1.APIVersion{
-			{Name: netv1alpha1.Version},
+		Spec: apiextensions.CustomResourceDefinitionSpec{
+			Group:   lbapi.GroupName,
+			Version: lbapi.SchemeGroupVersion.Version,
+			Scope:   apiextensions.NamespaceScoped,
+			Names: apiextensions.CustomResourceDefinitionNames{
+				Plural:   "loadbalancers",
+				Singular: "loadbalancer",
+				Kind:     "LoadBalancer",
+				ListKind: "LoadBalancerList",
+			},
 		},
-		Description: "A specification of loadbalancer to provider load balancing for ingress",
 	}
-
-	_, err := lbc.kubeClient.ExtensionsV1beta1().ThirdPartyResources().Create(tpr)
+	_, err := lbc.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 
 	if errors.IsAlreadyExists(err) {
-		log.Info("Skip the creation for ThirdPartyResource LoadBalancer because it has already been created")
+		log.Info("Skip the creation for CustomResourceDefinition LoadBalancer because it has already been created")
 		return nil
 	}
 
@@ -165,7 +161,7 @@ func (lbc *LoadBalancerController) ensureResource() error {
 		return err
 	}
 
-	log.Info("Create ThirdPartyResource LoadBalancer successfully")
+	log.Info("Create CustomResourceDefinition LoadBalancer successfully")
 
 	return nil
 }
@@ -173,7 +169,7 @@ func (lbc *LoadBalancerController) ensureResource() error {
 // syncLoadBalancer will sync the loadbalancer with the given key.
 // This function is not meant to be invoked concurrently with the same key.
 func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
-	lb, ok := obj.(*netv1alpha1.LoadBalancer)
+	lb, ok := obj.(*lbapi.LoadBalancer)
 	if !ok {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
 	}
@@ -184,7 +180,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 		return err
 	}
 
-	key, _ := controllerutil.KeyFunc(lb)
+	key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(lb)
 
 	startTime := time.Now()
 	defer func() {
@@ -212,7 +208,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 	return lbc.sync(lb, false)
 }
 
-func (lbc *LoadBalancerController) sync(lb *netv1alpha1.LoadBalancer, deleted bool) error {
+func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) error {
 
 	nlb, err := lbc.clone(lb)
 	if err != nil {
@@ -229,7 +225,7 @@ func (lbc *LoadBalancerController) sync(lb *netv1alpha1.LoadBalancer, deleted bo
 	// sync nodes
 	if deleted {
 		replicas := int32(0)
-		lb.Spec.Nodes = netv1alpha1.NodesSpec{
+		lb.Spec.Nodes = lbapi.NodesSpec{
 			Replicas: &replicas,
 			Names:    []string{},
 		}
@@ -241,7 +237,7 @@ func (lbc *LoadBalancerController) sync(lb *netv1alpha1.LoadBalancer, deleted bo
 	return err
 }
 
-func (lbc *LoadBalancerController) syncNodes(lb *netv1alpha1.LoadBalancer) error {
+func (lbc *LoadBalancerController) syncNodes(lb *lbapi.LoadBalancer) error {
 	// varify desired nodes
 	desiredNodes, err := lbc.getVerifiedNodes(lb)
 	if err != nil {
@@ -259,9 +255,9 @@ func (lbc *LoadBalancerController) syncNodes(lb *netv1alpha1.LoadBalancer) error
 	return lbc.doLabelAndTaints(nodesToDelete, desiredNodes)
 }
 
-func (lbc *LoadBalancerController) getNodesForLoadBalancer(lb *netv1alpha1.LoadBalancer) ([]*apiv1.Node, error) {
+func (lbc *LoadBalancerController) getNodesForLoadBalancer(lb *lbapi.LoadBalancer) ([]*apiv1.Node, error) {
 	// list old nodes
-	labelkey := fmt.Sprintf(netv1alpha1.UniqueLabelKeyFormat, lb.Namespace, lb.Name)
+	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name)
 	selector := labels.Set{labelkey: "true"}.AsSelector()
 	return lbc.nodeLister.List(selector)
 }
@@ -288,14 +284,14 @@ NEXT:
 }
 
 func (lbc *LoadBalancerController) addLoadBalancer(obj interface{}) {
-	lb := obj.(*netv1alpha1.LoadBalancer)
+	lb := obj.(*lbapi.LoadBalancer)
 	log.Info("Adding LoadBalancer", log.Fields{"name": lb.Name})
-	lbc.helper.Enqueue(lb)
+	lbc.queue.Enqueue(lb)
 }
 
 func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}) {
-	old := oldObj.(*netv1alpha1.LoadBalancer)
-	cur := curObj.(*netv1alpha1.LoadBalancer)
+	old := oldObj.(*lbapi.LoadBalancer)
+	cur := curObj.(*lbapi.LoadBalancer)
 
 	if old.ResourceVersion == cur.ResourceVersion {
 		// Periodic resync will send update events for all known LoadBalancer.
@@ -307,28 +303,12 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 		return
 	}
 
-	// can not change loadbalancer type from internal to external
-	if old.Spec.Type == netv1alpha1.LoadBalancerTypeInternal && cur.Spec.Type == netv1alpha1.LoadBalancerTypeExternal {
-		log.Warn("Forbidden to change the type of loadblancer, revert it", log.Fields{"from": old.Spec.Type, "to": cur.Spec.Type})
-		revert, err := lbc.clone(cur)
-		if err != nil {
-			return
-		}
-		revert.Spec.Type = old.Spec.Type
-		_, err = lbc.tprClient.NetworkingV1alpha1().LoadBalancers(cur.Namespace).Update(revert)
-		if err != nil {
-			log.Error("revert loadbalancer type error", log.Fields{"err": err})
-		}
-
-		return
-	}
-
 	log.Info("Updating LoadBalancer", log.Fields{"name": old.Name})
-	lbc.helper.EnqueueAfter(cur, 1*time.Second)
+	lbc.queue.EnqueueAfter(cur, 1*time.Second)
 }
 
 func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
-	lb, ok := obj.(*netv1alpha1.LoadBalancer)
+	lb, ok := obj.(*lbapi.LoadBalancer)
 
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -336,7 +316,7 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("Couldn't get object from tombstone %#v", obj))
 			return
 		}
-		lb, ok = tombstone.Obj.(*netv1alpha1.LoadBalancer)
+		lb, ok = tombstone.Obj.(*lbapi.LoadBalancer)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("Tombstone contained object that is not a LoadBalancer %#v", obj))
 			return
@@ -345,17 +325,17 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 
 	log.Info("Deleting LoadBalancer", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 
-	lbc.helper.Enqueue(lb)
+	lbc.queue.Enqueue(lb)
 }
 
-func (lbc *LoadBalancerController) clone(lb *netv1alpha1.LoadBalancer) (*netv1alpha1.LoadBalancer, error) {
+func (lbc *LoadBalancerController) clone(lb *lbapi.LoadBalancer) (*lbapi.LoadBalancer, error) {
 	lbi, err := scheme.Scheme.DeepCopy(lb)
 	if err != nil {
 		log.Error("Unable to deepcopy loadbalancer", log.Fields{"lb.name": lb.Name, "err": err})
 		return nil, err
 	}
 
-	nlb, ok := lbi.(*netv1alpha1.LoadBalancer)
+	nlb, ok := lbi.(*lbapi.LoadBalancer)
 	if !ok {
 		nerr := fmt.Errorf("expected loadbalancer, got %#v", lbi)
 		log.Error(nerr)
@@ -381,7 +361,7 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 		// maybe taints are not found, reorganize will return error but it doesn't not matter
 		// taints will not be changed
 		_, newTaints, _ := taints.ReorganizeTaints(copyNode, false, nil, []apiv1.Taint{
-			{Key: netv1alpha1.TaintKey},
+			{Key: lbapi.TaintKey},
 		})
 		copyNode.Spec.Taints = newTaints
 
@@ -395,7 +375,7 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 			if err != nil {
 				return err
 			}
-			_, err = lbc.kubeClient.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+			_, err = lbc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
 			if err != nil {
 				log.Errorf("update node err: %v", err)
 				return err
@@ -436,7 +416,7 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 			if err != nil {
 				return err
 			}
-			_, err = lbc.kubeClient.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+			_, err = lbc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
 			if err != nil {
 				log.Errorf("update node err: %v", err)
 				return err
