@@ -189,10 +189,7 @@ func (hdlr *StreamHandler) Emit(record *LogRecord) {
 
 // Filter checks if handler should filter the specified record
 func (hdlr *StreamHandler) Filter(record *LogRecord) bool {
-	if record.Level < hdlr.Level {
-		return true
-	}
-	return false
+	return record.Level < hdlr.Level
 }
 
 // Flush flushes the file system's in-memory copy to disk
@@ -309,10 +306,7 @@ func (hdlr *FileHandler) Emit(record *LogRecord) {
 
 // Filter checks if handler should filter the specified record
 func (hdlr *FileHandler) Filter(record *LogRecord) bool {
-	if record.Level < hdlr.Level {
-		return true
-	}
-	return false
+	return record.Level < hdlr.Level
 }
 
 // Flush flushes the file system's in-memory copy

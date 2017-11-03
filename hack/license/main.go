@@ -35,6 +35,7 @@ var sentinels = []string{
 	`Licensed under the Apache License, Version 2.0 (the "License");`,
 }
 
+// Run ...
 func Run(c *cli.Context) {
 	root := c.Args().First()
 

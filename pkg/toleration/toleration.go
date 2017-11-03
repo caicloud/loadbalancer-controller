@@ -17,12 +17,12 @@ limitations under the License.
 package toleration
 
 import (
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"k8s.io/client-go/pkg/api/v1"
 )
 
 var (
-	tolerationKeys = []string{netv1alpha1.TaintKey}
+	tolerationKeys = []string{lbapi.TaintKey}
 )
 
 // AddAdditionalTolerationKeys append additional toleration keys which loadbalancer should tolerate

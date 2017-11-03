@@ -23,15 +23,10 @@ import (
 	"strings"
 	"time"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
-	netclient "github.com/caicloud/loadbalancer-controller/pkg/tprclient/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
-	"k8s.io/kubernetes/pkg/client/retry"
 )
 
 const (
@@ -42,7 +37,17 @@ const (
 	NodeUnreachablePodReason = "NodeLost"
 )
 
-type SortPodStatusByName []netv1alpha1.PodStatus
+// DefaultRetry is the recommended retry for a conflict where multiple clients
+// are making changes to the same resource.
+var DefaultRetry = wait.Backoff{
+	Steps:    5,
+	Duration: 10 * time.Millisecond,
+	Factor:   1.0,
+	Jitter:   0.1,
+}
+
+// SortPodStatusByName ...
+type SortPodStatusByName []lbapi.PodStatus
 
 func (s SortPodStatusByName) Len() int {
 	return len(s)
@@ -68,28 +73,28 @@ func SplitNamespaceAndNameByDot(value string) (namespace, name string, err error
 }
 
 // ProxyStatusEqual check whether the given two PorxyStatuses are equal
-func ProxyStatusEqual(a, b netv1alpha1.ProxyStatus) bool {
+func ProxyStatusEqual(a, b lbapi.ProxyStatus) bool {
 
 	if !PodStatusesEqual(a.PodStatuses, b.PodStatuses) {
 		return false
 	}
-	a.PodStatuses = netv1alpha1.PodStatuses{}
-	b.PodStatuses = netv1alpha1.PodStatuses{}
+	a.PodStatuses = lbapi.PodStatuses{}
+	b.PodStatuses = lbapi.PodStatuses{}
 	return reflect.DeepEqual(a, b)
 }
 
 // IpvsdrProviderStatusEqual check whether the given two Statuses are equal
-func IpvsdrProviderStatusEqual(a, b netv1alpha1.IpvsdrProviderStatus) bool {
+func IpvsdrProviderStatusEqual(a, b lbapi.IpvsdrProviderStatus) bool {
 	if !PodStatusesEqual(a.PodStatuses, b.PodStatuses) {
 		return false
 	}
-	a.PodStatuses = netv1alpha1.PodStatuses{}
-	b.PodStatuses = netv1alpha1.PodStatuses{}
+	a.PodStatuses = lbapi.PodStatuses{}
+	b.PodStatuses = lbapi.PodStatuses{}
 	return reflect.DeepEqual(a, b)
 }
 
 // PodStatusesEqual check whether the given two PodStatuses are equal
-func PodStatusesEqual(a, b netv1alpha1.PodStatuses) bool {
+func PodStatusesEqual(a, b lbapi.PodStatuses) bool {
 	aStatus := a.Statuses
 	bStatus := b.Statuses
 
@@ -122,11 +127,11 @@ func PodStatusesEqual(a, b netv1alpha1.PodStatuses) bool {
 
 // CalculateReplicas helps you to calculate replicas of lb
 // determines if you need to add node affinity
-func CalculateReplicas(lb *netv1alpha1.LoadBalancer) (int32, bool) {
+func CalculateReplicas(lb *lbapi.LoadBalancer) (int32, bool) {
 	var replicas int32
 	var needNodeAffinity bool
 
-	if lb.Spec.Type == netv1alpha1.LoadBalancerTypeInternal && lb.Spec.Nodes.Replicas != nil {
+	if lb.Spec.Nodes.Replicas != nil {
 		replicas = *lb.Spec.Nodes.Replicas
 	}
 
@@ -137,19 +142,6 @@ func CalculateReplicas(lb *netv1alpha1.LoadBalancer) (int32, bool) {
 	}
 
 	return replicas, needNodeAffinity
-}
-
-// DeploymentDeepCopy returns a deepcopy for given deployment
-func DeploymentDeepCopy(deployment *extensions.Deployment) (*extensions.Deployment, error) {
-	objCopy, err := scheme.Scheme.DeepCopy(deployment)
-	if err != nil {
-		return nil, err
-	}
-	copied, ok := objCopy.(*extensions.Deployment)
-	if !ok {
-		return nil, fmt.Errorf("expected Deployment, got %#v", objCopy)
-	}
-	return copied, nil
 }
 
 // RandStringBytesRmndr returns a randome string.
@@ -165,7 +157,7 @@ func RandStringBytesRmndr(n int) string {
 }
 
 // ComputePodStatus computes the pod's current status
-func ComputePodStatus(pod *v1.Pod) netv1alpha1.PodStatus {
+func ComputePodStatus(pod *v1.Pod) lbapi.PodStatus {
 	restarts := 0
 	readyContainers := 0
 	totalContainers := len(pod.Spec.Containers)
@@ -208,7 +200,7 @@ func ComputePodStatus(pod *v1.Pod) netv1alpha1.PodStatus {
 		}
 	}
 
-	status := netv1alpha1.PodStatus{
+	status := lbapi.PodStatus{
 		Name:            pod.Name,
 		Ready:           ready,
 		NodeName:        pod.Spec.NodeName,
@@ -217,26 +209,4 @@ func ComputePodStatus(pod *v1.Pod) netv1alpha1.PodStatus {
 		Reason:          reason,
 	}
 	return status
-}
-
-type updateLBFunc func(lb *netv1alpha1.LoadBalancer) error
-
-func UpdateLBWithRetries(lbClient netclient.LoadBalancerInterface, namespace, name string, applyUpdate updateLBFunc) (*netv1alpha1.LoadBalancer, error) {
-	var lb *netv1alpha1.LoadBalancer
-	retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		var err error
-		lb, err = lbClient.Get(name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		if applyErr := applyUpdate(lb); applyErr != nil {
-			return applyErr
-		}
-		lb, err = lbClient.Update(lb)
-		return err
-	})
-	if retryErr == errors.ErrPreconditionViolated {
-		retryErr = nil
-	}
-	return lb, retryErr
 }

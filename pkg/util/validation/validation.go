@@ -20,44 +20,29 @@ import (
 	"fmt"
 	"net"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	v1alpha2 "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 )
 
 // ValidateLoadBalancer validate loadbalancer
-func ValidateLoadBalancer(lb *netv1alpha1.LoadBalancer) error {
-	lbType := lb.Spec.Type
+func ValidateLoadBalancer(lb *v1alpha2.LoadBalancer) error {
 
-	// if lb.Spec.Nodes.Replicas == nil && len(lb.Spec.Nodes.Names) == 0 {
-	// 	return fmt.Errorf("both replicas and nodes are not fill in")
-	// }
-
-	switch lbType {
-	case netv1alpha1.LoadBalancerTypeInternal:
-		// internal lb must set service provider
-		if lb.Spec.Providers.Service == nil {
-			return fmt.Errorf("%s type loadbalancer must set servise provider spec", lbType)
+	if lb.Spec.Providers.Ipvsdr != nil {
+		ipvsdr := lb.Spec.Providers.Ipvsdr
+		if net.ParseIP(ipvsdr.Vip) == nil {
+			return fmt.Errorf("ipvsdr: vip is invalid")
 		}
-	case netv1alpha1.LoadBalancerTypeExternal:
-		if lb.Spec.Providers.Ipvsdr != nil {
-			ipvsdr := lb.Spec.Providers.Ipvsdr
-			if net.ParseIP(ipvsdr.Vip) == nil {
-				return fmt.Errorf("ipvsdr: vip is invalid")
-			}
-			switch ipvsdr.Scheduler {
-			case netv1alpha1.IpvsSchedulerRR:
-			case netv1alpha1.IpvsSchedulerWRR:
-			case netv1alpha1.IpvsSchedulerLC:
-			case netv1alpha1.IpvsSchedulerWLC:
-			case netv1alpha1.IpvsSchedulerLBLC:
-			case netv1alpha1.IpvsSchedulerDH:
-			case netv1alpha1.IpvsSchedulerSH:
-				break
-			default:
-				return fmt.Errorf("ipvsdr: scheduler %v is invalid", ipvsdr.Scheduler)
-			}
+		switch ipvsdr.Scheduler {
+		case v1alpha2.IpvsSchedulerRR:
+		case v1alpha2.IpvsSchedulerWRR:
+		case v1alpha2.IpvsSchedulerLC:
+		case v1alpha2.IpvsSchedulerWLC:
+		case v1alpha2.IpvsSchedulerLBLC:
+		case v1alpha2.IpvsSchedulerDH:
+		case v1alpha2.IpvsSchedulerSH:
+			break
+		default:
+			return fmt.Errorf("ipvsdr: scheduler %v is invalid", ipvsdr.Scheduler)
 		}
-	default:
-		return fmt.Errorf("Unknown loadbalancer type %v", lbType)
 	}
 
 	return nil

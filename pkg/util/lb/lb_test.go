@@ -19,37 +19,37 @@ package lb
 import (
 	"testing"
 
-	netv1alpha1 "github.com/caicloud/loadbalancer-controller/pkg/apis/networking/v1alpha1"
+	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 )
 
 func TestProxyStatusEqual(t *testing.T) {
 
 	tests := []struct {
-		a    netv1alpha1.ProxyStatus
-		b    netv1alpha1.ProxyStatus
+		a    lbapi.ProxyStatus
+		b    lbapi.ProxyStatus
 		want bool
 	}{
 		{
-			netv1alpha1.ProxyStatus{},
-			netv1alpha1.ProxyStatus{},
+			lbapi.ProxyStatus{},
+			lbapi.ProxyStatus{},
 			true,
 		},
 		{
-			netv1alpha1.ProxyStatus{
+			lbapi.ProxyStatus{
 				Deployment: "test",
 				ConfigMap:  "cm",
 			},
-			netv1alpha1.ProxyStatus{
+			lbapi.ProxyStatus{
 				Deployment: "test",
 				ConfigMap:  "cm",
 			},
 			true,
 		},
 		{
-			netv1alpha1.ProxyStatus{
+			lbapi.ProxyStatus{
 				Deployment: "test1",
 			},
-			netv1alpha1.ProxyStatus{
+			lbapi.ProxyStatus{
 				Deployment: "test2",
 			},
 			false,
@@ -65,19 +65,19 @@ func TestProxyStatusEqual(t *testing.T) {
 func TestPodStatusesEqual(t *testing.T) {
 
 	tests := []struct {
-		a    netv1alpha1.PodStatuses
-		b    netv1alpha1.PodStatuses
+		a    lbapi.PodStatuses
+		b    lbapi.PodStatuses
 		want bool
 	}{
 		{
-			netv1alpha1.PodStatuses{},
-			netv1alpha1.PodStatuses{},
+			lbapi.PodStatuses{},
+			lbapi.PodStatuses{},
 			true,
 		},
 		{
-			netv1alpha1.PodStatuses{
+			lbapi.PodStatuses{
 				Replicas: 1,
-				Statuses: []netv1alpha1.PodStatus{
+				Statuses: []lbapi.PodStatus{
 					{
 						Name:  "test1",
 						Ready: true,
@@ -88,9 +88,9 @@ func TestPodStatusesEqual(t *testing.T) {
 					},
 				},
 			},
-			netv1alpha1.PodStatuses{
+			lbapi.PodStatuses{
 				Replicas: 1,
-				Statuses: []netv1alpha1.PodStatus{
+				Statuses: []lbapi.PodStatus{
 					{
 						Name:  "test2",
 						Ready: true,

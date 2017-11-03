@@ -126,10 +126,7 @@ func (lg *Logger) Handle(record *LogRecord) {
 
 // Filter checks if logger should filter the specified record
 func (lg Logger) Filter(record *LogRecord) bool {
-	if record.Level < lg.Level {
-		return true
-	}
-	return false
+	return record.Level < lg.Level
 }
 
 // CallHandlers call all handler registered in logger

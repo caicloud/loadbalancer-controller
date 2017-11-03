@@ -1,17 +1,42 @@
 
-[[constraint]]
-  branch = "master"
-  name = "github.com/zoumo/register"
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
 
 [[constraint]]
   branch = "master"
   name = "github.com/zoumo/logdog"
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/zoumo/register"
+
+[[constraint]]
   name = "gopkg.in/urfave/cli.v1"
-  version = "^1.19.1"
+  version = "1.20.0"
 
 [[override]]
+  version = "v4.0.0"
   name = "k8s.io/client-go"
-  version = "v3.0.0-beta.0"
 
+[[override]]
+  revision = "8c0409fcbb70099c748d71f714529204975f6c3f"
+  name = "github.com/ugorji/go"

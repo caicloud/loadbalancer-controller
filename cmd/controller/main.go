@@ -23,15 +23,15 @@ import (
 	"sort"
 	"time"
 
-	lbcontroller "github.com/caicloud/loadbalancer-controller/controller"
-	"github.com/caicloud/loadbalancer-controller/pkg/tprclient"
-	_ "github.com/caicloud/loadbalancer-controller/provider/providers"
-	_ "github.com/caicloud/loadbalancer-controller/proxy/proxies"
-	"github.com/caicloud/loadbalancer-controller/version"
+	"github.com/caicloud/clientset/kubernetes"
+	lbcontroller "github.com/caicloud/loadbalancer-controller/pkg/controller"
+	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers"
+	_ "github.com/caicloud/loadbalancer-controller/pkg/proxy/proxies"
+	"github.com/caicloud/loadbalancer-controller/pkg/version"
 	log "github.com/zoumo/logdog"
 	"gopkg.in/urfave/cli.v1"
+
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -71,15 +71,7 @@ func RunController(opts *Options, stopCh <-chan struct{}) error {
 		return err
 	}
 
-	// create tpr clientset
-	tprclientset, err := tprclient.NewForConfig(config)
-	if err != nil {
-		log.Fatal("Create tpr client error", log.Fields{"err": err})
-		return err
-	}
-
 	opts.Cfg.Client = clientset
-	opts.Cfg.TPRClient = tprclientset
 	// start a controller on instances of lb
 	controller := lbcontroller.NewLoadBalancerController(opts.Cfg)
 

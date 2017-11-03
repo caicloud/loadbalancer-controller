@@ -8,7 +8,7 @@
 Logdog is a Go logging package for Humans™ inspired by Python’s logging module. 
 
 # Overview
-![terminal.png](http://7xjgzy.com1.z0.glb.clouddn.com/logdog/terminal.png)
+![terminal.png](http://7xjgzy.com1.z0.glb.clouddn.com/logdog/logdog.png)
 
 # Getting Started
 
