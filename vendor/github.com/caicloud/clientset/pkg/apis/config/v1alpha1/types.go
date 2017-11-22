@@ -71,6 +71,7 @@ type ConfigReferenceStatus struct {
 // Reference describes the config reference.
 type Reference struct {
 	Name       string       `json:"name"`
+	Namespace  string       `json:"namespace"`
 	Kind       string       `json:"kind"`
 	APIGroup   string       `json:"apiGroup"`
 	APIVersion string       `json:"apiVersion"`

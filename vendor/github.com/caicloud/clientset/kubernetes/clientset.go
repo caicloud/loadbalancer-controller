@@ -9,6 +9,7 @@ import (
 	configv1alpha1 "github.com/caicloud/clientset/kubernetes/typed/config/v1alpha1"
 	loadbalancev1alpha2 "github.com/caicloud/clientset/kubernetes/typed/loadbalance/v1alpha2"
 	releasev1alpha1 "github.com/caicloud/clientset/kubernetes/typed/release/v1alpha1"
+	resourcev1alpha1 "github.com/caicloud/clientset/kubernetes/typed/resource/v1alpha1"
 	glog "github.com/golang/glog"
 	kubernetes "k8s.io/client-go/kubernetes"
 	rest "k8s.io/client-go/rest"
@@ -29,6 +30,9 @@ type Interface interface {
 	ReleaseV1alpha1() releasev1alpha1.ReleaseV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Release() releasev1alpha1.ReleaseV1alpha1Interface
+	ResourceV1alpha1() resourcev1alpha1.ResourceV1alpha1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Resource() resourcev1alpha1.ResourceV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -39,6 +43,7 @@ type Clientset struct {
 	*configv1alpha1.ConfigV1alpha1Client
 	*loadbalancev1alpha2.LoadbalanceV1alpha2Client
 	*releasev1alpha1.ReleaseV1alpha1Client
+	*resourcev1alpha1.ResourceV1alpha1Client
 }
 
 // ApiextensionsV1beta1 retrieves the ApiextensionsV1beta1Client
@@ -109,6 +114,23 @@ func (c *Clientset) Release() releasev1alpha1.ReleaseV1alpha1Interface {
 	return c.ReleaseV1alpha1Client
 }
 
+// ResourceV1alpha1 retrieves the ResourceV1alpha1Client
+func (c *Clientset) ResourceV1alpha1() resourcev1alpha1.ResourceV1alpha1Interface {
+	if c == nil {
+		return nil
+	}
+	return c.ResourceV1alpha1Client
+}
+
+// Deprecated: Resource retrieves the default version of ResourceClient.
+// Please explicitly pick a version.
+func (c *Clientset) Resource() resourcev1alpha1.ResourceV1alpha1Interface {
+	if c == nil {
+		return nil
+	}
+	return c.ResourceV1alpha1Client
+}
+
 // NewForConfig creates a new Clientset for the given config.
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
@@ -133,6 +155,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.ResourceV1alpha1Client, err = resourcev1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.Clientset, err = kubernetes.NewForConfig(&configShallowCopy)
 	if err != nil {
@@ -150,6 +176,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.ConfigV1alpha1Client = configv1alpha1.NewForConfigOrDie(c)
 	cs.LoadbalanceV1alpha2Client = loadbalancev1alpha2.NewForConfigOrDie(c)
 	cs.ReleaseV1alpha1Client = releasev1alpha1.NewForConfigOrDie(c)
+	cs.ResourceV1alpha1Client = resourcev1alpha1.NewForConfigOrDie(c)
 
 	cs.Clientset = kubernetes.NewForConfigOrDie(c)
 	return &cs
@@ -162,6 +189,7 @@ func New(c rest.Interface) *Clientset {
 	cs.ConfigV1alpha1Client = configv1alpha1.New(c)
 	cs.LoadbalanceV1alpha2Client = loadbalancev1alpha2.New(c)
 	cs.ReleaseV1alpha1Client = releasev1alpha1.New(c)
+	cs.ResourceV1alpha1Client = resourcev1alpha1.New(c)
 
 	cs.Clientset = kubernetes.New(c)
 	return &cs

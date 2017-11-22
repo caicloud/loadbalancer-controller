@@ -11,6 +11,7 @@ import (
 	v1alpha1 "github.com/caicloud/clientset/pkg/apis/config/v1alpha1"
 	v1alpha2 "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	release_v1alpha1 "github.com/caicloud/clientset/pkg/apis/release/v1alpha1"
+	resource_v1alpha1 "github.com/caicloud/clientset/pkg/apis/resource/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	informers "k8s.io/client-go/informers"
 	cache "k8s.io/client-go/tools/cache"
@@ -56,6 +57,12 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Release().V1alpha1().Releases().Informer()}, nil
 	case release_v1alpha1.SchemeGroupVersion.WithResource("releasehistories"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Release().V1alpha1().ReleaseHistories().Informer()}, nil
+
+		// Group=Resource, Version=V1alpha1
+	case resource_v1alpha1.SchemeGroupVersion.WithResource("storageservices"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Resource().V1alpha1().StorageServices().Informer()}, nil
+	case resource_v1alpha1.SchemeGroupVersion.WithResource("storagetypes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Resource().V1alpha1().StorageTypes().Informer()}, nil
 
 	}
 
