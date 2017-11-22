@@ -1,7 +1,7 @@
 all: gen
 
 clean:
-	rm -rf informers kubernetes lister
+	rm -rf informers kubernetes listers
 
 gen: clean
 	cp -r expansions/* ./

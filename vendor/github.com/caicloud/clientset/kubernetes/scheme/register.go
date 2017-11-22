@@ -9,6 +9,7 @@ import (
 	configv1alpha1 "github.com/caicloud/clientset/pkg/apis/config/v1alpha1"
 	loadbalancev1alpha2 "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	releasev1alpha1 "github.com/caicloud/clientset/pkg/apis/release/v1alpha1"
+	resourcev1alpha1 "github.com/caicloud/clientset/pkg/apis/resource/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 )
@@ -40,5 +41,6 @@ func AddToScheme(scheme *runtime.Scheme) {
 	configv1alpha1.AddToScheme(scheme)
 	loadbalancev1alpha2.AddToScheme(scheme)
 	releasev1alpha1.AddToScheme(scheme)
+	resourcev1alpha1.AddToScheme(scheme)
 
 }
