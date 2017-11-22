@@ -21,7 +21,7 @@
 # The makefile is also responsible to populate project version information.
 
 # Current version of the project.
-VERSION ?= v0.3.0
+VERSION ?= v0.3.1
 
 #
 # These variables should not need tweaking.
@@ -60,7 +60,7 @@ TARGETS := controller
 # The final built images are:
 #   $[REGISTRY]/$[IMAGE_PREFIX]$[TARGET]$[IMAGE_SUFFIX]:$[VERSION]
 # $[REGISTRY] is an item from $[REGISTRIES], $[TARGET] is an item from $[TARGETS].
-IMAGE_PREFIX ?= $(strip )
+IMAGE_PREFIX ?= $(strip loadbalancer-)
 IMAGE_SUFFIX ?= $(strip )
 
 # Container registries.
