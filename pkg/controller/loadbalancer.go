@@ -358,7 +358,7 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 		}
 
 		// change taints
-		// maybe taints are not found, reorganize will return error but it doesn't not matter
+		// maybe taints are not found, reorganize will return error but it doesn't matter
 		// taints will not be changed
 		_, newTaints, _ := taints.ReorganizeTaints(copyNode, false, nil, []apiv1.Taint{
 			{Key: lbapi.TaintKey},
@@ -401,7 +401,7 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 		// override taint, add or delete
 		_, newTaints, _ := taints.ReorganizeTaints(copyNode, true, desiredNodes.TaintsToAdd, desiredNodes.TaintsToDelete)
 		// If you don't judge， it maybe change from nil to []Taint{}
-		// do not change taints when orgin and new length are 0
+		// do not change taints when length of original and new taints are both equal to 0
 		if !(len(copyNode.Spec.Taints) == 0 && len(newTaints) == 0) {
 			copyNode.Spec.Taints = newTaints
 		}
