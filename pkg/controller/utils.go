@@ -58,45 +58,46 @@ func (lbc *LoadBalancerController) getVerifiedNodes(lb *lbapi.LoadBalancer) (*Ve
 			// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
 			Key: lbapi.TaintKey,
 		})
+
+		return ran, nil
+	}
+
+	if lb.Spec.Nodes.Effect != nil {
+		// generate taints to add
+		ran.TaintsToAdd = append(ran.TaintsToAdd, apiv1.Taint{
+			// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
+			Key:    lbapi.TaintKey,
+			Value:  fmt.Sprintf(lbapi.TaintValueFormat, lb.Namespace, lb.Name),
+			Effect: *lb.Spec.Nodes.Effect,
+		})
 	} else {
-		if lb.Spec.Nodes.Effect != nil {
-			// generate taints to add
-			ran.TaintsToAdd = append(ran.TaintsToAdd, apiv1.Taint{
-				// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
-				Key:    lbapi.TaintKey,
-				Value:  fmt.Sprintf(lbapi.TaintValueFormat, lb.Namespace, lb.Name),
-				Effect: *lb.Spec.Nodes.Effect,
-			})
-		} else {
-			// if dedicated is not fill in, we should delete taint by key
-			// no matter what effect it is
-			ran.TaintsToDelete = append(ran.TaintsToDelete, apiv1.Taint{
-				// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
-				Key: lbapi.TaintKey,
-			})
+		// if dedicated is not fill in, we should delete taint by key
+		// no matter what effect it is
+		ran.TaintsToDelete = append(ran.TaintsToDelete, apiv1.Taint{
+			// loadbalancer.alpha.caicloud.io/dedicated=namespace-name:effect
+			Key: lbapi.TaintKey,
+		})
+	}
+
+	// get valid nodes
+	for _, name := range lb.Spec.Nodes.Names {
+		// get node
+		node, err := lbc.nodeLister.Get(name)
+		if err != nil {
+			log.Error("Error when get node info, ignore it", log.Fields{"name": name})
+			continue
 		}
 
-		// get valid nodes
-		for _, name := range lb.Spec.Nodes.Names {
-			// get node
-			node, err := lbc.nodeLister.Get(name)
-			if err != nil {
-				log.Error("Error when get node info, ignore it", log.Fields{"name": name})
-				continue
-			}
+		// BUG
+		// validate taint
+		// err = taints.ValidateNoTaintOverwrites(node, taintsToAdd)
+		// if err != nil {
+		// 	// node already has a taint with key, can not use it
+		// 	log.Warn("validate node taints error, ignore it", log.Fields{"name": name, "err": err})
+		// 	continue
+		// }
 
-			// BUG
-			// validate taint
-			// err = taints.ValidateNoTaintOverwrites(node, taintsToAdd)
-			// if err != nil {
-			// 	// node already has a taint with key, can not use it
-			// 	log.Warn("validate node taints error, igore it", log.Fields{"name": name, "err": err})
-			// 	continue
-			// }
-
-			ran.Nodes = append(ran.Nodes, node)
-		}
-
+		ran.Nodes = append(ran.Nodes, node)
 	}
 
 	return ran, nil
