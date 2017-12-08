@@ -1,4 +1,6 @@
-FROM alpine:3.6
+FROM cargo.caicloudprivatetest.com/caicloud/alpine:3.6
+
+LABEL maintainer="Jun Zhang <jim.zhang@caicloud.io>"
 
 WORKDIR /root
 

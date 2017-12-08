@@ -93,9 +93,19 @@ build-local: test
 	$(PKG)/cmd/$(TARGETS)
 
 build-linux: test
-	GOOS=linux GOARCH=amd64 go build -i -v -o $(OUTPUT_DIR)/$(TARGETS) \
-	-ldflags "-s -w -X $(PKG)/pkg/version.RELEASE=$(VERSION) -X $(PKG)/pkg/version.COMMIT=$(COMMIT) -X $(PKG)/pkg/version.REPO=$(PKG)" \
-	$(PKG)/cmd/$(TARGETS)
+	docker run --rm                                                                 \
+		-v $(PWD):/go/src/$(PKG)                                                    \
+		-w /go/src/$(PKG)                                                           \
+		-e GOOS=linux                                                               \
+		-e GOARCH=amd64                                                             \
+		-e GOPATH=/go                                                               \
+		-e CGO_ENABLED=0                                                            \
+		$(REGISTRIES)/golang:1.9.2-alpine3.6                                        \
+			go build -i -v -o $(OUTPUT_DIR)/$(TARGETS)                              \
+			-ldflags "-s -w -X $(PKG)/pkg/version.VERSION=$(VERSION)                \
+			-X $(PKG)/pkg/version.COMMIT=$(COMMIT)                                  \
+			-X $(PKG)/pkg/version.REPOROOT=$(PKG)"                                  \
+			$(PKG)/cmd/$(TARGETS)
 
 container: build-linux
 	@for registry in $(REGISTRIES); do \
