@@ -87,12 +87,12 @@ $(GOMETALINTER):
 test:
 	 @go test $(PKGS)
 
-build-local: test
+build-local: 
 	go build -i -v -o $(OUTPUT_DIR)/$(TARGETS) \
 	-ldflags "-s -w -X $(PKG)/pkg/version.RELEASE=$(VERSION) -X $(PKG)/pkg/version.COMMIT=$(COMMIT) -X $(PKG)/pkg/version.REPO=$(PKG)" \
 	$(PKG)/cmd/$(TARGETS)
 
-build-linux: test
+build-linux:
 	docker run --rm                                                                 \
 		-v $(PWD):/go/src/$(PKG)                                                    \
 		-w /go/src/$(PKG)                                                           \
@@ -104,16 +104,16 @@ build-linux: test
 			go build -i -v -o $(OUTPUT_DIR)/$(TARGETS)                              \
 			-ldflags "-s -w -X $(PKG)/pkg/version.RELEASE=$(VERSION)                \
 			-X $(PKG)/pkg/version.COMMIT=$(COMMIT)                                  \
-			-X $(PKG)/pkg/version.REPO=$(PKG)"                                  \
+			-X $(PKG)/pkg/version.REPO=$(PKG)"                                      \
 			$(PKG)/cmd/$(TARGETS)
 
-container: build-linux
+container:
 	@for registry in $(REGISTRIES); do \
 		image=$(IMAGE_PREFIX)$(TARGETS)$(IMAGE_SUFFIX); \
 		docker build -t $${registry}/$${image}:$(VERSION) -f $(BUILD_DIR)/Dockerfile .; \
 	done
 
-push: container
+push:
 	@for registry in $(REGISTRIES); do \
 		image=$(IMAGE_PREFIX)$(TARGETS)$(IMAGE_SUFFIX); \
 		docker push $${registry}/$${image}:$(VERSION); \
