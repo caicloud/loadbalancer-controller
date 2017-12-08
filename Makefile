@@ -102,9 +102,9 @@ build-linux: test
 		-e CGO_ENABLED=0                                                            \
 		$(REGISTRIES)/golang:1.9.2-alpine3.6                                        \
 			go build -i -v -o $(OUTPUT_DIR)/$(TARGETS)                              \
-			-ldflags "-s -w -X $(PKG)/pkg/version.VERSION=$(VERSION)                \
+			-ldflags "-s -w -X $(PKG)/pkg/version.RELEASE=$(VERSION)                \
 			-X $(PKG)/pkg/version.COMMIT=$(COMMIT)                                  \
-			-X $(PKG)/pkg/version.REPOROOT=$(PKG)"                                  \
+			-X $(PKG)/pkg/version.REPO=$(PKG)"                                  \
 			$(PKG)/cmd/$(TARGETS)
 
 container: build-linux
