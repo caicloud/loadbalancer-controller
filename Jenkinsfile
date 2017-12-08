@@ -35,8 +35,8 @@ podTemplate(
             envVars: [
                 containerEnvVar(key: 'DOCKER_HOST', value: 'unix:///home/jenkins/docker.sock'),
                 // Change the environment variable WORKDIR as needed.
-                containerEnvVar(key: 'WORKDIR', value: '/go/src/github.com/caicloud/loadbalancer-controller')
-                containerEnvVar(key: 'VERSION', value: "${version}")
+                containerEnvVar(key: 'WORKDIR', value: '/go/src/github.com/caicloud/loadbalancer-controller'),
+                containerEnvVar(key: 'VERSION', value: "${version}"),
                 containerEnvVar(key: 'REGISTRIES', value: "${REGISTRY}"+"/caicloud")
            ],
        )
