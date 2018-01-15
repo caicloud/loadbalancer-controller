@@ -122,11 +122,9 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 		"default-http-backend": f.defaultHTTPbackend,
 		"sidecar":              f.sidecar,
 	})
-	defer log.Info("Shutting down nginx proxy")
 
 	if err := f.ensureDefaultHTTPBackend(); err != nil {
-		log.Error("ensure default http backend service error", log.Fields{"err": err})
-		return
+		log.Panicf("Ensure default http backend service error, %v", err)
 	}
 
 	// lb controller has waited all the informer synced
