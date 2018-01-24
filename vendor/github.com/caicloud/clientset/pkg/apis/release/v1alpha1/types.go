@@ -244,6 +244,8 @@ type CanaryReleaseStatus struct {
 	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
 	// Conditions is an array of current observed release conditions.
 	Conditions []CanaryReleaseCondition `json:"conditions,omitempty"`
+	// canary release proxy status
+	Proxy CanaryReleaseProxyStatus `json:"proxyStatus,omitempty"`
 }
 
 // CanaryReleaseConditionType describes the type of condition
@@ -274,6 +276,28 @@ type CanaryReleaseCondition struct {
 	Reason string `json:"reason,omitempty"`
 	// Human readable message indicating details about last transition.
 	Message string `json:"message,omitempty"`
+}
+
+// CanaryReleaseProxyStatus describes the current status of canary release proxy replicas
+type CanaryReleaseProxyStatus struct {
+	Deployment    string      `json:"deployment"`
+	Replicas      int32       `json:"replicas"`
+	TotalReplicas int32       `json:"totalReplicas"`
+	ReadyReplicas int32       `json:"readyReplicas"`
+	PodStatuses   []PodStatus `json:"podStatuses"`
+}
+
+// PodStatus represents the current status of a pod
+type PodStatus struct {
+	Name            string         `json:"name"`
+	Ready           bool           `json:"ready"`
+	RestartCount    int32          `json:"restartCount"`
+	ReadyContainers int32          `json:"readyContainers"`
+	TotalContainers int32          `json:"totalContainers"`
+	NodeName        string         `json:"nodeName"`
+	Phase           apiv1.PodPhase `json:"phase"`
+	Reason          string         `json:"reason"`
+	Message         string         `json:"message,omitempty"`
 }
 
 // CanaryReleaseList describes an array of canary release instances
