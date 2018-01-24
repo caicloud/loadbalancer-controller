@@ -21,7 +21,7 @@
 # The makefile is also responsible to populate project version information.
 
 # Current version of the project.
-VERSION ?= v0.3.1
+VERSION ?= v0.3.2
 
 #
 # These variables should not need tweaking.
