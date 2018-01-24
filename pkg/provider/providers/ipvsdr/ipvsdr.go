@@ -62,8 +62,10 @@ func init() {
 var _ provider.Plugin = &ipvsdr{}
 
 type ipvsdr struct {
-	initialized bool
-	image       string
+	initialized      bool
+	image            string
+	nodeIPLabel      string
+	nodeIPAnnotation string
 
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
@@ -88,6 +90,8 @@ func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFact
 
 	// set config
 	f.image = cfg.Providers.Ipvsdr.Image
+	f.nodeIPLabel = cfg.Providers.Ipvsdr.NodeIPLabel
+	f.nodeIPAnnotation = cfg.Providers.Ipvsdr.NodeIPAnnotation
 	f.client = cfg.Client
 
 	// initialize controller
@@ -468,6 +472,14 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deployme
 								{
 									Name:  "LOADBALANCER_NAME",
 									Value: lb.Name,
+								},
+								{
+									Name:  "NODEIP_LABEL",
+									Value: f.nodeIPLabel,
+								},
+								{
+									Name:  "NODEIP_ANNOTATION",
+									Value: f.nodeIPAnnotation,
 								},
 							},
 							VolumeMounts: []v1.VolumeMount{

@@ -82,7 +82,9 @@ type Providers struct {
 
 // ProviderIpvsdr contains all cli flags of ipvsdr providers
 type ProviderIpvsdr struct {
-	Image string
+	Image            string
+	NodeIPLabel      string
+	NodeIPAnnotation string
 }
 
 // AddFlags add flags to app
@@ -132,6 +134,18 @@ func (c *Configuration) AddFlags(app *cli.App) {
 			EnvVar:      "PROVIDER_IPVS_DR",
 			Value:       defaultIpvsdrImage,
 			Destination: &c.Providers.Ipvsdr.Image,
+		},
+		cli.StringFlag{
+			Name:        "nodeip-label",
+			EnvVar:      "NODEIP_LABEL",
+			Usage:       "tell provider which label of node stores node ip",
+			Destination: &c.Providers.Ipvsdr.NodeIPLabel,
+		},
+		cli.StringFlag{
+			Name:        "nodeip-annotation",
+			EnvVar:      "NODEIP_ANNOTATION",
+			Usage:       "tell provider which annotation of node stores node ip",
+			Destination: &c.Providers.Ipvsdr.NodeIPAnnotation,
 		},
 	}
 	app.Flags = append(app.Flags, flags...)
