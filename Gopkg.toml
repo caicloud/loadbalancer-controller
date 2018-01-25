@@ -33,6 +33,10 @@
   name = "gopkg.in/urfave/cli.v1"
   version = "1.20.0"
 
+[[constraint]]
+  name = "github.com/caicloud/clientset"
+  branch = "release-1.7"
+
 [[override]]
   version = "v4.0.0"
   name = "k8s.io/client-go"
