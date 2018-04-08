@@ -1,5 +1,5 @@
 /*
-Copyright 2017 caicloud authors. All rights reserved.
+Copyright 2018 caicloud authors. All rights reserved.
 */
 
 package v1alpha1
@@ -17,7 +17,7 @@ type ResourceV1alpha1Interface interface {
 	StorageTypesGetter
 }
 
-// ResourceV1alpha1Client is used to interact with features provided by the resource group.
+// ResourceV1alpha1Client is used to interact with features provided by the resource.caicloud.io group.
 type ResourceV1alpha1Client struct {
 	restClient rest.Interface
 }

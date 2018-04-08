@@ -1,5 +1,5 @@
 /*
-Copyright 2017 caicloud authors. All rights reserved.
+Copyright 2018 caicloud authors. All rights reserved.
 */
 
 package v1alpha1

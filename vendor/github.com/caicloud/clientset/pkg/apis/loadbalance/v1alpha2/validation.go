@@ -21,7 +21,7 @@ func ValidateLoadBalancer(lb *LoadBalancer) error {
 func ValidateProviders(spec ProvidersSpec) error {
 	if spec.Ipvsdr != nil {
 		ipvsdr := spec.Ipvsdr
-		if net.ParseIP(ipvsdr.Vip) == nil {
+		if net.ParseIP(ipvsdr.VIP) == nil {
 			return fmt.Errorf("ipvsdr: vip is invalid")
 		}
 		switch ipvsdr.Scheduler {
@@ -34,6 +34,12 @@ func ValidateProviders(spec ProvidersSpec) error {
 		case IpvsSchedulerSH:
 		default:
 			return fmt.Errorf("ipvsdr: scheduler %v is invalid", ipvsdr.Scheduler)
+		}
+	}
+	if spec.External != nil {
+		external := spec.External
+		if net.ParseIP(external.VIP) == nil {
+			return fmt.Errorf("external: vip is invalid")
 		}
 	}
 	return nil

@@ -1,5 +1,5 @@
 /*
-Copyright 2017 caicloud authors. All rights reserved.
+Copyright 2018 caicloud authors. All rights reserved.
 */
 
 package scheme
@@ -10,6 +10,7 @@ import (
 	loadbalancev1alpha2 "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	releasev1alpha1 "github.com/caicloud/clientset/pkg/apis/release/v1alpha1"
 	resourcev1alpha1 "github.com/caicloud/clientset/pkg/apis/resource/v1alpha1"
+	resourcev1beta1 "github.com/caicloud/clientset/pkg/apis/resource/v1beta1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 )
@@ -42,5 +43,6 @@ func AddToScheme(scheme *runtime.Scheme) {
 	loadbalancev1alpha2.AddToScheme(scheme)
 	releasev1alpha1.AddToScheme(scheme)
 	resourcev1alpha1.AddToScheme(scheme)
+	resourcev1beta1.AddToScheme(scheme)
 
 }

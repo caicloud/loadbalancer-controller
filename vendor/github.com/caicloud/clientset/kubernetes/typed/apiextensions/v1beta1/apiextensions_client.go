@@ -1,5 +1,5 @@
 /*
-Copyright 2017 caicloud authors. All rights reserved.
+Copyright 2018 caicloud authors. All rights reserved.
 */
 
 package v1beta1
@@ -16,7 +16,7 @@ type ApiextensionsV1beta1Interface interface {
 	CustomResourceDefinitionsGetter
 }
 
-// ApiextensionsV1beta1Client is used to interact with features provided by the apiextensions group.
+// ApiextensionsV1beta1Client is used to interact with features provided by the apiextensions.k8s.io group.
 type ApiextensionsV1beta1Client struct {
 	restClient rest.Interface
 }
