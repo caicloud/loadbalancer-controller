@@ -5,9 +5,11 @@ Copyright 2017 caicloud authors. All rights reserved.
 package v1alpha2
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
 )
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // LoadBalancerList is a collection of LoadBalancer
 type LoadBalancerList struct {
@@ -18,6 +20,7 @@ type LoadBalancerList struct {
 
 // +genclient=true
 // +genclientstatus=false
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // LoadBalancer describes a LoadBalancer which provides Load Balancing for applications
 // LoadBalancer contains a proxy and multiple providers to load balance
@@ -63,7 +66,7 @@ type NodesSpec struct {
 	// +optional
 	Names []string `json:"names,omitempty"`
 	// +optional
-	Effect *apiv1.TaintEffect `json:"taintEffect,omitempty"`
+	Effect *v1.TaintEffect `json:"taintEffect,omitempty"`
 }
 
 // ProxySpec is a description of a proxy
@@ -74,7 +77,7 @@ type ProxySpec struct {
 	// Compute Resources required by this container.
 	// Cannot be updated.
 	// +optional
-	Resources apiv1.ResourceRequirements `json:"resources,omitempty"`
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // ProxyType ...
@@ -91,6 +94,8 @@ const (
 
 // ProvidersSpec is a description of prividers
 type ProvidersSpec struct {
+	// external provider
+	External *ExternalProvider `json:"external,omitempty"`
 	// ipvs dr
 	Ipvsdr *IpvsdrProvider `json:"ipvsdr,omitempty"`
 	// aliyun slb
@@ -99,10 +104,15 @@ type ProvidersSpec struct {
 	Azure *AzureProvider `json:"azure,omitempty"`
 }
 
+// ExternalProvider is a provider docking for external loadbalancer
+type ExternalProvider struct {
+	VIP string `json:"vip"`
+}
+
 // IpvsdrProvider is a ipvs dr provider
 type IpvsdrProvider struct {
 	// Virtual IP Address
-	Vip string `json:"vip"`
+	VIP string `json:"vip"`
 	// ipvs shceduler algorithm type
 	Scheduler IpvsScheduler `json:"scheduler"`
 }
@@ -157,6 +167,8 @@ type ProxyStatus struct {
 
 // ProvidersStatuses represents the current status of Providers
 type ProvidersStatuses struct {
+	// external loadbalancer provider
+	External *ExpternalProviderStatus `json:"external,omitempty"`
 	// ipvs dr
 	Ipvsdr *IpvsdrProviderStatus `json:"ipvsdr,omitempty"`
 	// aliyun slb
@@ -165,15 +177,16 @@ type ProvidersStatuses struct {
 	Azure *AzureProviderStatus `json:"azure,omitempty"`
 }
 
-// ServiceProviderStatus represents the current status of the service provider
-type ServiceProviderStatus struct {
+// ExpternalProviderStatus represents the current status of the external provider
+type ExpternalProviderStatus struct {
+	VIP string `json:"vip"`
 }
 
 // IpvsdrProviderStatus represents the current status of the ipvsdr provider
 type IpvsdrProviderStatus struct {
 	PodStatuses `json:",inline"`
 	Deployment  string `json:"deployment,omitempty"`
-	Vip         string `json:"vip"`
+	VIP         string `json:"vip"`
 	Vrid        *int   `json:"vrid,omitempty"`
 }
 
@@ -201,6 +214,7 @@ type PodStatus struct {
 	ReadyContainers int32  `json:"readyContainers"`
 	TotalContainers int32  `json:"totalContainers"`
 	NodeName        string `json:"nodeName"`
+	Phase           string `json:"phase"`
 	Reason          string `json:"reason"`
 	Message         string `json:"message"`
 }

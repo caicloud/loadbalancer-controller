@@ -22,13 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caicloud/clientset/util/syncqueue"
-
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	controllerutil "github.com/caicloud/clientset/util/controller"
+	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
@@ -36,14 +35,14 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	appslisters "k8s.io/client-go/listers/apps/v1beta2"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -64,12 +63,13 @@ type nginx struct {
 	sidecar               string
 	defaultHTTPbackend    string
 	defaultSSLCertificate string
+	annotationPrefix      string
 
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
 
 	lbLister  lblisters.LoadBalancerLister
-	dLister   extensionslisters.DeploymentLister
+	dLister   appslisters.DeploymentLister
 	podLister corelisters.PodLister
 }
 
@@ -88,13 +88,14 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	// set config
 	f.defaultHTTPbackend = cfg.Proxies.DefaultHTTPBackend
 	f.defaultSSLCertificate = cfg.Proxies.DefaultSSLCertificate
+	f.annotationPrefix = cfg.Proxies.AnnotationPrefix
 	f.sidecar = cfg.Proxies.Sidecar.Image
 	f.image = cfg.Proxies.Nginx.Image
 	f.client = cfg.Client
 
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
-	dInformer := sif.Extensions().V1beta1().Deployments()
+	dInformer := sif.Apps().V1beta2().Deployments()
 	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
@@ -149,7 +150,7 @@ func (f *nginx) selector(lb *lbapi.LoadBalancer) labels.Set {
 }
 
 // filter Deployment that controller does not care
-func (f *nginx) deploymentFiltered(obj *extensions.Deployment) bool {
+func (f *nginx) deploymentFiltered(obj *appsv1beta2.Deployment) bool {
 	return f.filteredByLabel(obj)
 }
 
@@ -213,10 +214,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 		return nil
 	}
 
-	lb, err = api.LoadBalancerDeepCopy(nlb)
-	if err != nil {
-		return err
-	}
+	lb = nlb.DeepCopy()
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
@@ -232,7 +230,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 }
 
-func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*extensions.Deployment, error) {
+func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1beta2.Deployment, error) {
 
 	// construct selector
 	selector := f.selector(lb).AsSelector()
@@ -263,7 +261,7 @@ func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*extens
 }
 
 // sync generate desired deployment from lb and compare it with existing deployment
-func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error {
+func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) error {
 	desiredDeploy := f.generateDeployment(lb)
 
 	// update
@@ -283,10 +281,10 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error
 			}
 			// scale unexpected deployment replicas to zero
 			log.Info("Scale unexpected proxy replicas to zero", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			copy, _ := api.DeploymentDeepCopy(dp)
+			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copy)
+			f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 
@@ -298,7 +296,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error
 		}
 		if changed {
 			log.Info("Sync nginx for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copyDp)
+			_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
 			if err != nil {
 				return err
 			}
@@ -310,7 +308,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error
 	if !updated {
 		// create deployment
 		log.Info("Create nginx for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
-		_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
+		_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
@@ -325,11 +323,8 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error
 	return f.syncStatus(lb, activeDeploy)
 }
 
-func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment) (*extensions.Deployment, bool, error) {
-	copyDp, err := api.DeploymentDeepCopy(oldDeploy)
-	if err != nil {
-		return nil, false, err
-	}
+func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *appsv1beta2.Deployment) (*appsv1beta2.Deployment, bool, error) {
+	copyDp := oldDeploy.DeepCopy()
 
 	// ensure labels
 	for k, v := range desiredDeploy.Labels {
@@ -401,7 +396,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 	gracePeriodSeconds := int64(30)
 
 	for _, d := range ds {
-		err = f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+		err = f.client.AppsV1beta2().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})

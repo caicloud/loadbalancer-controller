@@ -4,7 +4,6 @@ import (
 	lbclient "github.com/caicloud/clientset/kubernetes/typed/loadbalance/v1alpha2"
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
-	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -23,12 +22,8 @@ func UpdateLBWithRetries(lbClient lbclient.LoadBalancerInterface, lblister lblis
 			return false, err
 		}
 		// deep copy
-		obj, deepCopyErr := api.LoadBalancerDeepCopy(lb)
-		if deepCopyErr != nil {
-			return false, deepCopyErr
-		}
-
-		lb = obj
+		nlb := lb.DeepCopy()
+		lb = nlb
 
 		// apply change
 		if applyErr := applyUpdate(lb); applyErr != nil {

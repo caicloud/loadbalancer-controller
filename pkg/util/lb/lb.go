@@ -23,10 +23,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/caicloud/clientset/util/status"
+
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (
@@ -158,55 +160,15 @@ func RandStringBytesRmndr(n int) string {
 
 // ComputePodStatus computes the pod's current status
 func ComputePodStatus(pod *v1.Pod) lbapi.PodStatus {
-	restarts := 0
-	readyContainers := 0
-	totalContainers := len(pod.Spec.Containers)
-	reason := string(pod.Status.Phase)
-	ready := false
-	if pod.Status.Reason != "" {
-		reason = pod.Status.Reason
+	s := status.JudgePodStatus(pod)
+	return lbapi.PodStatus{
+		Name:            s.Name,
+		Ready:           s.Ready,
+		NodeName:        s.NodeName,
+		ReadyContainers: s.ReadyContainers,
+		TotalContainers: s.TotalContainers,
+		Phase:           string(s.Phase),
+		Reason:          s.Reason,
+		Message:         s.Message,
 	}
-
-	for i := len(pod.Status.ContainerStatuses) - 1; i >= 0; i-- {
-		container := pod.Status.ContainerStatuses[i]
-		restarts += int(container.RestartCount)
-
-		if container.State.Waiting != nil && container.State.Waiting.Reason != "" {
-			reason = container.State.Waiting.Reason
-		} else if container.State.Terminated != nil && container.State.Terminated.Reason != "" {
-			reason = container.State.Terminated.Reason
-		} else if container.State.Terminated != nil && container.State.Terminated.Reason == "" {
-			if container.State.Terminated.Signal != 0 {
-				reason = fmt.Sprintf("Signal:%d", container.State.Terminated.Signal)
-			} else {
-				reason = fmt.Sprintf("ExitCode:%d", container.State.Terminated.ExitCode)
-			}
-		} else if container.Ready && container.State.Running != nil {
-			readyContainers++
-		}
-
-	}
-
-	if readyContainers == totalContainers {
-		ready = true
-	}
-
-	if pod.DeletionTimestamp != nil {
-		ready = false
-		if pod.Status.Reason == NodeUnreachablePodReason {
-			reason = "Unknown"
-		} else {
-			reason = "Terminating"
-		}
-	}
-
-	status := lbapi.PodStatus{
-		Name:            pod.Name,
-		Ready:           ready,
-		NodeName:        pod.Spec.NodeName,
-		ReadyContainers: int32(readyContainers),
-		TotalContainers: int32(totalContainers),
-		Reason:          reason,
-	}
-	return status
 }

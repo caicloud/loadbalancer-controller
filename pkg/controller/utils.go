@@ -22,7 +22,7 @@ import (
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
+	apiv1 "k8s.io/api/core/v1"
 )
 
 // VerifiedNodes ...

@@ -22,9 +22,9 @@ import (
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	log "github.com/zoumo/logdog"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 var (

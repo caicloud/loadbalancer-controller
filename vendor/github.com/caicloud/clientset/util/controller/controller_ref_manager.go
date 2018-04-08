@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/glog"
 
+	apps "k8s.io/api/apps/v1beta2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/kubernetes"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // GetControllerOf returns the controllerRef if controllee has a controller,
@@ -180,18 +180,18 @@ func NewDaemonSetControllerRefManager(
 // If the error is nil, either the reconciliation succeeded, or no
 // reconciliation was necessary. The list of DaemonSets that you now own is
 // returned.
-func (m *DaemonSetControllerRefManager) Claim(sets []*extensions.DaemonSet) ([]*extensions.DaemonSet, error) {
-	var claimed []*extensions.DaemonSet
+func (m *DaemonSetControllerRefManager) Claim(sets []*apps.DaemonSet) ([]*apps.DaemonSet, error) {
+	var claimed []*apps.DaemonSet
 	var errlist []error
 
 	match := func(obj metav1.Object) bool {
 		return m.selector.Matches(labels.Set(obj.GetLabels()))
 	}
 	adopt := func(obj metav1.Object) error {
-		return m.Adopt(obj.(*extensions.DaemonSet))
+		return m.Adopt(obj.(*apps.DaemonSet))
 	}
 	release := func(obj metav1.Object) error {
-		return m.Release(obj.(*extensions.DaemonSet))
+		return m.Release(obj.(*apps.DaemonSet))
 	}
 
 	for _, rs := range sets {
@@ -209,7 +209,7 @@ func (m *DaemonSetControllerRefManager) Claim(sets []*extensions.DaemonSet) ([]*
 
 // Adopt sends a patch to take control of the DaemonSet. It returns the error if
 // the patching fails.
-func (m *DaemonSetControllerRefManager) Adopt(ds *extensions.DaemonSet) error {
+func (m *DaemonSetControllerRefManager) Adopt(ds *apps.DaemonSet) error {
 	if err := m.canAdopt(); err != nil {
 		return fmt.Errorf("can't adopt DaemontSet %v/%v (%v): %v", ds.Namespace, ds.Name, ds.UID, err)
 	}
@@ -220,17 +220,17 @@ func (m *DaemonSetControllerRefManager) Adopt(ds *extensions.DaemonSet) error {
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.controller.GetName(), m.controller.GetUID(), ds.UID)
 
-	_, err := m.client.ExtensionsV1beta1().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(addControllerPatch))
+	_, err := m.client.AppsV1beta2().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(addControllerPatch))
 	return err
 }
 
 // Release sends a patch to free the DaemonSet from the control of the LoadBalancer controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
-func (m *DaemonSetControllerRefManager) Release(ds *extensions.DaemonSet) error {
+func (m *DaemonSetControllerRefManager) Release(ds *apps.DaemonSet) error {
 	glog.V(2).Infof("patching deamonset %s_%s to remove its controllerRef to %s/%s:%s",
 		ds.Namespace, ds.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.controller.GetUID(), ds.UID)
-	_, err := m.client.ExtensionsV1beta1().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
+	_, err := m.client.AppsV1beta2().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// if DaemonSet no longer exists, ignore it
@@ -289,18 +289,18 @@ func NewDeploymentControllerRefManager(
 // If the error is nil, either the reconciliation succeeded, or no
 // reconciliation was necessary. The list of Deployments that you now own is
 // returned.
-func (m *DeploymentControllerRefManager) Claim(sets []*extensions.Deployment) ([]*extensions.Deployment, error) {
-	var claimed []*extensions.Deployment
+func (m *DeploymentControllerRefManager) Claim(sets []*apps.Deployment) ([]*apps.Deployment, error) {
+	var claimed []*apps.Deployment
 	var errlist []error
 
 	match := func(obj metav1.Object) bool {
 		return m.selector.Matches(labels.Set(obj.GetLabels()))
 	}
 	adopt := func(obj metav1.Object) error {
-		return m.Adopt(obj.(*extensions.Deployment))
+		return m.Adopt(obj.(*apps.Deployment))
 	}
 	release := func(obj metav1.Object) error {
-		return m.Release(obj.(*extensions.Deployment))
+		return m.Release(obj.(*apps.Deployment))
 	}
 
 	for _, rs := range sets {
@@ -318,7 +318,7 @@ func (m *DeploymentControllerRefManager) Claim(sets []*extensions.Deployment) ([
 
 // Adopt sends a patch to take control of the Deployment. It returns the error if
 // the patching fails.
-func (m *DeploymentControllerRefManager) Adopt(d *extensions.Deployment) error {
+func (m *DeploymentControllerRefManager) Adopt(d *apps.Deployment) error {
 	if err := m.canAdopt(); err != nil {
 		return fmt.Errorf("can't adopt Deployment %v/%v (%v): %v", d.Namespace, d.Name, d.UID, err)
 	}
@@ -329,17 +329,17 @@ func (m *DeploymentControllerRefManager) Adopt(d *extensions.Deployment) error {
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.controller.GetName(), m.controller.GetUID(), d.UID)
 
-	_, err := m.client.ExtensionsV1beta1().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(addControllerPath))
+	_, err := m.client.AppsV1beta2().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(addControllerPath))
 	return err
 }
 
 // Release sends a patch to free the Deployment from the control of the LoadBalancer controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
-func (m *DeploymentControllerRefManager) Release(d *extensions.Deployment) error {
+func (m *DeploymentControllerRefManager) Release(d *apps.Deployment) error {
 	glog.V(2).Infof("patching deployment %s_%s to remove its controllerRef to %s/%s:%s",
 		d.Namespace, d.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.controller.GetUID(), d.UID)
-	_, err := m.client.ExtensionsV1beta1().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
+	_, err := m.client.AppsV1beta2().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// if DaemonSet no longer exists, ignore it
