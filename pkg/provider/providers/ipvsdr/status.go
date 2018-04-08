@@ -106,6 +106,12 @@ func (f *ipvsdr) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
 	if len(lb.Spec.Nodes.Names) == 0 {
 		return
 	}
+
+	// fix: avoid evict pending pod
+	if pod.Spec.NodeName == "" {
+		return
+	}
+
 	// FIXME: when RequiredDuringSchedulingRequiredDuringExecution finished
 	// This is a special issue.
 	// There is bug when the nodes.Names change。
