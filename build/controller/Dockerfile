@@ -4,7 +4,7 @@ LABEL maintainer="Jun Zhang <jim.zhang@caicloud.io>"
 
 WORKDIR /root
 
-COPY bin/controller /usr/bin/controller
+COPY bin/linux_amd64/controller /usr/bin/controller
 
 ENTRYPOINT ["/usr/bin/controller"]
 
