@@ -25,12 +25,12 @@ import (
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *extensions.Deployment) error {
+func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1beta2.Deployment) error {
 
 	// caculate proxy status
 	providerStatus := lbapi.IpvsdrProviderStatus{
@@ -40,7 +40,7 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *extensions.Dep
 			TotalReplicas: 0,
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
-		Vip:        lb.Spec.Providers.Ipvsdr.Vip,
+		VIP:        lb.Spec.Providers.Ipvsdr.VIP,
 		Deployment: activeDeploy.Name,
 	}
 

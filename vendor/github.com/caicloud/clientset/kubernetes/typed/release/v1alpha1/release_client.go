@@ -1,5 +1,5 @@
 /*
-Copyright 2017 caicloud authors. All rights reserved.
+Copyright 2018 caicloud authors. All rights reserved.
 */
 
 package v1alpha1
@@ -18,7 +18,7 @@ type ReleaseV1alpha1Interface interface {
 	ReleaseHistoriesGetter
 }
 
-// ReleaseV1alpha1Client is used to interact with features provided by the release group.
+// ReleaseV1alpha1Client is used to interact with features provided by the release.caicloud.io group.
 type ReleaseV1alpha1Client struct {
 	restClient rest.Interface
 }

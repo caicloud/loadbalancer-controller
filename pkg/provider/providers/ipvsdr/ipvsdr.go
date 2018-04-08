@@ -38,15 +38,16 @@ import (
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	appslisters "k8s.io/client-go/listers/apps/v1beta2"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	extensionslisters "k8s.io/client-go/listers/extensions/v1beta1"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -71,7 +72,7 @@ type ipvsdr struct {
 	queue  *syncqueue.SyncQueue
 
 	lbLister  lblisters.LoadBalancerLister
-	dLister   extensionslisters.DeploymentLister
+	dLister   appslisters.DeploymentLister
 	podLister corelisters.PodLister
 }
 
@@ -96,7 +97,7 @@ func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFact
 
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
-	dInformer := sif.Extensions().V1beta1().Deployments()
+	dInformer := sif.Apps().V1beta2().Deployments()
 	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
@@ -143,7 +144,7 @@ func (f *ipvsdr) selector(lb *lbapi.LoadBalancer) labels.Set {
 }
 
 // filter Deployment that controller does not care
-func (f *ipvsdr) deploymentFiltered(obj *extensions.Deployment) bool {
+func (f *ipvsdr) deploymentFiltered(obj *appsv1beta2.Deployment) bool {
 	return f.filteredByLabel(obj)
 }
 
@@ -217,7 +218,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 	return f.sync(lb, ds)
 }
 
-func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*extensions.Deployment, error) {
+func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1beta2.Deployment, error) {
 
 	// construct selector
 	selector := f.selector(lb).AsSelector()
@@ -248,7 +249,7 @@ func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*exten
 }
 
 // sync generate desired deployment from lb and compare it with existing deployment
-func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) error {
+func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) error {
 	desiredDeploy := f.generateDeployment(lb)
 
 	// update
@@ -266,10 +267,10 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) erro
 			}
 			// scale unexpected deployment replicas to zero
 			log.Info("Scale unexpected provider replicas to zero", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			copy, _ := api.DeploymentDeepCopy(dp)
+			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copy)
+			f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 
@@ -280,7 +281,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) erro
 		}
 		if changed {
 			log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			_, err = f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Update(copyDp)
+			_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
 			if err != nil {
 				return err
 			}
@@ -293,7 +294,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) erro
 	if !updated {
 		// create deployment
 		log.Info("Create ipvsdr for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
-		_, err := f.client.ExtensionsV1beta1().Deployments(lb.Namespace).Create(desiredDeploy)
+		_, err := f.client.AppsV1beta2().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
@@ -302,11 +303,8 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*extensions.Deployment) erro
 	return f.syncStatus(lb, activeDeploy)
 }
 
-func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *extensions.Deployment) (*extensions.Deployment, bool, error) {
-	copyDp, err := api.DeploymentDeepCopy(oldDeploy)
-	if err != nil {
-		return nil, false, err
-	}
+func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1beta2.Deployment) (*appsv1beta2.Deployment, bool, error) {
+	copyDp := oldDeploy.DeepCopy()
 
 	// ensure labels
 	for k, v := range desiredDeploy.Labels {
@@ -350,7 +348,7 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer) error {
 	policy := metav1.DeletePropagationForeground
 	gracePeriodSeconds := int64(30)
 	for _, d := range ds {
-		f.client.ExtensionsV1beta1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+		f.client.AppsV1beta2().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})
@@ -359,11 +357,14 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer) error {
 	return nil
 }
 
-func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deployment {
+func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployment {
 	terminationGracePeriodSeconds := int64(30)
 	hostNetwork := true
+	dnsPolicy := v1.DNSClusterFirstWithHostNet
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	privileged := true
+	maxSurge := intstr.FromInt(0)
+	t := true
 
 	labels := f.selector(lb)
 
@@ -398,9 +399,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deployme
 		},
 	}
 
-	t := true
-
-	deploy := &extensions.Deployment{
+	deploy := &appsv1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + providerNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
@@ -415,8 +414,13 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deployme
 				},
 			},
 		},
-		Spec: extensions.DeploymentSpec{
+		Spec: appsv1beta2.DeploymentSpec{
 			Replicas: &replicas,
+			Strategy: appsv1beta2.DeploymentStrategy{
+				RollingUpdate: &appsv1beta2.RollingUpdateDeployment{
+					MaxSurge: &maxSurge,
+				},
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
@@ -424,6 +428,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deployme
 				Spec: v1.PodSpec{
 					// host network ?
 					HostNetwork: hostNetwork,
+					DNSPolicy:   dnsPolicy,
 					// TODO
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Affinity: &v1.Affinity{

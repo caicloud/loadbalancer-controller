@@ -35,15 +35,14 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
 
+	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/client-go/kubernetes/scheme"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -210,11 +209,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) error {
 
-	nlb, err := lbc.clone(lb)
-	if err != nil {
-		return err
-	}
-
+	nlb := lb.DeepCopy()
 	lb = nlb
 
 	// sync proxy
@@ -232,9 +227,7 @@ func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) er
 	}
 
 	// sync nodes
-	err = lbc.syncNodes(lb)
-
-	return err
+	return lbc.syncNodes(lb)
 }
 
 func (lbc *LoadBalancerController) syncNodes(lb *lbapi.LoadBalancer) error {
@@ -328,29 +321,12 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 	lbc.queue.Enqueue(lb)
 }
 
-func (lbc *LoadBalancerController) clone(lb *lbapi.LoadBalancer) (*lbapi.LoadBalancer, error) {
-	lbi, err := scheme.Scheme.DeepCopy(lb)
-	if err != nil {
-		log.Error("Unable to deepcopy loadbalancer", log.Fields{"lb.name": lb.Name, "err": err})
-		return nil, err
-	}
-
-	nlb, ok := lbi.(*lbapi.LoadBalancer)
-	if !ok {
-		nerr := fmt.Errorf("expected loadbalancer, got %#v", lbi)
-		log.Error(nerr)
-		return nil, err
-	}
-	return nlb, nil
-}
-
 // doLabelAndTaints delete label and taints in nodesToDelete
 // add label and taints in nodes
 func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node, desiredNodes *VerifiedNodes) error {
 	// delete labels and taints from old nodes
 	for _, node := range nodesToDelete {
-		copy, _ := scheme.Scheme.DeepCopy(node)
-		copyNode := copy.(*apiv1.Node)
+		copyNode := node.DeepCopy()
 
 		// change labels
 		for key := range desiredNodes.Labels {
@@ -390,8 +366,7 @@ func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node,
 
 	// ensure labels and taints in cur nodes
 	for _, node := range desiredNodes.Nodes {
-		copy, _ := scheme.Scheme.DeepCopy(node)
-		copyNode := copy.(*apiv1.Node)
+		copyNode := node.DeepCopy()
 
 		// change labels
 		for k, v := range desiredNodes.Labels {

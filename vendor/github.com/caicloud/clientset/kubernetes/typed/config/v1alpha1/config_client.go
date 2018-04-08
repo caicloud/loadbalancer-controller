@@ -1,5 +1,5 @@
 /*
-Copyright 2017 caicloud authors. All rights reserved.
+Copyright 2018 caicloud authors. All rights reserved.
 */
 
 package v1alpha1
@@ -17,7 +17,7 @@ type ConfigV1alpha1Interface interface {
 	ConfigReferencesGetter
 }
 
-// ConfigV1alpha1Client is used to interact with features provided by the config group.
+// ConfigV1alpha1Client is used to interact with features provided by the config.caicloud.io group.
 type ConfigV1alpha1Client struct {
 	restClient rest.Interface
 }

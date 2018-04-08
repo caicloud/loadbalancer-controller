@@ -5,8 +5,8 @@ Copyright 2017 caicloud authors. All rights reserved.
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apiv1 "k8s.io/client-go/pkg/api/v1"
 )
 
 // ReleaseRollbackConfig describes the rollback config of a release
@@ -45,7 +45,7 @@ type ReleaseCondition struct {
 	// Type of release condition.
 	Type ReleaseConditionType `json:"type"`
 	// Status of the condition, one of True, False, Unknown.
-	Status apiv1.ConditionStatus `json:"status"`
+	Status v1.ConditionStatus `json:"status"`
 	// Last time the condition transit from one status to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// Reason for the condition's last transition.
@@ -90,6 +90,7 @@ type ReleaseStatus struct {
 
 // +genclient=true
 // +genclientstatus=false
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Release describes a release wich chart and values
 type Release struct {
@@ -105,6 +106,8 @@ type Release struct {
 	// +optional
 	Status ReleaseStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ReleaseList describes an array of Release instances
 type ReleaseList struct {
@@ -131,6 +134,7 @@ type ReleaseHistorySpec struct {
 
 // +genclient=true
 // +genclientstatus=false
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ReleaseHistory describes a history of a release version
 type ReleaseHistory struct {
@@ -142,6 +146,8 @@ type ReleaseHistory struct {
 	// +optional
 	Spec ReleaseHistorySpec `json:"spec,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ReleaseHistoryList describes an array of ReleaseHistory instances
 type ReleaseHistoryList struct {
@@ -156,6 +162,7 @@ type ReleaseHistoryList struct {
 
 // +genclient=true
 // +genclientstatus=false
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CanaryRelease describes a cannary release
 // which providers cannary release for applications.
@@ -182,7 +189,7 @@ type CanaryReleaseSpec struct {
 	// Service is an array of services in current release node
 	Service []CanaryService `json:"services,omitempty"`
 	// Resources specify cpu/memory usage of current canary release
-	Resources apiv1.ResourceRequirements `json:"resources,omitempty"`
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Transition is the next phase this CanaryRelease needs to transformed into
 	Transition CanaryTrasition `json:"transition,omitempty"`
 }
@@ -269,7 +276,7 @@ type CanaryReleaseCondition struct {
 	// Type of release condition.
 	Type CanaryReleaseConditionType `json:"type"`
 	// Status of the condition, one of True, False, Unknown.
-	Status apiv1.ConditionStatus `json:"status"`
+	Status v1.ConditionStatus `json:"status"`
 	// Last time the condition transit from one status to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// Reason for the condition's last transition.
@@ -289,16 +296,18 @@ type CanaryReleaseProxyStatus struct {
 
 // PodStatus represents the current status of a pod
 type PodStatus struct {
-	Name            string         `json:"name"`
-	Ready           bool           `json:"ready"`
-	RestartCount    int32          `json:"restartCount"`
-	ReadyContainers int32          `json:"readyContainers"`
-	TotalContainers int32          `json:"totalContainers"`
-	NodeName        string         `json:"nodeName"`
-	Phase           apiv1.PodPhase `json:"phase"`
-	Reason          string         `json:"reason"`
-	Message         string         `json:"message,omitempty"`
+	Name            string      `json:"name"`
+	Ready           bool        `json:"ready"`
+	RestartCount    int32       `json:"restartCount"`
+	ReadyContainers int32       `json:"readyContainers"`
+	TotalContainers int32       `json:"totalContainers"`
+	NodeName        string      `json:"nodeName"`
+	Phase           v1.PodPhase `json:"phase"`
+	Reason          string      `json:"reason"`
+	Message         string      `json:"message,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CanaryReleaseList describes an array of canary release instances
 type CanaryReleaseList struct {
