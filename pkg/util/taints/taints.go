@@ -19,8 +19,8 @@ package taints
 import (
 	"fmt"
 
+	"k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/pkg/api/v1"
 )
 
 const (

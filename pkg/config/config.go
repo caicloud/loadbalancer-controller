@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	defaultIpvsdrImage         = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.2.0"
-	defaultHTTPBackendImage    = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
-	defaultNginxIngressImage   = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.9.0-beta.15"
-	defaultIngressSidecarImage = "cargo.caicloud.io/caicloud/ingress-controller-sidecar:v0.2.1"
+	defaultIpvsdrImage             = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.3.2"
+	defaultHTTPBackendImage        = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
+	defaultNginxIngressImage       = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.12.0"
+	defaultIngressSidecarImage     = "cargo.caicloud.io/caicloud/loadbalancer-provider-ingress:v0.3.2"
+	defaultIngressAnnotationPrefix = "ingress.kubernetes.io"
 )
 
 type additionalTolerations []string
@@ -61,6 +62,7 @@ type Configuration struct {
 type Proxies struct {
 	DefaultHTTPBackend    string
 	DefaultSSLCertificate string
+	AnnotationPrefix      string
 	Sidecar               IngressSidecar
 	Nginx                 ProxyNginx
 }
@@ -111,6 +113,13 @@ func (c *Configuration) AddFlags(app *cli.App) {
 			Usage:       "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server",
 			EnvVar:      "DEFAULT_SSL_CERTIFICATE",
 			Destination: &c.Proxies.DefaultSSLCertificate,
+		},
+		cli.StringFlag{
+			Name:        "proxy-annotation-prefix",
+			Usage:       "Prefix of ingress annotation",
+			EnvVar:      "PROXY_SIDECAR",
+			Value:       defaultIngressAnnotationPrefix,
+			Destination: &c.Proxies.AnnotationPrefix,
 		},
 		cli.StringFlag{
 			Name:        "proxy-sidecar",

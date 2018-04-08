@@ -28,7 +28,7 @@ func ValidateLoadBalancer(lb *v1alpha2.LoadBalancer) error {
 
 	if lb.Spec.Providers.Ipvsdr != nil {
 		ipvsdr := lb.Spec.Providers.Ipvsdr
-		if net.ParseIP(ipvsdr.Vip) == nil {
+		if net.ParseIP(ipvsdr.VIP) == nil {
 			return fmt.Errorf("ipvsdr: vip is invalid")
 		}
 		switch ipvsdr.Scheduler {

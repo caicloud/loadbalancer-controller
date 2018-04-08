@@ -8,11 +8,11 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // ingress controller flags
@@ -27,11 +27,13 @@ const (
 	ingressStatusPort = 451
 )
 
-func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deployment {
+func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployment {
 	terminationGracePeriodSeconds := int64(30)
 	hostNetwork := true
+	dnsPolicy := v1.DNSClusterFirstWithHostNet
 	replicas, needNodeAffinity := lbutil.CalculateReplicas(lb)
-
+	maxSurge := intstr.FromInt(0)
+	t := true
 	labels := f.selector(lb)
 
 	// run on this node
@@ -65,9 +67,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deploymen
 		},
 	}
 
-	t := true
-
-	deploy := &extensions.Deployment{
+	deploy := &appsv1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
@@ -83,8 +83,13 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deploymen
 				},
 			},
 		},
-		Spec: extensions.DeploymentSpec{
+		Spec: appsv1beta2.DeploymentSpec{
 			Replicas: &replicas,
+			Strategy: appsv1beta2.DeploymentStrategy{
+				RollingUpdate: &appsv1beta2.RollingUpdateDeployment{
+					MaxSurge: &maxSurge,
+				},
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
@@ -96,6 +101,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deploymen
 				Spec: v1.PodSpec{
 					// host network ?
 					HostNetwork: hostNetwork,
+					DNSPolicy:   dnsPolicy,
 					// TODO
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Affinity: &v1.Affinity{
@@ -118,6 +124,9 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deploymen
 								},
 								{
 									ContainerPort: ingressControllerPort,
+								},
+								{
+									ContainerPort: ingressStatusPort,
 								},
 							},
 							Env: []v1.EnvVar{
@@ -149,6 +158,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *extensions.Deploymen
 								"--health-check-path=" + healthCheckPath,
 								"--healthz-port=" + strconv.Itoa(ingressControllerPort),
 								"--status-port=" + strconv.Itoa(ingressStatusPort),
+								"--annotations-prefix=" + f.annotationPrefix,
 							},
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{

@@ -19,12 +19,12 @@ package nginx
 import (
 	log "github.com/zoumo/logdog"
 
+	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/pkg/api/v1"
-	extensions "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 const (
@@ -39,13 +39,13 @@ var (
 )
 
 func (f *nginx) ensureDefaultHTTPBackend() error {
-	dp := &extensions.Deployment{
+	dp := &appsv1beta2.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: defaultHTTPBackendNamespace,
 			Name:      defaultHTTPBackendName,
 			Labels:    defaultHTTPBackendLabels,
 		},
-		Spec: extensions.DeploymentSpec{
+		Spec: appsv1beta2.DeploymentSpec{
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: defaultHTTPBackendLabels,
@@ -95,7 +95,7 @@ func (f *nginx) ensureDefaultHTTPBackend() error {
 		},
 	}
 
-	if _, err := f.client.ExtensionsV1beta1().Deployments(defaultHTTPBackendNamespace).Create(dp); err != nil && !errors.IsAlreadyExists(err) {
+	if _, err := f.client.AppsV1beta2().Deployments(defaultHTTPBackendNamespace).Create(dp); err != nil && !errors.IsAlreadyExists(err) {
 		log.Error("Cannot create Deployments", log.Fields{"name": defaultHTTPBackendName, "ns": defaultHTTPBackendNamespace, "err": err})
 		return err
 	}
