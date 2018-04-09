@@ -95,6 +95,11 @@ func IpvsdrProviderStatusEqual(a, b lbapi.IpvsdrProviderStatus) bool {
 	return reflect.DeepEqual(a, b)
 }
 
+// ExternalProviderStatusEqual check whether the given two ExpternalProviderStatus are equal
+func ExternalProviderStatusEqual(a, b lbapi.ExpternalProviderStatus) bool {
+	return reflect.DeepEqual(a, b)
+}
+
 // PodStatusesEqual check whether the given two PodStatuses are equal
 func PodStatusesEqual(a, b lbapi.PodStatuses) bool {
 	aStatus := a.Statuses

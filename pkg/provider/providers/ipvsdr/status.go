@@ -91,7 +91,6 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1beta2.De
 			},
 		)
 
-		// _, err = f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		if err != nil {
 			log.Error("Update loadbalancer status error", log.Fields{"err": err})
 			return err
