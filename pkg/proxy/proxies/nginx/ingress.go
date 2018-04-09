@@ -90,6 +90,9 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployme
 					MaxSurge: &maxSurge,
 				},
 			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,

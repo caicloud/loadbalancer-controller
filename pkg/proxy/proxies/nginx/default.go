@@ -46,6 +46,9 @@ func (f *nginx) ensureDefaultHTTPBackend() error {
 			Labels:    defaultHTTPBackendLabels,
 		},
 		Spec: appsv1beta2.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: defaultHTTPBackendLabels,
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: defaultHTTPBackendLabels,
