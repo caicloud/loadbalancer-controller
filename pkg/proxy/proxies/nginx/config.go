@@ -33,6 +33,7 @@ var (
 		"ssl-redirect":           "false",
 		"force-ssl-redirect":     "false",
 		"enable-vts-status":      "true",
+		"skip-access-log-urls":   "/nginx_status/format/json",
 	}
 )
 
