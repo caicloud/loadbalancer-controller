@@ -19,4 +19,6 @@ package providers
 import (
 	// ipvsdr proxy
 	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers/ipvsdr"
+	// external proxy
+	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers/external"
 )
