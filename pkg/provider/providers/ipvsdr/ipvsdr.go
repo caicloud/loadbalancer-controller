@@ -421,6 +421,9 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deploym
 					MaxSurge: &maxSurge,
 				},
 			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
