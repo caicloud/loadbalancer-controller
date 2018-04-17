@@ -18,8 +18,8 @@ type LoadBalancerList struct {
 	Items           []LoadBalancer `json:"items"`
 }
 
-// +genclient=true
-// +genclientstatus=false
+// +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // LoadBalancer describes a LoadBalancer which provides Load Balancing for applications

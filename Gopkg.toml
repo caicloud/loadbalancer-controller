@@ -35,11 +35,7 @@
 
 [[override]]
   name = "github.com/caicloud/clientset"
-  branch = "release-1.8"
-
-[[override]]
-  revision = "8c0409fcbb70099c748d71f714529204975f6c3f"
-  name = "github.com/ugorji/go"
+  branch = "release-1.10"
 
 [prune]
   non-go = true

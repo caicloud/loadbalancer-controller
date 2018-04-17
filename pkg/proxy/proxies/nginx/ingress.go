@@ -8,7 +8,7 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,7 @@ const (
 	ingressStatusPort = 451
 )
 
-func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployment {
+func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 	terminationGracePeriodSeconds := int64(30)
 	hostNetwork := true
 	dnsPolicy := v1.DNSClusterFirstWithHostNet
@@ -67,7 +67,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployme
 		},
 	}
 
-	deploy := &appsv1beta2.Deployment{
+	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
@@ -83,10 +83,10 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployme
 				},
 			},
 		},
-		Spec: appsv1beta2.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
-			Strategy: appsv1beta2.DeploymentStrategy{
-				RollingUpdate: &appsv1beta2.RollingUpdateDeployment{
+			Strategy: appsv1.DeploymentStrategy{
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
 					MaxSurge: &maxSurge,
 				},
 			},

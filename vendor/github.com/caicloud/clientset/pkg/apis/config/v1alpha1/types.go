@@ -20,8 +20,8 @@ const (
 	Failure ConfigClaimStatusType = "Failure"
 )
 
-// +genclient=true
-// +genclientstatus=true
+// +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ConfigClaim describes a config sync status
@@ -53,8 +53,8 @@ type ConfigClaimList struct {
 	Items []ConfigClaim `json:"items"`
 }
 
-// +genclient=true
-// +genclientstatus=true
+// +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ConfigReference describes the config reference list.

@@ -16,5 +16,5 @@ limitations under the License.
 
 package v1alpha2
 
-// +k8s:deepcopy-gen=package,register
+// +k8s:deepcopy-gen=package
 // +groupName=loadbalance.caicloud.io

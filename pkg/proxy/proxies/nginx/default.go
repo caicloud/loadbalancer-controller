@@ -19,7 +19,7 @@ package nginx
 import (
 	log "github.com/zoumo/logdog"
 
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -39,13 +39,13 @@ var (
 )
 
 func (f *nginx) ensureDefaultHTTPBackend() error {
-	dp := &appsv1beta2.Deployment{
+	dp := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: defaultHTTPBackendNamespace,
 			Name:      defaultHTTPBackendName,
 			Labels:    defaultHTTPBackendLabels,
 		},
-		Spec: appsv1beta2.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: defaultHTTPBackendLabels,
 			},
@@ -98,7 +98,7 @@ func (f *nginx) ensureDefaultHTTPBackend() error {
 		},
 	}
 
-	if _, err := f.client.AppsV1beta2().Deployments(defaultHTTPBackendNamespace).Create(dp); err != nil && !errors.IsAlreadyExists(err) {
+	if _, err := f.client.AppsV1().Deployments(defaultHTTPBackendNamespace).Create(dp); err != nil && !errors.IsAlreadyExists(err) {
 		log.Error("Cannot create Deployments", log.Fields{"name": defaultHTTPBackendName, "ns": defaultHTTPBackendNamespace, "err": err})
 		return err
 	}

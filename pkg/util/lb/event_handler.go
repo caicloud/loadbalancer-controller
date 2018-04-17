@@ -28,12 +28,12 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	log "github.com/zoumo/logdog"
 
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	appslisters "k8s.io/client-go/listers/apps/v1beta2"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -41,7 +41,7 @@ import (
 var _ cache.ResourceEventHandler = &EventHandlerForDeployment{}
 var _ cache.ResourceEventHandler = &EventHandlerForSyncStatusWithPod{}
 
-type filterDeploymentFunc func(obj *appsv1beta2.Deployment) bool
+type filterDeploymentFunc func(obj *appsv1.Deployment) bool
 type filterPodFunc func(obj *v1.Pod) bool
 
 // EventHandlerForDeployment helps you create a event handler to handle with
@@ -72,7 +72,7 @@ func NewEventHandlerForDeployment(
 
 // OnAdd ...
 func (eh *EventHandlerForDeployment) OnAdd(obj interface{}) {
-	d := obj.(*appsv1beta2.Deployment)
+	d := obj.(*appsv1.Deployment)
 
 	if d.DeletionTimestamp != nil {
 		// On a restart of the controller manager, it's possible for an object to
@@ -112,8 +112,8 @@ func (eh *EventHandlerForDeployment) OnAdd(obj interface{}) {
 // OnUpdate ...
 func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 
-	old := oldObj.(*appsv1beta2.Deployment)
-	cur := curObj.(*appsv1beta2.Deployment)
+	old := oldObj.(*appsv1.Deployment)
+	cur := curObj.(*appsv1.Deployment)
 
 	if old.ResourceVersion == cur.ResourceVersion {
 		// Periodic resync will send update events for all known LoadBalancer.
@@ -178,7 +178,7 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 
 // OnDelete ...
 func (eh *EventHandlerForDeployment) OnDelete(obj interface{}) {
-	d, ok := obj.(*appsv1beta2.Deployment)
+	d, ok := obj.(*appsv1.Deployment)
 
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -186,7 +186,7 @@ func (eh *EventHandlerForDeployment) OnDelete(obj interface{}) {
 			utilruntime.HandleError(fmt.Errorf("Couldn't get object from tombstone %#v", obj))
 			return
 		}
-		d, ok = tombstone.Obj.(*appsv1beta2.Deployment)
+		d, ok = tombstone.Obj.(*appsv1.Deployment)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("Tombstone contained object that is not a LoadBalancer %#v", obj))
 			return
@@ -235,7 +235,7 @@ func (eh *EventHandlerForDeployment) resolveControllerRef(namespace string, cont
 }
 
 // GetLoadBalancerForDeployments get a list of all matching LoadBalancer for deployment
-func (eh *EventHandlerForDeployment) GetLoadBalancerForDeployments(d *appsv1beta2.Deployment) *lbapi.LoadBalancer {
+func (eh *EventHandlerForDeployment) GetLoadBalancerForDeployments(d *appsv1.Deployment) *lbapi.LoadBalancer {
 	lb, err := eh.lbLister.GetLoadBalancerForControllee(d)
 	if err != nil || lb == nil {
 		log.Error("Error get loadbalancers for deployments")

@@ -38,7 +38,7 @@ import (
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -46,7 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	appslisters "k8s.io/client-go/listers/apps/v1beta2"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -97,7 +97,7 @@ func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFact
 
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
-	dInformer := sif.Apps().V1beta2().Deployments()
+	dInformer := sif.Apps().V1().Deployments()
 	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
@@ -144,7 +144,7 @@ func (f *ipvsdr) selector(lb *lbapi.LoadBalancer) labels.Set {
 }
 
 // filter Deployment that controller does not care
-func (f *ipvsdr) deploymentFiltered(obj *appsv1beta2.Deployment) bool {
+func (f *ipvsdr) deploymentFiltered(obj *appsv1.Deployment) bool {
 	return f.filteredByLabel(obj)
 }
 
@@ -218,7 +218,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 	return f.sync(lb, ds)
 }
 
-func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1beta2.Deployment, error) {
+func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.Deployment, error) {
 
 	// construct selector
 	selector := f.selector(lb).AsSelector()
@@ -249,7 +249,7 @@ func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv
 }
 
 // sync generate desired deployment from lb and compare it with existing deployment
-func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) error {
+func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	desiredDeploy := f.generateDeployment(lb)
 
 	// update
@@ -270,7 +270,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) err
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copy)
+			f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 
@@ -285,7 +285,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) err
 			}
 			if changed {
 				log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-				_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
+				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
 				if err != nil {
 					return err
 				}
@@ -299,7 +299,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) err
 	if !updated {
 		// create deployment
 		log.Info("Create ipvsdr for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
-		_, err := f.client.AppsV1beta2().Deployments(lb.Namespace).Create(desiredDeploy)
+		_, err := f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) err
 	return f.syncStatus(lb, activeDeploy)
 }
 
-func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1beta2.Deployment) (*appsv1beta2.Deployment, bool, error) {
+func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
 	copyDp := oldDeploy.DeepCopy()
 
 	// ensure labels
@@ -353,7 +353,7 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer) error {
 	policy := metav1.DeletePropagationForeground
 	gracePeriodSeconds := int64(30)
 	for _, d := range ds {
-		f.client.AppsV1beta2().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+		f.client.AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})
@@ -362,7 +362,7 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer) error {
 	return nil
 }
 
-func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deployment {
+func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 	terminationGracePeriodSeconds := int64(30)
 	hostNetwork := true
 	dnsPolicy := v1.DNSClusterFirstWithHostNet
@@ -404,7 +404,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deploym
 		},
 	}
 
-	deploy := &appsv1beta2.Deployment{
+	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + providerNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
@@ -419,10 +419,10 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1beta2.Deploym
 				},
 			},
 		},
-		Spec: appsv1beta2.DeploymentSpec{
+		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
-			Strategy: appsv1beta2.DeploymentStrategy{
-				RollingUpdate: &appsv1beta2.RollingUpdateDeployment{
+			Strategy: appsv1.DeploymentStrategy{
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
 					MaxSurge: &maxSurge,
 				},
 			},

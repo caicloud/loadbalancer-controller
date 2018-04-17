@@ -10,7 +10,7 @@ import (
 
 	"github.com/golang/glog"
 
-	apps "k8s.io/api/apps/v1beta2"
+	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -220,7 +220,7 @@ func (m *DaemonSetControllerRefManager) Adopt(ds *apps.DaemonSet) error {
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.controller.GetName(), m.controller.GetUID(), ds.UID)
 
-	_, err := m.client.AppsV1beta2().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(addControllerPatch))
+	_, err := m.client.AppsV1().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(addControllerPatch))
 	return err
 }
 
@@ -230,7 +230,7 @@ func (m *DaemonSetControllerRefManager) Release(ds *apps.DaemonSet) error {
 	glog.V(2).Infof("patching deamonset %s_%s to remove its controllerRef to %s/%s:%s",
 		ds.Namespace, ds.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.controller.GetUID(), ds.UID)
-	_, err := m.client.AppsV1beta2().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
+	_, err := m.client.AppsV1().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// if DaemonSet no longer exists, ignore it
@@ -329,7 +329,7 @@ func (m *DeploymentControllerRefManager) Adopt(d *apps.Deployment) error {
 		m.controllerKind.GroupVersion(), m.controllerKind.Kind,
 		m.controller.GetName(), m.controller.GetUID(), d.UID)
 
-	_, err := m.client.AppsV1beta2().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(addControllerPath))
+	_, err := m.client.AppsV1().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(addControllerPath))
 	return err
 }
 
@@ -339,7 +339,7 @@ func (m *DeploymentControllerRefManager) Release(d *apps.Deployment) error {
 	glog.V(2).Infof("patching deployment %s_%s to remove its controllerRef to %s/%s:%s",
 		d.Namespace, d.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.controller.GetUID(), d.UID)
-	_, err := m.client.AppsV1beta2().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
+	_, err := m.client.AppsV1().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// if DaemonSet no longer exists, ignore it
