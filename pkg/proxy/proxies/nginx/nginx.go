@@ -289,19 +289,24 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) erro
 		}
 
 		updated = true
-		copyDp, changed, newErr := f.ensureDeployment(desiredDeploy, dp)
-		if newErr != nil {
-			err = newErr
-			continue
-		}
-		if changed {
-			log.Info("Sync nginx for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
-			if err != nil {
-				return err
+		if lbutil.IsStatic(lb) {
+			// do not change deployment if the loadbalancer is static
+			activeDeploy = dp
+		} else {
+			copyDp, changed, newErr := f.ensureDeployment(desiredDeploy, dp)
+			if newErr != nil {
+				err = newErr
+				continue
 			}
+			if changed {
+				log.Info("Sync nginx for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+				_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
+				if err != nil {
+					return err
+				}
+			}
+			activeDeploy = copyDp
 		}
-		activeDeploy = copyDp
 	}
 
 	// len(dps) == 0 or no deployment's name match desired deployment
