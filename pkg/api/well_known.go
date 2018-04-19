@@ -5,6 +5,9 @@ import (
 )
 
 const (
+	// KeyStatic ...
+	KeyStatic = lbapi.GroupName + "/static"
+
 	// LabelHostname ...
 	LabelHostname = "kubernetes.io/hostname"
 

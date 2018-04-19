@@ -275,19 +275,24 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) err
 		}
 
 		updated = true
-		copyDp, changed, err := f.ensureDeployment(desiredDeploy, dp)
-		if err != nil {
-			continue
-		}
-		if changed {
-			log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-			_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
+		if lbutil.IsStatic(lb) {
+			// do not change deployment if the loadbalancer is static
+			activeDeploy = dp
+		} else {
+			copyDp, changed, err := f.ensureDeployment(desiredDeploy, dp)
 			if err != nil {
-				return err
+				continue
 			}
-		}
+			if changed {
+				log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+				_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
+				if err != nil {
+					return err
+				}
+			}
 
-		activeDeploy = copyDp
+			activeDeploy = copyDp
+		}
 	}
 
 	// len(dps) == 0 or no deployment's name match desired deployment
