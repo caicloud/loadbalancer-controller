@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caicloud/clientset/util/status"
-
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
+	"github.com/caicloud/clientset/util/status"
+	"github.com/caicloud/loadbalancer-controller/pkg/api"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -176,4 +176,17 @@ func ComputePodStatus(pod *v1.Pod) lbapi.PodStatus {
 		Reason:          s.Reason,
 		Message:         s.Message,
 	}
+}
+
+// IsStatic checks if lb is a static loadbalancer
+func IsStatic(lb *lbapi.LoadBalancer) bool {
+	if lb == nil {
+		return false
+	}
+	anno := lb.Annotations
+	if anno == nil {
+		return false
+	}
+	_, ok := anno[api.KeyStatic]
+	return ok
 }
