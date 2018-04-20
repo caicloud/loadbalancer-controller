@@ -88,8 +88,8 @@ type ReleaseStatus struct {
 	Conditions []ReleaseCondition `json:"conditions,omitempty"`
 }
 
-// +genclient=true
-// +genclientstatus=false
+// +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Release describes a release wich chart and values
@@ -132,8 +132,7 @@ type ReleaseHistorySpec struct {
 	Manifest string `json:"manifest,omitempty"`
 }
 
-// +genclient=true
-// +genclientstatus=false
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ReleaseHistory describes a history of a release version
@@ -160,8 +159,8 @@ type ReleaseHistoryList struct {
 
 // -----------------------------------------------------------------
 
-// +genclient=true
-// +genclientstatus=false
+// +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // CanaryRelease describes a cannary release

@@ -6,8 +6,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +genclient=true
-// +nonNamespaced=true
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Cluster describes a cluster with kubernetes and addon
@@ -64,8 +65,9 @@ type ClusterList struct {
 	Items []Cluster `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// +genclient=true
-// +nonNamespaced=true
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Machine describes real machines
@@ -121,8 +123,8 @@ type MachineList struct {
 	Items []Machine `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// +genclient=true
-// +nonNamespaced=true
+// +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Tag describes machine tags history
@@ -153,8 +155,8 @@ type TagList struct {
 	Items []Tag `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// +genclient=true
-// +nonNamespaced=true
+// +genclient
+// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Config describes login information, ssh keys
@@ -285,14 +287,18 @@ type MachineEnvironment struct {
 	HardwareInfo       MachineHardwareInfo `json:"hardwareInfo"`
 	DiskInfo           []MachineDiskInfo   `json:"diskInfo"`
 	NicInfo            []MachineNicInfo    `json:"nicInfo"`
+	GPUInfo            []MachineGPUInfo    `json:"gpuInfo"`
 	LastTransitionTime metav1.Time         `json:"lastTransitionTime"`
 }
 
 type MachineSystemInfo struct {
-	BootTime      uint64 `json:"bootTime"`
-	Hostname      string `json:"hostname"`
-	Os            string `json:"os"`
-	KernelVersion string `json:"kernelVersion"`
+	BootTime        uint64 `json:"bootTime"`
+	Hostname        string `json:"hostname"`
+	OS              string `json:"os"`
+	Platform        string `json:"platform"`
+	PlatformFamily  string `json:"platformFamily"`
+	PlatformVersion string `json:"platformVersion"`
+	KernelVersion   string `json:"kernelVersion"`
 }
 
 type MachineHardwareInfo struct {
@@ -318,4 +324,16 @@ type MachineNicInfo struct {
 	HardwareAddr string   `json:"hardwareAddr"`
 	Status       string   `json:"status"`
 	Addrs        []string `json:"addrs"`
+}
+
+type MachineGPUInfo struct {
+	UUID             string `json:"uuid"`
+	ProductName      string `json:"productName"`
+	ProductBrand     string `json:"productBrand"`
+	PCIeGen          string `json:"pcieGen"`
+	PCILinkWidths    string `json:"pciLinkWidths"`
+	MemoryTotal      string `json:"memoryTotal"`
+	MemoryClock      string `json:"memoryClock"`
+	GraphicsAppClock string `json:"graphicsAppClock"`
+	GraphicsMaxClock string `json:"graphicsMaxClock"`
 }

@@ -35,13 +35,13 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
 
-	appsv1beta2 "k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	appslisters "k8s.io/client-go/listers/apps/v1beta2"
+	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -95,7 +95,7 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
-	dInformer := sif.Apps().V1beta2().Deployments()
+	dInformer := sif.Apps().V1().Deployments()
 	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
@@ -150,7 +150,7 @@ func (f *nginx) selector(lb *lbapi.LoadBalancer) labels.Set {
 }
 
 // filter Deployment that controller does not care
-func (f *nginx) deploymentFiltered(obj *appsv1beta2.Deployment) bool {
+func (f *nginx) deploymentFiltered(obj *appsv1.Deployment) bool {
 	return f.filteredByLabel(obj)
 }
 
@@ -230,7 +230,7 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 }
 
-func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1beta2.Deployment, error) {
+func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.Deployment, error) {
 
 	// construct selector
 	selector := f.selector(lb).AsSelector()
@@ -261,7 +261,7 @@ func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1
 }
 
 // sync generate desired deployment from lb and compare it with existing deployment
-func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) error {
+func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	desiredDeploy := f.generateDeployment(lb)
 
 	// update
@@ -284,7 +284,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) erro
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copy)
+			f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 
@@ -300,7 +300,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) erro
 			}
 			if changed {
 				log.Info("Sync nginx for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
-				_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Update(copyDp)
+				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
 				if err != nil {
 					return err
 				}
@@ -313,7 +313,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) erro
 	if !updated {
 		// create deployment
 		log.Info("Create nginx for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
-		_, err = f.client.AppsV1beta2().Deployments(lb.Namespace).Create(desiredDeploy)
+		_, err = f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1beta2.Deployment) erro
 	return f.syncStatus(lb, activeDeploy)
 }
 
-func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *appsv1beta2.Deployment) (*appsv1beta2.Deployment, bool, error) {
+func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
 	copyDp := oldDeploy.DeepCopy()
 
 	// ensure labels
@@ -401,7 +401,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 	gracePeriodSeconds := int64(30)
 
 	for _, d := range ds {
-		err = f.client.AppsV1beta2().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+		err = f.client.AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})
