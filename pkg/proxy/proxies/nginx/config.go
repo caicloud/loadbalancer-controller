@@ -94,16 +94,23 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]
 
 	if data == nil {
 		// do not update data if data == nil
-		// tcp and udp config map will be changed by other app
-		// controller create it only
+		// tcp and udp config map will be changed by others
+		// the controller only need to create it
 		return nil
 	}
 
-	if reflect.DeepEqual(cm.Data, data) {
+	// merge data into cm.Data
+	// the data follows the priority
+	// 1. lb.Spec.Proxy.Config
+	// 2. default config
+	// 3. the rest data in config map
+	alldata := merge(cm.Data, data)
+
+	if reflect.DeepEqual(cm.Data, alldata) {
 		return nil
 	}
 
-	cm.Data = data
+	cm.Data = alldata
 	log.Info("About to update ConfigMap data", log.Fields{"cm.ns": namespace, "cm.name": cm.Name})
 	_, err = f.client.CoreV1().ConfigMaps(namespace).Update(cm)
 
