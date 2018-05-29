@@ -162,6 +162,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 								"--healthz-port=" + strconv.Itoa(ingressControllerPort),
 								"--status-port=" + strconv.Itoa(ingressStatusPort),
 								"--annotations-prefix=" + f.annotationPrefix,
+								"--enable-ssl-passthrough",
 							},
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{
