@@ -31,7 +31,9 @@ import (
 )
 
 func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployment) error {
-
+	if lb.Spec.Providers.Ipvsdr == nil {
+		return f.deleteStatus(lb)
+	}
 	// caculate proxy status
 	providerStatus := lbapi.IpvsdrProviderStatus{
 		PodStatuses: lbapi.PodStatuses{
@@ -96,6 +98,30 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploym
 			return err
 		}
 
+	}
+	return nil
+}
+
+func (f *ipvsdr) deleteStatus(lb *lbapi.LoadBalancer) error {
+	if lb.Status.ProvidersStatuses.Ipvsdr == nil {
+		return nil
+	}
+
+	log.Notice("delete ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	_, err := lbutil.UpdateLBWithRetries(
+		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+		f.lbLister,
+		lb.Namespace,
+		lb.Name,
+		func(lb *lbapi.LoadBalancer) error {
+			lb.Status.ProvidersStatuses.Ipvsdr = nil
+			return nil
+		},
+	)
+
+	if err != nil {
+		log.Error("Update loadbalancer status error", log.Fields{"err": err})
+		return err
 	}
 	return nil
 }

@@ -87,10 +87,7 @@ func (f *external) Run(stopCh <-chan struct{}) {
 }
 
 func (f *external) OnSync(lb *lbapi.LoadBalancer) {
-	if lb.Spec.Providers.External == nil {
-		// It is not my responsible
-		return
-	}
+
 	log.Info("Syncing providers, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
 	f.queue.Enqueue(lb)
 }
@@ -123,7 +120,12 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 		return nil
 	}
 
-	lb = nlb
+	lb = nlb.DeepCopy()
+
+	if lb.Spec.Providers.External == nil {
+		// It is not my responsible, clean up legacies
+		return f.deleteStatus(lb)
+	}
 
 	if lb.DeletionTimestamp != nil {
 		// TODO sync status only
@@ -154,6 +156,29 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 		}
 
 	}
+	return nil
+}
 
+func (f *external) deleteStatus(lb *lbapi.LoadBalancer) error {
+	if lb.Status.ProvidersStatuses.External == nil {
+		return nil
+	}
+
+	log.Notice("delete external status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	_, err := lbutil.UpdateLBWithRetries(
+		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+		f.lbLister,
+		lb.Namespace,
+		lb.Name,
+		func(lb *lbapi.LoadBalancer) error {
+			lb.Status.ProvidersStatuses.External = nil
+			return nil
+		},
+	)
+
+	if err != nil {
+		log.Error("Update loadbalancer status error", log.Fields{"err": err})
+		return err
+	}
 	return nil
 }
