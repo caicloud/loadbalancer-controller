@@ -349,7 +349,8 @@ func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*
 			for _, c2 := range copyContainers {
 				if c1.Name == c2.Name {
 					found = true
-					if c1.Image != c2.Image {
+					// change of image and quota will triger deployment updation
+					if c1.Image != c2.Image || !reflect.DeepEqual(c1.Resources, c2.Resources) {
 						containersChanged = true
 					}
 					break
