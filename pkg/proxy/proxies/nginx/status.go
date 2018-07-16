@@ -98,7 +98,7 @@ func (f *nginx) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
 		return
 	}
 
-	// fix: avoid evict pending pod
+	// fix: avoid evicting unscheduled pod
 	if pod.Spec.NodeName == "" {
 		return
 	}

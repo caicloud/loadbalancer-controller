@@ -167,10 +167,6 @@ func (f *nginx) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 }
 
 func (f *nginx) OnSync(lb *lbapi.LoadBalancer) {
-	if lb.Spec.Proxy.Type != lbapi.ProxyTypeNginx {
-		// It is not my responsible
-		return
-	}
 	log.Info("Syncing proxy, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
 	f.queue.Enqueue(lb)
 }
@@ -215,6 +211,11 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 	}
 
 	lb = nlb.DeepCopy()
+
+	if lb.Spec.Proxy.Type != lbapi.ProxyTypeNginx {
+		// It is not my responsible, clean up legacies
+		return f.cleanup(lb)
+	}
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {

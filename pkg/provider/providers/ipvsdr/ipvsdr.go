@@ -161,10 +161,6 @@ func (f *ipvsdr) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 }
 
 func (f *ipvsdr) OnSync(lb *lbapi.LoadBalancer) {
-	if lb.Spec.Providers.Ipvsdr == nil {
-		// It is not my responsible
-		return
-	}
 	log.Info("Syncing providers, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
 	f.queue.Enqueue(lb)
 }
@@ -192,7 +188,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 	if errors.IsNotFound(err) {
 		log.Warn("LoadBalancer has been deleted, clean up provider", log.Fields{"lb": key})
 
-		return f.cleanup(lb)
+		return f.cleanup(lb, false)
 	}
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Unable to retrieve LoadBalancer %v from store: %v", key, err))
@@ -203,7 +199,12 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 	if lb.UID != nlb.UID {
 		return nil
 	}
-	lb = nlb
+	lb = nlb.DeepCopy()
+
+	if lb.Spec.Providers.Ipvsdr == nil {
+		// It is not my responsible, clean up legacies
+		return f.cleanup(lb, true)
+	}
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
@@ -343,7 +344,7 @@ func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (
 }
 
 // cleanup deployment and other resource controlled by ipvsdr provider
-func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer) error {
+func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer, deleteStatus bool) error {
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
@@ -357,6 +358,10 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer) error {
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})
+	}
+
+	if deleteStatus {
+		return f.deleteStatus(lb)
 	}
 
 	return nil
