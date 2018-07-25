@@ -83,7 +83,7 @@ endif
 -include Makefile.expansion
 
 # check if pre-build defined in Makefile.expansion
-PRE_BUILD := $(shell $(MAKE) -n pre-build 2> /dev/null)
+PRE_BUILD := $(shell $(MAKE) -n pre-build -f Makefile.expansion 2>/dev/null)
 ifdef PRE_BUILD
 PRE_BUILD := pre-build
 endif
