@@ -29,7 +29,7 @@ import (
 
 const (
 	defaultHTTPBackendName      = "default-http-backend"
-	defaultHTTPBackendNamespace = "default"
+	defaultHTTPBackendNamespace = metav1.NamespaceSystem
 )
 
 var (
@@ -61,8 +61,8 @@ func (f *nginx) ensureDefaultHTTPBackend() error {
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
 								Limits: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("50m"),
-									v1.ResourceMemory: resource.MustParse("50Mi"),
+									v1.ResourceCPU:    resource.MustParse("100m"),
+									v1.ResourceMemory: resource.MustParse("100Mi"),
 								},
 							},
 							Ports: []v1.ContainerPort{
