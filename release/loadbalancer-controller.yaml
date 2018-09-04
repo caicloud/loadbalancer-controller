@@ -1,0 +1,29 @@
+_config:
+  _metadata:
+    description: loadbalancer-controller
+    name: loadbalancer-controller
+    namespace: kube-system
+    template:
+      type: template.caicloud.io/application
+      version: 1.0.0
+    version: "[[ imageTagFromGitTag ]]"
+  controllers:
+  - containers:
+    - args:
+      - --debug
+      - --default-http-backend=[[ registry_library ]]/default-http-backend:v0.1.0
+      - --proxy-nginx=[[ registry_library ]]/nginx-ingress-controller:0.15.0
+      - --proxy-sidecar=[[ registry_release ]]/loadbalancer-provider-ingress:[[ imageTagFromGitTag ]]
+      - --provider-ipvsdr=[[ registry_release ]]/loadbalancer-provider-ipvsdr:[[ imageTagFromGitTag ]]
+      image: '[[ registry_release ]]/loadbalancer-controller:[[ imageTagFromGitTag ]]'
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: 300m
+          memory: 300Mi
+        requests:
+          cpu: 200m
+          memory: 200Mi
+    controller:
+      replica: 1
+    type: Deployment
