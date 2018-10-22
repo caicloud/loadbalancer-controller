@@ -99,18 +99,16 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]
 		return nil
 	}
 
-	// merge data into cm.Data
+	// replace cm.Data of data
 	// the data follows the priority
 	// 1. lb.Spec.Proxy.Config
 	// 2. default config
-	// 3. the rest data in config map
-	alldata := merge(cm.Data, data)
 
-	if reflect.DeepEqual(cm.Data, alldata) {
+	if reflect.DeepEqual(cm.Data, data) {
 		return nil
 	}
 
-	cm.Data = alldata
+	cm.Data = data
 	log.Info("About to update ConfigMap data", log.Fields{"cm.ns": namespace, "cm.name": cm.Name})
 	_, err = f.client.CoreV1().ConfigMaps(namespace).Update(cm)
 
