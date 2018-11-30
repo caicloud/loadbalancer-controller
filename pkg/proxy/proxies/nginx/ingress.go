@@ -71,7 +71,6 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   lb.Name + proxyNameSuffix + "-" + lbutil.RandStringBytesRmndr(5),
 			Labels: labels,
-
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         api.ControllerKind.GroupVersion().String(),
@@ -163,6 +162,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 								"--status-port=" + strconv.Itoa(ingressStatusPort),
 								"--annotations-prefix=" + f.annotationPrefix,
 								"--enable-ssl-passthrough",
+								"--enable-ssl-chain-completion=false",
 							},
 							ReadinessProbe: &v1.Probe{
 								Handler: v1.Handler{
@@ -174,6 +174,8 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 								},
 							},
 							LivenessProbe: &v1.Probe{
+								// wait 120s before liveness probe is initiated
+								InitialDelaySeconds: 120,
 								Handler: v1.Handler{
 									HTTPGet: &v1.HTTPGetAction{
 										Path:   healthCheckPath,
