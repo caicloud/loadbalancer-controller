@@ -42,6 +42,14 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&TagList{},
 		&Config{},
 		&ConfigList{},
+		&MachineAutoScalingGroup{},
+		&MachineAutoScalingGroupList{},
+		&Snapshot{},
+		&SnapshotList{},
+		&RequirementGap{},
+		&RequirementGapList{},
+		&NodeLocalStorage{},
+		&NodeLocalStorageList{},
 	)
 
 	// Add common types

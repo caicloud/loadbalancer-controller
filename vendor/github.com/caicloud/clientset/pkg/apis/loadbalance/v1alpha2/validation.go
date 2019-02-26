@@ -42,6 +42,59 @@ func ValidateProviders(spec ProvidersSpec) error {
 			return fmt.Errorf("external: vip is invalid")
 		}
 	}
+	if spec.Azure != nil {
+		azure := spec.Azure
+		if len(azure.Location) == 0 {
+			return fmt.Errorf("azure: location cant't be empty")
+		}
+		if len(azure.ResourceGroupName) == 0 {
+			return fmt.Errorf("azure: group name cant't be empty")
+		}
+		if len(azure.ClusterID) == 0 {
+			return fmt.Errorf("azure: cluster id cant't be empty")
+		}
+		if azure.SKU != AzureStandardSKU && azure.SKU != AzureBasicSKU {
+			return fmt.Errorf("azure: sku %v is invalid", azure.SKU)
+		}
+		if azure.IPAddressProperties.Public == nil && azure.IPAddressProperties.Private == nil {
+			return fmt.Errorf("azure: private and public ip address can't be nil at the same time")
+		}
+		if azure.IPAddressProperties.Public != nil && azure.IPAddressProperties.Private != nil {
+			return fmt.Errorf("azure: private and public ip address can't have value at the same time")
+		}
+		if azure.IPAddressProperties.Private != nil {
+			private := azure.IPAddressProperties.Private
+			if len(private.SubnetID) == 0 {
+				return fmt.Errorf("azure: subnet id cant't be empty when use private network")
+			}
+			switch private.IPAllocationMethod {
+			case AzureStaticIPAllocationMethod:
+				if private.PrivateIPAddress == nil {
+					return fmt.Errorf("azure: private ip address can't be nil when allocation method is static")
+				}
+				if net.ParseIP(*private.PrivateIPAddress) == nil {
+					return fmt.Errorf("azure: private ip is invalid")
+				}
+			//TODO don't support
+			case AzureDynamicIPAllocationMethod:
+			default:
+				return fmt.Errorf("azure: private allocation method %v is invalid", private.IPAllocationMethod)
+			}
+		}
+		if azure.IPAddressProperties.Public != nil {
+			public := azure.IPAddressProperties.Public
+			switch public.IPAllocationMethod {
+			case AzureStaticIPAllocationMethod:
+				if public.PublicIPAddressID == nil {
+					return fmt.Errorf("azure: public ip address can't be nil when allocation method is static")
+				}
+			//TODO don't support
+			case AzureDynamicIPAllocationMethod:
+			default:
+				return fmt.Errorf("azure: public allocation method %v is invalid", public.IPAllocationMethod)
+			}
+		}
+	}
 	return nil
 }
 
