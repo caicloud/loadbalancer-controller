@@ -165,7 +165,7 @@ func RandStringBytesRmndr(n int) string {
 
 // ComputePodStatus computes the pod's current status
 func ComputePodStatus(pod *v1.Pod) lbapi.PodStatus {
-	s := status.JudgePodStatus(pod)
+	s := status.JudgePodStatus(pod, nil)
 	return lbapi.PodStatus{
 		Name:            s.Name,
 		Ready:           s.Ready,

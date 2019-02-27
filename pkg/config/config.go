@@ -20,13 +20,13 @@ import (
 	"strings"
 
 	"github.com/caicloud/clientset/kubernetes"
-
 	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
 const (
 	defaultIpvsdrImage             = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.3.2"
+	defaultAzureProviderImage      = "cargo.caicloud.io/caicloud/loadbalancer-provider-azure:v0.3.2"
 	defaultHTTPBackendImage        = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
 	defaultNginxIngressImage       = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.12.0"
 	defaultIngressSidecarImage     = "cargo.caicloud.io/caicloud/loadbalancer-provider-ingress:v0.3.2"
@@ -80,6 +80,7 @@ type ProxyNginx struct {
 // Providers contains all cli flags of providers
 type Providers struct {
 	Ipvsdr ProviderIpvsdr
+	Azure  ProviderAzure
 }
 
 // ProviderIpvsdr contains all cli flags of ipvsdr providers
@@ -87,6 +88,11 @@ type ProviderIpvsdr struct {
 	Image            string
 	NodeIPLabel      string
 	NodeIPAnnotation string
+}
+
+// ProviderAzure contains all cli flags of azure providers
+type ProviderAzure struct {
+	Image string
 }
 
 // AddFlags add flags to app
@@ -155,6 +161,14 @@ func (c *Configuration) AddFlags(app *cli.App) {
 			EnvVar:      "NODEIP_ANNOTATION",
 			Usage:       "tell provider which annotation of node stores node ip",
 			Destination: &c.Providers.Ipvsdr.NodeIPAnnotation,
+		},
+		// azure
+		cli.StringFlag{
+			Name:        "provider-azure",
+			Usage:       "`Image` of azure provider",
+			EnvVar:      "PROVIDER_AZURE",
+			Value:       defaultAzureProviderImage,
+			Destination: &c.Providers.Azure.Image,
 		},
 	}
 	app.Flags = append(app.Flags, flags...)

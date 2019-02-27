@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,11 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ipvsdr
+package azure
 
 import (
 	"fmt"
-	"math/rand"
 	"reflect"
 	"strings"
 	"time"
@@ -43,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -51,21 +49,19 @@ import (
 )
 
 const (
-	providerNameSuffix = "-provider-ipvsdr"
-	providerName       = "ipvsdr"
+	providerNameSuffix = "-provider-azure"
+	providerName       = "azure"
 )
 
 func init() {
-	provider.RegisterPlugin(providerName, NewIpvsdr())
+	provider.RegisterPlugin(providerName, New())
 }
 
-var _ provider.Plugin = &ipvsdr{}
+var _ provider.Plugin = &azure{}
 
-type ipvsdr struct {
-	initialized      bool
-	image            string
-	nodeIPLabel      string
-	nodeIPAnnotation string
+type azure struct {
+	initialized bool
+	image       string
 
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
@@ -75,23 +71,21 @@ type ipvsdr struct {
 	podLister corelisters.PodLister
 }
 
-// NewIpvsdr creates a new ipvsdr provider plugin
-func NewIpvsdr() provider.Plugin {
-	return &ipvsdr{}
+// New creates a new azure provider plugin
+func New() provider.Plugin {
+	return &azure{}
 }
 
-func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFactory) {
+func (f *azure) Init(cfg config.Configuration, sif informers.SharedInformerFactory) {
 	if f.initialized {
 		return
 	}
 	f.initialized = true
 
-	log.Info("Initialize the ipvsdr provider")
+	log.Info("Initialize the azure provider")
 
 	// set config
-	f.image = cfg.Providers.Ipvsdr.Image
-	f.nodeIPLabel = cfg.Providers.Ipvsdr.NodeIPLabel
-	f.nodeIPAnnotation = cfg.Providers.Ipvsdr.NodeIPAnnotation
+	f.image = cfg.Providers.Azure.Image
 	f.client = cfg.Client
 
 	// initialize controller
@@ -105,10 +99,9 @@ func (f *ipvsdr) Init(cfg config.Configuration, sif informers.SharedInformerFact
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
 	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.queue, f.deploymentFiltered))
-	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.queue, f.podFiltered))
 }
 
-func (f *ipvsdr) Run(stopCh <-chan struct{}) {
+func (f *azure) Run(stopCh <-chan struct{}) {
 
 	workers := 1
 
@@ -119,14 +112,14 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
-	defer log.Info("Shutting down ipvsdr provider")
+	log.Info("Starting azure provider", log.Fields{"workers": workers, "image": f.image})
+	defer log.Info("Shutting down azure provider")
 
 	// lb controller has waited all the informer synced
 	// there is no need to wait again here
 
 	defer func() {
-		log.Info("Shutting down ipvsdr provider")
+		log.Info("Shutting down azure provider")
 		f.queue.ShutDown()
 	}()
 
@@ -135,7 +128,7 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (f *ipvsdr) selector(lb *lbapi.LoadBalancer) labels.Set {
+func (f *azure) selector(lb *lbapi.LoadBalancer) labels.Set {
 	return labels.Set{
 		lbapi.LabelKeyCreatedBy: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 		lbapi.LabelKeyProvider:  providerName,
@@ -143,15 +136,11 @@ func (f *ipvsdr) selector(lb *lbapi.LoadBalancer) labels.Set {
 }
 
 // filter Deployment that controller does not care
-func (f *ipvsdr) deploymentFiltered(obj *appsv1.Deployment) bool {
+func (f *azure) deploymentFiltered(obj *appsv1.Deployment) bool {
 	return f.filteredByLabel(obj)
 }
 
-func (f *ipvsdr) podFiltered(obj *v1.Pod) bool {
-	return f.filteredByLabel(obj)
-}
-
-func (f *ipvsdr) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
+func (f *azure) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 	// obj.Labels
 	selector := labels.Set{lbapi.LabelKeyProvider: providerName}.AsSelector()
 	match := selector.Matches(labels.Set(obj.GetObjectMeta().GetLabels()))
@@ -159,12 +148,12 @@ func (f *ipvsdr) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 	return !match
 }
 
-func (f *ipvsdr) OnSync(lb *lbapi.LoadBalancer) {
+func (f *azure) OnSync(lb *lbapi.LoadBalancer) {
 	log.Info("Syncing providers, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
 	f.queue.Enqueue(lb)
 }
 
-func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
+func (f *azure) syncLoadBalancer(obj interface{}) error {
 	lb, ok := obj.(*lbapi.LoadBalancer)
 	if !ok {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
@@ -180,7 +169,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
+		log.Debug("Finished syncing azure provider", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
@@ -200,7 +189,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 	}
 	lb = nlb.DeepCopy()
 
-	if lb.Spec.Providers.Ipvsdr == nil {
+	if lb.Spec.Providers.Azure == nil {
 		// It is not my responsible, clean up legacies
 		return f.cleanup(lb, true)
 	}
@@ -218,7 +207,7 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 	return f.sync(lb, ds)
 }
 
-func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.Deployment, error) {
+func (f *azure) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.Deployment, error) {
 
 	// construct selector
 	selector := f.selector(lb).AsSelector()
@@ -249,12 +238,11 @@ func (f *ipvsdr) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv
 }
 
 // sync generate desired deployment from lb and compare it with existing deployment
-func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
+func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	desiredDeploy := f.generateDeployment(lb)
 
 	// update
 	updated := false
-	activeDeploy := desiredDeploy
 
 	for _, dp := range dps {
 		// two conditions will trigger controller to scale down deployment
@@ -275,40 +263,36 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		}
 
 		updated = true
-		if lbutil.IsStatic(lb) {
+		if !lbutil.IsStatic(lb) {
 			// do not change deployment if the loadbalancer is static
-			activeDeploy = dp
-		} else {
 			copyDp, changed, err := f.ensureDeployment(desiredDeploy, dp)
 			if err != nil {
 				continue
 			}
 			if changed {
-				log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+				log.Info("Sync azure for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
 				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
 				if err != nil {
 					return err
 				}
 			}
-
-			activeDeploy = copyDp
 		}
 	}
 
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create ipvsdr for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		log.Info("Create azure for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
 		_, err := f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
 	}
 
-	return f.syncStatus(lb, activeDeploy)
+	return nil
 }
 
-func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
+func (f *azure) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
 	copyDp := oldDeploy.DeepCopy()
 
 	// ensure labels
@@ -319,31 +303,27 @@ func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (
 	copyDp.Spec.Replicas = desiredDeploy.Spec.Replicas
 	// ensure image
 	copyDp.Spec.Template.Spec.Containers[0].Image = desiredDeploy.Spec.Template.Spec.Containers[0].Image
-	// ensure nodeaffinity
-	copyDp.Spec.Template.Spec.Affinity.NodeAffinity = desiredDeploy.Spec.Template.Spec.Affinity.NodeAffinity
 
 	// check if changed
-	nodeAffinityChanged := !reflect.DeepEqual(copyDp.Spec.Template.Spec.Affinity.NodeAffinity, oldDeploy.Spec.Template.Spec.Affinity.NodeAffinity)
 	imageChanged := copyDp.Spec.Template.Spec.Containers[0].Image != oldDeploy.Spec.Template.Spec.Containers[0].Image
 	labelChanged := !reflect.DeepEqual(copyDp.Labels, oldDeploy.Labels)
 	replicasChanged := *(copyDp.Spec.Replicas) != *(oldDeploy.Spec.Replicas)
 
-	changed := labelChanged || replicasChanged || nodeAffinityChanged || imageChanged
+	changed := labelChanged || replicasChanged || imageChanged
 	if changed {
-		log.Info("Abount to correct ipvsdr provider", log.Fields{
-			"dp.name":             copyDp.Name,
-			"labelChanged":        labelChanged,
-			"replicasChanged":     replicasChanged,
-			"nodeAffinityChanged": nodeAffinityChanged,
-			"imageChanged":        imageChanged,
+		log.Info("Abount to correct azure provider", log.Fields{
+			"dp.name":         copyDp.Name,
+			"labelChanged":    labelChanged,
+			"replicasChanged": replicasChanged,
+			"imageChanged":    imageChanged,
 		})
 	}
 
 	return copyDp, changed, nil
 }
 
-// cleanup deployment and other resource controlled by ipvsdr provider
-func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer, deleteStatus bool) error {
+// cleanup deployment and other resource controlled by azure provider
+func (f *azure) cleanup(lb *lbapi.LoadBalancer, deleteStatus bool) error {
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
@@ -366,47 +346,11 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer, deleteStatus bool) error {
 	return nil
 }
 
-func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
+func (f *azure) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 	terminationGracePeriodSeconds := int64(30)
-	hostNetwork := true
-	dnsPolicy := v1.DNSClusterFirstWithHostNet
-	replicas, _ := lbutil.CalculateReplicas(lb)
-	privileged := true
-	maxSurge := intstr.FromInt(0)
 	t := true
 
 	labels := f.selector(lb)
-
-	// run in this node
-	nodeAffinity := &v1.NodeAffinity{
-		RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-			NodeSelectorTerms: []v1.NodeSelectorTerm{
-				{
-					MatchExpressions: []v1.NodeSelectorRequirement{
-						{
-							Key:      fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name),
-							Operator: v1.NodeSelectorOpIn,
-							Values:   []string{"true"},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// do not run with this pod
-	podAffinity := &v1.PodAntiAffinity{
-		RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
-			{
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						lbapi.LabelKeyProvider: providerName,
-					},
-				},
-				TopologyKey: api.LabelHostname,
-			},
-		},
-	}
 
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -424,11 +368,8 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
 			Strategy: appsv1.DeploymentStrategy{
-				RollingUpdate: &appsv1.RollingUpdateDeployment{
-					MaxSurge: &maxSurge,
-				},
+				Type: appsv1.RecreateDeploymentStrategyType,
 			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
@@ -438,17 +379,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 					Labels: labels,
 				},
 				Spec: v1.PodSpec{
-					// host network ?
-					HostNetwork: hostNetwork,
-					DNSPolicy:   dnsPolicy,
-					// TODO
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-					Affinity: &v1.Affinity{
-						// decide running on which node
-						NodeAffinity: nodeAffinity,
-						// don't co-locate pods of this deployment in same node
-						PodAntiAffinity: podAffinity,
-					},
 					// tolerate taints
 					Tolerations: toleration.GenerateTolerations(),
 					Containers: []v1.Container{
@@ -457,13 +388,14 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							Image:           f.image,
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
+								Requests: v1.ResourceList {
+									v1.ResourceCPU:    resource.MustParse("100m"),
+									v1.ResourceMemory: resource.MustParse("50Mi"),
+								}
 								Limits: v1.ResourceList{
 									v1.ResourceCPU:    resource.MustParse("200m"),
-									v1.ResourceMemory: resource.MustParse("50Mi"),
+									v1.ResourceMemory: resource.MustParse("100Mi"),
 								},
-							},
-							SecurityContext: &v1.SecurityContext{
-								Privileged: &privileged,
 							},
 							Env: []v1.EnvVar{
 								{
@@ -490,31 +422,6 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 									Name:  "LOADBALANCER_NAME",
 									Value: lb.Name,
 								},
-								{
-									Name:  "NODEIP_LABEL",
-									Value: f.nodeIPLabel,
-								},
-								{
-									Name:  "NODEIP_ANNOTATION",
-									Value: f.nodeIPAnnotation,
-								},
-							},
-							VolumeMounts: []v1.VolumeMount{
-								{
-									Name:      "modules",
-									MountPath: "/lib/modules",
-									ReadOnly:  true,
-								},
-							},
-						},
-					},
-					Volumes: []v1.Volume{
-						{
-							Name: "modules",
-							VolumeSource: v1.VolumeSource{
-								HostPath: &v1.HostPathVolumeSource{
-									Path: "/lib/modules",
-								},
 							},
 						},
 					},
@@ -524,8 +431,4 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 	}
 
 	return deploy
-}
-
-func (f *ipvsdr) getValidVRID() int {
-	return rand.Intn(254) + 1
 }

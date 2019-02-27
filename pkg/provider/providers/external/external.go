@@ -11,7 +11,6 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
-	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,7 +98,7 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 	}
 
 	// Validate loadbalancer scheme
-	if err := validation.ValidateLoadBalancer(lb); err != nil {
+	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
 		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
 		return err
 	}
