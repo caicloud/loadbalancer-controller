@@ -44,7 +44,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -66,9 +65,8 @@ type azure struct {
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
 
-	lbLister  lblisters.LoadBalancerLister
-	dLister   appslisters.DeploymentLister
-	podLister corelisters.PodLister
+	lbLister lblisters.LoadBalancerLister
+	dLister  appslisters.DeploymentLister
 }
 
 // New creates a new azure provider plugin
@@ -91,11 +89,9 @@ func (f *azure) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
 	dInformer := sif.Apps().V1().Deployments()
-	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
-	f.podLister = podInfomer.Lister()
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
 	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.queue, f.deploymentFiltered))
@@ -388,10 +384,10 @@ func (f *azure) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							Image:           f.image,
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
-								Requests: v1.ResourceList {
+								Requests: v1.ResourceList{
 									v1.ResourceCPU:    resource.MustParse("100m"),
 									v1.ResourceMemory: resource.MustParse("50Mi"),
-								}
+								},
 								Limits: v1.ResourceList{
 									v1.ResourceCPU:    resource.MustParse("200m"),
 									v1.ResourceMemory: resource.MustParse("100Mi"),
