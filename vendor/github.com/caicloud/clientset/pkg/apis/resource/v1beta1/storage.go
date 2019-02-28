@@ -27,19 +27,13 @@ type StorageType struct {
 	// create volumes of this storage type.
 	// Required ones for create storage service.
 	// +optional
-	ServiceParameters map[string]StorageTypeParameter `json:"requiredParameters,omitempty" protobuf:"bytes,3,rep,name=requiredParameters"`
+	RequiredParameters map[string]string `json:"requiredParameters,omitempty" protobuf:"bytes,3,rep,name=requiredParameters"`
 
 	// Parameters holds the parameters for the provisioner that should
 	// create volumes of this storage type.
 	// Required ones for create storage class.
 	// +optional
-	ClassParameters map[string]StorageTypeParameter `json:"optionalParameters,omitempty" protobuf:"bytes,3,rep,name=classOptionalParameters"`
-}
-
-type StorageTypeParameter struct {
-	IsRequired  bool
-	PlaceHolder string
-	Describe    string
+	OptionalParameters map[string]string `json:"optionalParameters,omitempty" protobuf:"bytes,3,rep,name=classOptionalParameters"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -79,6 +73,32 @@ type StorageService struct {
 	// create volumes of this storage class.
 	// +optional
 	Parameters map[string]string `json:"parameters,omitempty" protobuf:"bytes,3,rep,name=parameters"`
+
+	// StorageMetaData represents the current metadata for each storage backend.
+	// +optional
+	StorageMetaData StorageMetaData `json:"storageMetaData,omitempty"`
+}
+
+// StorageMetaData is the data structure for each storage backend metadata.
+type StorageMetaData struct {
+	Ceph *CephMetaData `json:"ceph,omitempty"`
+}
+
+// CephMetaData is the data structure for Ceph metadata.
+type CephMetaData struct {
+	Pools []CephPool `json:"pools"`
+}
+
+// CephPool is the data structure for single Ceph storage pool.
+type CephPool struct {
+	Name        string `json:"name"`
+	ReplicaSize int    `json:"replicaSize"`
+	// total capacity of the current pool, kb
+	Capacity int `json:"capacity"`
+	// capacity used, kb
+	Used int `json:"used"`
+	// number of objects in the pool
+	Objects int `json:"objects"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -74,13 +74,41 @@ type ConfigReferenceStatus struct {
 
 // Reference describes the config reference.
 type Reference struct {
-	Name       string       `json:"name"`
-	Namespace  string       `json:"namespace"`
-	Kind       string       `json:"kind"`
-	APIGroup   string       `json:"apiGroup"`
-	APIVersion string       `json:"apiVersion"`
-	Keys       []string     `json:"keys,omitempty"`
-	Children   []*Reference `json:"children,omitempty"`
+	Name        string            `json:"name"`
+	Namespace   string            `json:"namespace"`
+	Kind        string            `json:"kind"`
+	APIGroup    string            `json:"apiGroup"`
+	APIVersion  string            `json:"apiVersion"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+	Labels      map[string]string `json:"labels,omitempty"`
+	Keys        []string          `json:"keys,omitempty"`
+	Children    []*Reference      `json:"children,omitempty"`
+	ExtraInfo   `json:",inline"`
+}
+
+// ExtraInfo describes the extra infomation of config reference.
+type ExtraInfo struct {
+	ReleaseExtraInfo `json:",inline"`
+	IngressExtraInfo `json:",inline"`
+}
+
+// ExtraInfo describes the release extra infomation of config reference.
+type ReleaseExtraInfo struct {
+	Alias        string        `json:"alias,omitempty"`
+	ReleaseKind  string        `json:"releaseKind,omitempty"`
+	ControlledBy *ControlledBy `json:"controlledBy,omitempty"`
+}
+
+type ControlledBy struct {
+	Group string `json:"group"`
+	Kind  string `json:"kind"`
+	Name  string `json:"name"`
+	Alias string `json:"alias"`
+}
+
+// IngressExtraInfo describes the ingress extra infomation of config reference.
+type IngressExtraInfo struct {
+	LoadBalancer string `json:"loadBalancer,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

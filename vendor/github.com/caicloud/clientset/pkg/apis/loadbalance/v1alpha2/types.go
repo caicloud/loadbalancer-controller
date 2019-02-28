@@ -144,11 +144,88 @@ type AliyunProvider struct {
 
 // AzureProvider ...
 type AzureProvider struct {
+	// Name azure loadbalancer name
 	Name string `json:"name,omitempty"`
+	// ResourceGroupName Azure resource group name
+	ResourceGroupName string `json:"resourceGroupName"`
+	// Location - Resource location of china.
+	Location string `json:"location"`
+	// SKU The load balancer SKU.
+	// explanation https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-overview
+	SKU AzureSKUKind `json:"sku"`
+	// ClusterID cluster id
+	ClusterID string `json:"clusterID"`
+	// ReserveAzure This flag tells the controller to reserve azure loadbalancer when
+	// deleting compass loadbalancer
+	ReserveAzure *bool `json:"reserveAzure,omitempty"`
+	// IPAddress azure loadbalancer IP address properties
+	IPAddressProperties AzureIPAddressProperties `json:"ipAddressProperties"`
 }
+
+// AzureIPAddressProperties azure loadbalancer IP address properties
+type AzureIPAddressProperties struct {
+	// Private private IP address properties
+	Private *AzurePrivateIPAddressProperties `json:"private,omitempty"`
+	// Public public IP address properties
+	Public *AzurePublicIPAddressProperties `json:"public,omitempty"`
+}
+
+// AzurePrivateIPAddressProperties  azure loadbalancer private IP address properties
+type AzurePrivateIPAddressProperties struct {
+	// IPAllocationMethod - The Private IP allocation method.
+	IPAllocationMethod AzureIPAllocationMethodKind `json:"ipAllocationMethod"`
+	// VPC virtual private cloud id
+	VPCID string `json:"vpcID"`
+	// SubnetID - The reference of the subnet resource id.
+	SubnetID string `json:"subnetID"`
+	// PrivateIPAddress - The private IP address of the IP configuration.
+	PrivateIPAddress *string `json:"privateIPAddress,omitempty"`
+}
+
+// AzurePublicIPAddressProperties azure loadbalancer public IP address properties
+type AzurePublicIPAddressProperties struct {
+	// IPAllocationMethod  the public IP allocation method.
+	IPAllocationMethod AzureIPAllocationMethodKind `json:"ipAllocationMethod"`
+	// PublicIPAddressID - The reference of the Public IP resource ID.
+	PublicIPAddressID *string `json:"publicIPAddressID,omitempty"`
+}
+
+// AzureIPAddressType loadbalancer based on network type
+type AzureIPAddressType string
+
+const (
+	// AzurePrivateIPAddressType private network
+	AzurePrivateIPAddressType AzureIPAddressType = "private"
+	// AzurePublicIPAddressType public network
+	AzurePublicIPAddressType AzureIPAddressType = "public"
+)
+
+// AzureSKUKind The load balancer SKU.
+type AzureSKUKind string
+
+const (
+	// AzureStandardSKU Standard sku
+	AzureStandardSKU AzureSKUKind = "Standard"
+	// AzureBasicSKU Basic sku
+	AzureBasicSKU AzureSKUKind = "Basic"
+)
+
+// AzureIPAllocationMethodKind enumerates the values for ip allocation method.
+type AzureIPAllocationMethodKind string
+
+const (
+	// AzureStaticIPAllocationMethod static ip allocation method
+	AzureStaticIPAllocationMethod AzureIPAllocationMethodKind = "Static"
+	// AzureDynamicIPAllocationMethod Dynamic ip allocation method
+	AzureDynamicIPAllocationMethod AzureIPAllocationMethodKind = "Dynamic"
+)
 
 // LoadBalancerStatus represents the current status of a LoadBalancer
 type LoadBalancerStatus struct {
+	// Accessible specify if the loadbalancer is ready for access
+	Accessible bool `json:"accessible,omitempty"`
+	// AccessIPs specify the entrance ip of loadbalancer
+	AccessIPs []string `json:"accessIPs,omitempty"`
 	// +optional
 	ProxyStatus ProxyStatus `json:"proxyStatus"`
 	// +optional
@@ -194,9 +271,31 @@ type IpvsdrProviderStatus struct {
 type AliyunProviderStatus struct {
 }
 
-// AzureProviderStatus represents the current status of the azure provider
+// AzureProviderStatus represents the current status of the azure lb provider
 type AzureProviderStatus struct {
+	// Phase azure loadbalancer phase
+	Phase AzureProviderPhase `json:"phase"`
+	// Reason azure loadbalancer error reason
+	Reason string `json:"reason,omitempty"`
+	// Message azure lb create or update failed message
+	Message string `json:"message,omitempty"`
+	// ProvisioningState azure lb state
+	ProvisioningState string `json:"provisioningState,omitempty"`
 }
+
+// AzureProviderPhase azure loadbalancer phase
+type AzureProviderPhase string
+
+const (
+	// AzureProgressingPhase progressing phase
+	AzureProgressingPhase AzureProviderPhase = "Progressing"
+	// AzureRunningPhase running phase
+	AzureRunningPhase AzureProviderPhase = "Running"
+	// AzureErrorPhase error phase
+	AzureErrorPhase AzureProviderPhase = "Error"
+	// AzureUpdatingPhase update phase
+	AzureUpdatingPhase AzureProviderPhase = "Updating"
+)
 
 // PodStatuses represents the current statuses of a list of pods
 type PodStatuses struct {

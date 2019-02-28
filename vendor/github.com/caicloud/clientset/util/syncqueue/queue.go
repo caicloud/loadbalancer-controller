@@ -124,11 +124,9 @@ func (sq *SyncQueue) Queue() workqueue.RateLimitingInterface {
 
 // Enqueue wraps queue.Add
 func (sq *SyncQueue) Enqueue(obj interface{}) {
-
 	if sq.IsShuttingDown() {
 		return
 	}
-
 	key, err := sq.keyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", sq.syncType, obj, err))
@@ -140,11 +138,9 @@ func (sq *SyncQueue) Enqueue(obj interface{}) {
 // EnqueueRateLimited wraps queue.AddRateLimited. It adds an item to the workqueue
 // after the rate limiter says its ok
 func (sq *SyncQueue) EnqueueRateLimited(obj interface{}) {
-
 	if sq.IsShuttingDown() {
 		return
 	}
-
 	key, err := sq.keyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", sq.syncType, obj, err))
@@ -155,17 +151,29 @@ func (sq *SyncQueue) EnqueueRateLimited(obj interface{}) {
 
 // EnqueueAfter wraps queue.AddAfter. It adds an item to the workqueue after the indicated duration has passed
 func (sq *SyncQueue) EnqueueAfter(obj interface{}, after time.Duration) {
-
 	if sq.IsShuttingDown() {
 		return
 	}
-
 	key, err := sq.keyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", sq.syncType, obj, err))
 		return
 	}
 	sq.queue.AddAfter(key, after)
+}
+
+// Dequeue calls the RateLimitingInterface.Froget and Done to stop tracking the item
+func (sq *SyncQueue) Dequeue(obj interface{}) {
+	if sq.IsShuttingDown() {
+		return
+	}
+	key, err := sq.keyFunc(obj)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("Couldn't get key for %v %#v: %v", sq.syncType, obj, err))
+		return
+	}
+	sq.queue.Forget(key)
+	sq.queue.Done(key)
 }
 
 func (sq *SyncQueue) defaultKeyFunc(obj interface{}) (interface{}, error) {

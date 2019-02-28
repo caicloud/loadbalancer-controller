@@ -17,8 +17,10 @@ limitations under the License.
 package providers
 
 import (
-	// ipvsdr proxy
+	// ipvsdr provider
 	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers/ipvsdr"
-	// external proxy
+	// external provider
 	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers/external"
+	// azure provider
+	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers/azure"
 )

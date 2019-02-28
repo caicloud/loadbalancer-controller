@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
-	"github.com/caicloud/loadbalancer-controller/pkg/util/validation"
 	log "github.com/zoumo/logdog"
 	apiv1 "k8s.io/api/core/v1"
 )
@@ -35,7 +34,7 @@ type VerifiedNodes struct {
 
 func (lbc *LoadBalancerController) getVerifiedNodes(lb *lbapi.LoadBalancer) (*VerifiedNodes, error) {
 
-	err := validation.ValidateLoadBalancer(lb)
+	err := lbapi.ValidateLoadBalancer(lb)
 	if err != nil {
 		return nil, err
 	}
