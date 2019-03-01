@@ -343,7 +343,8 @@ func (f *azure) cleanup(lb *lbapi.LoadBalancer, deleteStatus bool) error {
 }
 
 func (f *azure) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
-	terminationGracePeriodSeconds := int64(30)
+	terminationGracePeriodSeconds := int64(300)
+	replicas := int32(1)
 	t := true
 
 	labels := f.selector(lb)
@@ -364,6 +365,7 @@ func (f *azure) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
 			Strategy: appsv1.DeploymentStrategy{
 				Type: appsv1.RecreateDeploymentStrategyType,
 			},
