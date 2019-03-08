@@ -12,7 +12,7 @@ _config:
         - args:
             - --debug
             - --default-http-backend=[[ registry_library ]]/default-http-backend:v0.1.0
-            - --proxy-nginx=[[ registry_library ]]/nginx-ingress-controller:0.15.0
+            - --proxy-nginx=[[ registry_library ]]/nginx-ingress-controller:0.23.0
             - --proxy-sidecar=[[ registry_release ]]/loadbalancer-provider-ingress:[[ TagOfRepo(loadbalancer-provider) ]]
             - --provider-ipvsdr=[[ registry_release ]]/loadbalancer-provider-ipvsdr:[[ TagOfRepo(loadbalancer-provider) ]]
             - --provider-azure=[[ registry_release ]]/loadbalancer-provider-azure:[[ TagOfRepo(loadbalancer-provider) ]]
