@@ -459,7 +459,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							Resources: v1.ResourceRequirements{
 								Limits: v1.ResourceList{
 									v1.ResourceCPU:    resource.MustParse("200m"),
-									v1.ResourceMemory: resource.MustParse("50Mi"),
+									v1.ResourceMemory: resource.MustParse("100Mi"),
 								},
 							},
 							SecurityContext: &v1.SecurityContext{
