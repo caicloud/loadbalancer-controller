@@ -44,6 +44,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	appslisters "k8s.io/client-go/listers/apps/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -65,8 +66,9 @@ type azure struct {
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
 
-	lbLister lblisters.LoadBalancerLister
-	dLister  appslisters.DeploymentLister
+	lbLister  lblisters.LoadBalancerLister
+	dLister   appslisters.DeploymentLister
+	podLister corelisters.PodLister
 }
 
 // New creates a new azure provider plugin
@@ -89,12 +91,15 @@ func (f *azure) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
 	dInformer := sif.Apps().V1().Deployments()
+	podInfomer := sif.Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
+	f.podLister = podInfomer.Lister()
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
 	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.queue, f.deploymentFiltered))
+	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.queue, f.podFiltered))
 }
 
 func (f *azure) Run(stopCh <-chan struct{}) {
@@ -133,6 +138,11 @@ func (f *azure) selector(lb *lbapi.LoadBalancer) labels.Set {
 
 // filter Deployment that controller does not care
 func (f *azure) deploymentFiltered(obj *appsv1.Deployment) bool {
+	return f.filteredByLabel(obj)
+}
+
+// filter pod that controller does not care
+func (f *azure) podFiltered(obj *v1.Pod) bool {
 	return f.filteredByLabel(obj)
 }
 
@@ -285,7 +295,7 @@ func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		}
 	}
 
-	return nil
+	return f.syncStatus(lb)
 }
 
 func (f *azure) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
