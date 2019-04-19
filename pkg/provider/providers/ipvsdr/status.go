@@ -137,6 +137,10 @@ func (f *ipvsdr) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
 		return
 	}
 
+	evict := func() {
+		f.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+	}
+
 	// FIXME: when RequiredDuringSchedulingRequiredDuringExecution finished
 	// This is a special issue.
 	// There is bug when the nodes.Names change。
@@ -145,6 +149,14 @@ func (f *ipvsdr) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
 	// the pod may still running on the wrong node, so we evict it manually
 	if !stringsutil.StringInSlice(pod.Spec.NodeName, lb.Spec.Nodes.Names) &&
 		pod.DeletionTimestamp == nil {
-		f.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		evict()
+		return
 	}
+
+	// evict pod MatchNodeSelector Failed
+	if lbutil.IsPodMatchNodeSelectorFailed(pod) && pod.DeletionTimestamp == nil {
+		evict()
+		return
+	}
+
 }
