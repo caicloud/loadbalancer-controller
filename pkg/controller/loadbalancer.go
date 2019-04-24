@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -31,52 +30,47 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
-	"github.com/caicloud/loadbalancer-controller/pkg/util/taints"
 	log "github.com/zoumo/logdog"
 
-	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
-	client kubernetes.Interface
-
-	factory    informers.SharedInformerFactory
-	lbLister   lblisters.LoadBalancerLister
-	nodeLister corelisters.NodeLister
-	queue      *syncqueue.SyncQueue
+	client   kubernetes.Interface
+	factory  informers.SharedInformerFactory
+	lbLister lblisters.LoadBalancerLister
+	nodeCtl  *nodeController
+	queue    *syncqueue.SyncQueue
 }
 
 // NewLoadBalancerController creates a new LoadBalancerController.
 func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController {
 	// TODO register metrics
-
+	factory := informers.NewSharedInformerFactory(cfg.Client, 0)
+	lbinformer := factory.Loadbalance().V1alpha2().LoadBalancers()
 	lbc := &LoadBalancerController{
-		client:  cfg.Client,
-		factory: informers.NewSharedInformerFactory(cfg.Client, 0),
+		client:   cfg.Client,
+		factory:  factory,
+		lbLister: lbinformer.Lister(),
+		nodeCtl: &nodeController{
+			client:     cfg.Client,
+			nodeLister: factory.Core().V1().Nodes().Lister(),
+		},
 	}
 	// setup lb controller helper
 	lbc.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, lbc.syncLoadBalancer)
 
 	// setup informer
-	lbinformer := lbc.factory.Loadbalance().V1alpha2().LoadBalancers()
 	lbinformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    lbc.addLoadBalancer,
 		UpdateFunc: lbc.updateLoadBalancer,
 		DeleteFunc: lbc.deleteLoadBalancer,
 	})
-
-	lbc.lbLister = lbinformer.Lister()
-	lbc.nodeLister = lbc.factory.Core().V1().Nodes().Lister()
 
 	// setup proxies
 	proxy.Init(cfg, lbc.factory)
@@ -226,53 +220,7 @@ func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) er
 	}
 
 	// sync nodes
-	return lbc.syncNodes(lb)
-}
-
-func (lbc *LoadBalancerController) syncNodes(lb *lbapi.LoadBalancer) error {
-	// varify desired nodes
-	desiredNodes, err := lbc.getVerifiedNodes(lb)
-	if err != nil {
-		log.Error("varify nodes error", log.Fields{"err": err})
-		return err
-	}
-
-	oldNodes, err := lbc.getNodesForLoadBalancer(lb)
-	if err != nil {
-		log.Error("list node error")
-		return err
-	}
-	// compute diff
-	nodesToDelete := lbc.nodesDiff(oldNodes, desiredNodes.Nodes)
-	return lbc.doLabelAndTaints(nodesToDelete, desiredNodes)
-}
-
-func (lbc *LoadBalancerController) getNodesForLoadBalancer(lb *lbapi.LoadBalancer) ([]*apiv1.Node, error) {
-	// list old nodes
-	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name)
-	selector := labels.Set{labelkey: "true"}.AsSelector()
-	return lbc.nodeLister.List(selector)
-}
-
-func (lbc *LoadBalancerController) nodesDiff(oldNodes, desiredNodes []*apiv1.Node) []*apiv1.Node {
-
-	if len(desiredNodes) == 0 {
-		return oldNodes
-	}
-
-	nodesToDelete := make([]*apiv1.Node, 0)
-
-NEXT:
-	for _, oldNode := range oldNodes {
-		for _, desiredNode := range desiredNodes {
-			if oldNode.Name == desiredNode.Name {
-				continue NEXT
-			}
-		}
-		nodesToDelete = append(nodesToDelete, oldNode)
-	}
-
-	return nodesToDelete
+	return lbc.nodeCtl.syncNodes(lb)
 }
 
 func (lbc *LoadBalancerController) addLoadBalancer(obj interface{}) {
@@ -318,90 +266,4 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 	log.Info("Deleting LoadBalancer", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 
 	lbc.queue.Enqueue(lb)
-}
-
-// doLabelAndTaints delete label and taints in nodesToDelete
-// add label and taints in nodes
-func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node, desiredNodes *VerifiedNodes) error {
-	// delete labels and taints from old nodes
-	for _, node := range nodesToDelete {
-		copyNode := node.DeepCopy()
-
-		// change labels
-		for key := range desiredNodes.Labels {
-			delete(copyNode.Labels, key)
-		}
-
-		// change taints
-		// maybe taints are not found, reorganize will return error but it doesn't matter
-		// taints will not be changed
-		_, newTaints, _ := taints.ReorganizeTaints(copyNode, false, nil, []apiv1.Taint{
-			{Key: lbapi.TaintKey},
-		})
-		copyNode.Spec.Taints = newTaints
-
-		labelChanged := !reflect.DeepEqual(node.Labels, copyNode.Labels)
-		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
-		if labelChanged || taintChanged {
-
-			orginal, _ := json.Marshal(node)
-			modified, _ := json.Marshal(copyNode)
-			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
-			if err != nil {
-				return err
-			}
-			_, err = lbc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
-			if err != nil {
-				log.Errorf("update node err: %v", err)
-				return err
-			}
-			log.Notice("Delete labels and taints from old nodes", log.Fields{
-				"node":  node.Name,
-				"patch": string(patch),
-			})
-		}
-
-	}
-
-	// ensure labels and taints in cur nodes
-	for _, node := range desiredNodes.Nodes {
-		copyNode := node.DeepCopy()
-
-		// change labels
-		for k, v := range desiredNodes.Labels {
-			copyNode.Labels[k] = v
-		}
-
-		// override taint, add or delete
-		_, newTaints, _ := taints.ReorganizeTaints(copyNode, true, desiredNodes.TaintsToAdd, desiredNodes.TaintsToDelete)
-		// If you don't judge， it maybe change from nil to []Taint{}
-		// do not change taints when length of original and new taints are both equal to 0
-		if !(len(copyNode.Spec.Taints) == 0 && len(newTaints) == 0) {
-			copyNode.Spec.Taints = newTaints
-		}
-
-		labelChanged := !reflect.DeepEqual(node.Labels, copyNode.Labels)
-		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
-		if labelChanged || taintChanged {
-
-			orginal, _ := json.Marshal(node)
-			modified, _ := json.Marshal(copyNode)
-			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
-			if err != nil {
-				return err
-			}
-			_, err = lbc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
-			if err != nil {
-				log.Errorf("update node err: %v", err)
-				return err
-			}
-			log.Notice("Ensure labels and taints for requested nodes", log.Fields{
-				"node":  node.Name,
-				"patch": string(patch),
-			})
-		}
-	}
-
-	return nil
-
 }
