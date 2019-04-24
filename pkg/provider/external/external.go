@@ -9,7 +9,7 @@ import (
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
-	"github.com/caicloud/loadbalancer-controller/pkg/provider"
+	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	log "github.com/zoumo/logdog"
 
@@ -22,12 +22,6 @@ const (
 	providerName = "external"
 )
 
-func init() {
-	provider.RegisterPlugin(providerName, NewExternal())
-}
-
-var _ provider.Plugin = &external{}
-
 type external struct {
 	initialized bool
 
@@ -37,8 +31,8 @@ type external struct {
 	lbLister lblisters.LoadBalancerLister
 }
 
-// NewExternal creates a new external provider plugin
-func NewExternal() provider.Plugin {
+// New creates a new external provider plugin
+func New() plugin.Interface {
 	return &external{}
 }
 
