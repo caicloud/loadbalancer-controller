@@ -28,6 +28,7 @@ import (
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
+	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
 	log "github.com/zoumo/logdog"
@@ -41,11 +42,13 @@ import (
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
-	client   kubernetes.Interface
-	factory  informers.SharedInformerFactory
-	lbLister lblisters.LoadBalancerLister
-	nodeCtl  *nodeController
-	queue    *syncqueue.SyncQueue
+	client    kubernetes.Interface
+	factory   informers.SharedInformerFactory
+	lbLister  lblisters.LoadBalancerLister
+	nodeCtl   *nodeController
+	queue     *syncqueue.SyncQueue
+	proxies   *plugin.Registry
+	providers *plugin.Registry
 }
 
 // NewLoadBalancerController creates a new LoadBalancerController.
@@ -61,7 +64,12 @@ func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController
 			client:     cfg.Client,
 			nodeLister: factory.Core().V1().Nodes().Lister(),
 		},
+		proxies:   plugin.NewRegistry(),
+		providers: plugin.NewRegistry(),
 	}
+	proxy.AddToRegistry(lbc.proxies)
+	provider.AddToRegistry(lbc.providers)
+
 	// setup lb controller helper
 	lbc.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, lbc.syncLoadBalancer)
 
@@ -73,9 +81,9 @@ func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController
 	})
 
 	// setup proxies
-	proxy.Init(cfg, lbc.factory)
+	lbc.proxies.InitAll(cfg, factory)
 	// setup providers
-	provider.Init(cfg, lbc.factory)
+	lbc.providers.InitAll(cfg, factory)
 
 	return lbc
 }
@@ -117,9 +125,9 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 	lbc.queue.Run(workers)
 
 	// run proxy
-	proxy.Run(stopCh)
+	lbc.proxies.RunAll(stopCh)
 	// run providers
-	provider.Run(stopCh)
+	lbc.providers.RunAll(stopCh)
 
 	<-stopCh
 }
@@ -206,9 +214,9 @@ func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) er
 	lb = nlb
 
 	// sync proxy
-	proxy.OnSync(lb)
+	lbc.proxies.SyncAll(lb)
 	// sync provider
-	provider.OnSync(lb)
+	lbc.providers.SyncAll(lb)
 
 	// sync nodes
 	if deleted {

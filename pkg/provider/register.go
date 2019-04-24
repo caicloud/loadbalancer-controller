@@ -14,9 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package proxies
+package provider
 
 import (
-	// nginx proxy
-	_ "github.com/caicloud/loadbalancer-controller/pkg/proxy/proxies/nginx"
+	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
+	"github.com/caicloud/loadbalancer-controller/pkg/provider/azure"
+	"github.com/caicloud/loadbalancer-controller/pkg/provider/external"
+	"github.com/caicloud/loadbalancer-controller/pkg/provider/ipvsdr"
 )
+
+var localRegistryBuilder = plugin.RegistryBuilder{
+	azure.AddToRegistry,
+	external.AddToRegistry,
+	ipvsdr.AddToRegistry,
+}
+
+var AddToRegistry = localRegistryBuilder.AddToRegistry

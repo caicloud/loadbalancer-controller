@@ -25,8 +25,6 @@ import (
 
 	"github.com/caicloud/clientset/kubernetes"
 	lbcontroller "github.com/caicloud/loadbalancer-controller/pkg/controller"
-	_ "github.com/caicloud/loadbalancer-controller/pkg/provider/providers"
-	_ "github.com/caicloud/loadbalancer-controller/pkg/proxy/proxies"
 	"github.com/caicloud/loadbalancer-controller/pkg/version"
 	log "github.com/zoumo/logdog"
 	"gopkg.in/urfave/cli.v1"
