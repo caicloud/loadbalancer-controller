@@ -18,11 +18,14 @@ package main
 
 import (
 	"bytes"
+	goflag "flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -37,17 +40,20 @@ var sentinels = []string{
 }
 
 // Run ...
-func Run(c *Options, args []string) {
+func Run(c *Options, args []string) error {
 	root := "./"
 	if len(args) > 0 {
 		root = args[0]
 	}
 
-	licenseBytes, err := ioutil.ReadFile(root + "/LICENSE")
+	licenseBytes, err := ioutil.ReadFile(root + "/hack/license/boilerplate.go.txt")
 	if err != nil {
-		log.Fatal(err)
-		return
+		return err
 	}
+
+	licenseBytes = bytes.Replace(licenseBytes, []byte("YEAR"), []byte(strconv.Itoa(time.Now().Year())), 1)
+
+	log.Infof("License Header: \n%v", string(licenseBytes))
 
 	license := []byte(fmt.Sprintf("/*\n%s*/\n\n", licenseBytes))
 
@@ -103,9 +109,7 @@ func Run(c *Options, args []string) {
 		return nil
 	})
 
-	if err != nil {
-		log.Error(err)
-	}
+	return err
 }
 
 // Options is the main context object for the admission controller.
@@ -113,24 +117,38 @@ type Options struct {
 	Dryrun bool
 }
 
-func (o *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(o.Dryrun, "dryRun", false, "")
+func (o *Options) addFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&o.Dryrun, "dryRun", false, "")
+	// init log
+	gofs := goflag.NewFlagSet("klog", goflag.ExitOnError)
+	log.InitFlags(gofs)
+
+	fs.AddGoFlagSet(gofs)
 }
 
-func main() {
-
+func newCommand() *cobra.Command {
 	s := &Options{}
 	cmd := &cobra.Command{
 		Use:  "license",
 		Long: `add license header`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := Run(s, args); err != nil {
-				klog.Exitln(err)
+				log.Exitln(err)
 			}
 		},
 	}
 
 	fs := cmd.Flags()
-	s.AddFlags(fs)
+	s.addFlags(fs)
+	return cmd
+}
+
+func main() {
+
+	command := newCommand()
+	if err := command.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 
 }
