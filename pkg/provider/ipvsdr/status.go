@@ -19,8 +19,6 @@ package ipvsdr
 import (
 	"sort"
 
-	log "github.com/zoumo/logdog"
-
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
@@ -28,6 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	log "k8s.io/klog"
 )
 
 func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployment) error {
@@ -60,7 +59,7 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploym
 
 	podList, err := f.podLister.List(f.selector(lb).AsSelector())
 	if err != nil {
-		log.Error("get pod list error", log.Fields{"lb.ns": lb.Namespace, "lb.name": lb.Name, "err": err})
+		log.Errorf("get pod list error: %v", err)
 		return err
 	}
 
@@ -81,7 +80,6 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploym
 	if ipvsdrstatus == nil || !lbutil.IpvsdrProviderStatusEqual(*ipvsdrstatus, providerStatus) {
 		// js, _ := json.Marshal(providerStatus)
 		// replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
-		log.Notice("update ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 		_, err := lbutil.UpdateLBWithRetries(
 			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
@@ -94,7 +92,7 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploym
 		)
 
 		if err != nil {
-			log.Error("Update loadbalancer status error", log.Fields{"err": err})
+			log.Errorf("Update loadbalancer status error, %v", err)
 			return err
 		}
 
@@ -107,7 +105,7 @@ func (f *ipvsdr) deleteStatus(lb *lbapi.LoadBalancer) error {
 		return nil
 	}
 
-	log.Notice("delete ipvsdr status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	log.Infof("delete ipvsdr status for %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
 		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
@@ -120,7 +118,7 @@ func (f *ipvsdr) deleteStatus(lb *lbapi.LoadBalancer) error {
 	)
 
 	if err != nil {
-		log.Error("Update loadbalancer status error", log.Fields{"err": err})
+		log.Errorf("Update loadbalancer status error: %v", err)
 		return err
 	}
 	return nil

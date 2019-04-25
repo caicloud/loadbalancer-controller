@@ -17,14 +17,13 @@ limitations under the License.
 package nginx
 
 import (
-	log "github.com/zoumo/logdog"
-
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	log "k8s.io/klog"
 )
 
 const (
@@ -99,16 +98,16 @@ func (f *nginx) ensureDefaultHTTPBackend() error {
 	}
 
 	if _, err := f.client.AppsV1().Deployments(defaultHTTPBackendNamespace).Create(dp); err != nil && !errors.IsAlreadyExists(err) {
-		log.Error("Cannot create Deployments", log.Fields{"name": defaultHTTPBackendName, "ns": defaultHTTPBackendNamespace, "err": err})
+		log.Errorf("Cannot create Deployment %v/%v: %v", defaultHTTPBackendNamespace, defaultHTTPBackendName, err)
 		return err
 	}
 
 	if _, err := f.client.CoreV1().Services(defaultHTTPBackendNamespace).Create(svc); err != nil && !errors.IsAlreadyExists(err) {
-		log.Error("Cannot create Service", log.Fields{"name": defaultHTTPBackendName, "ns": defaultHTTPBackendNamespace, "err": err})
+		log.Errorf("Cannot create Service %v/%v: %v", defaultHTTPBackendNamespace, defaultHTTPBackendName, err)
 		return err
 	}
 
-	log.Infof("Ensure default-http-backend service for ingress controller success", log.Fields{"name": defaultHTTPBackendName, "ns": defaultHTTPBackendNamespace})
+	log.Info("Ensure default-http-backend service for ingress controller success")
 
 	return nil
 }

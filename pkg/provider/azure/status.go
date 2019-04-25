@@ -1,11 +1,11 @@
 package azure
 
 import (
-	log "github.com/zoumo/logdog"
-	"k8s.io/api/core/v1"
-
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
+
+	"k8s.io/api/core/v1"
+	log "k8s.io/klog"
 )
 
 func (f *azure) deleteStatus(lb *lbapi.LoadBalancer) error {
@@ -13,7 +13,7 @@ func (f *azure) deleteStatus(lb *lbapi.LoadBalancer) error {
 		return nil
 	}
 
-	log.Notice("delete azure status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	log.Infof("delete azure status for loadbalancer %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
 		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
@@ -26,7 +26,7 @@ func (f *azure) deleteStatus(lb *lbapi.LoadBalancer) error {
 	)
 
 	if err != nil {
-		log.Error("Update loadbalancer status error", log.Fields{"err": err})
+		log.Errorf("Update loadbalancer status error: %v", err)
 		return err
 	}
 	return nil
@@ -39,7 +39,7 @@ func (f *azure) syncStatus(lb *lbapi.LoadBalancer) error {
 
 	podList, err := f.podLister.List(f.selector(lb).AsSelector())
 	if err != nil {
-		log.Error("get pod list error", log.Fields{"lb.ns": lb.Namespace, "lb.name": lb.Name, "err": err})
+		log.Errorf("get pod list error: %v", err)
 		return err
 	}
 
@@ -53,8 +53,7 @@ func (f *azure) syncStatus(lb *lbapi.LoadBalancer) error {
 
 	if status != nil && (lb.Status.ProvidersStatuses.Azure.Phase != lbapi.AzureErrorPhase ||
 		lb.Status.ProvidersStatuses.Azure.Message != status.Message) {
-		log.Notice("update azure status %s message %s",
-			log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace, "lb.status": status.Phase, "lb.message": status.Message})
+		log.Infof("update azure status %s message %s", status.Phase, status.Message)
 		_, err := lbutil.UpdateLBWithRetries(
 			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
@@ -68,7 +67,7 @@ func (f *azure) syncStatus(lb *lbapi.LoadBalancer) error {
 		)
 
 		if err != nil {
-			log.Error("Update loadbalancer status error", log.Fields{"err": err})
+			log.Errorf("Update loadbalancer status error: %v", err)
 			return err
 		}
 	}
