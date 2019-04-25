@@ -24,9 +24,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/urfave/cli.v1"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-	log "github.com/zoumo/logdog"
+	log "k8s.io/klog"
 )
 
 var sentinels = []string{
@@ -36,11 +37,10 @@ var sentinels = []string{
 }
 
 // Run ...
-func Run(c *cli.Context) {
-	root := c.Args().First()
-
-	if root == "" {
-		root = "./"
+func Run(c *Options, args []string) {
+	root := "./"
+	if len(args) > 0 {
+		root = args[0]
 	}
 
 	licenseBytes, err := ioutil.ReadFile(root + "/LICENSE")
@@ -92,7 +92,7 @@ func Run(c *cli.Context) {
 
 			i := bytes.Index(allFile, []byte("package"))
 
-			if !c.Bool("dryRun") {
+			if !c.Dryrun {
 				ioutil.WriteFile(path, append(license, allFile[i:]...), 0655)
 			}
 			return nil
@@ -108,18 +108,29 @@ func Run(c *cli.Context) {
 	}
 }
 
+// Options is the main context object for the admission controller.
+type Options struct {
+	Dryrun bool
+}
+
+func (o *Options) AddFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(o.Dryrun, "dryRun", false, "")
+}
+
 func main() {
 
-	app := cli.NewApp()
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name: "dryRun",
+	s := &Options{}
+	cmd := &cobra.Command{
+		Use:  "license",
+		Long: `add license header`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := Run(s, args); err != nil {
+				klog.Exitln(err)
+			}
 		},
 	}
-	app.Action = func(c *cli.Context) error {
-		Run(c)
-		return nil
-	}
-	app.Run(os.Args)
+
+	fs := cmd.Flags()
+	s.AddFlags(fs)
 
 }

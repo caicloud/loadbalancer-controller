@@ -23,8 +23,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/zoumo/logdog"
-
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
@@ -48,6 +46,7 @@ import (
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 const (
@@ -107,13 +106,13 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 	workers := 1
 
 	if !f.initialized {
-		log.Panic("Please initialize provider before you run it")
+		panic("Please initialize provider before you run it")
 		return
 	}
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting ipvsdr provider", log.Fields{"workers": workers, "image": f.image})
+	log.Infof("Starting ipvsdr provider, workders %v, image %v", workers, f.image)
 	defer log.Info("Shutting down ipvsdr provider")
 
 	// lb controller has waited all the informer synced
@@ -154,7 +153,7 @@ func (f *ipvsdr) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 }
 
 func (f *ipvsdr) OnSync(lb *lbapi.LoadBalancer) {
-	log.Info("Syncing providers, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
+	log.Infof("Syncing providers, triggered by loadbalancer %v/%v", lb.Namespace, lb.Name)
 	f.queue.Enqueue(lb)
 }
 
@@ -164,22 +163,16 @@ func (f *ipvsdr) syncLoadBalancer(obj interface{}) error {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
 	}
 
-	// Validate loadbalancer scheme
-	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
-		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
-		return err
-	}
-
 	key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(lb)
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing ipvsdr provider", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
+		log.V(5).Infof("Finished syncing ipvsdr provider for %v, usedTime %v", key, time.Since(startTime))
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
 	if errors.IsNotFound(err) {
-		log.Warn("LoadBalancer has been deleted, clean up provider", log.Fields{"lb": key})
+		log.Warningf("LoadBalancer %v has been deleted, clean up provider", key)
 
 		return f.cleanup(lb, false)
 	}
@@ -260,7 +253,6 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 				continue
 			}
 			// scale unexpected deployment replicas to zero
-			log.Info("Scale unexpected provider replicas to zero", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
@@ -278,7 +270,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 				continue
 			}
 			if changed {
-				log.Info("Sync ipvsdr for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+				log.Infof("Sync ipvsdr deployment %v for lb %v", dp.Name, lb.Name)
 				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
 				if err != nil {
 					return err
@@ -292,7 +284,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create ipvsdr for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		log.Info("Create ipvsdr deployment %v for lb %v", desiredDeploy.Name, lb.Name)
 		_, err := f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
@@ -324,13 +316,7 @@ func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (
 
 	changed := labelChanged || replicasChanged || nodeAffinityChanged || imageChanged
 	if changed {
-		log.Info("Abount to correct ipvsdr provider", log.Fields{
-			"dp.name":             copyDp.Name,
-			"labelChanged":        labelChanged,
-			"replicasChanged":     replicasChanged,
-			"nodeAffinityChanged": nodeAffinityChanged,
-			"imageChanged":        imageChanged,
-		})
+		log.Infof("About to correct ipvsdr provider %v, labelChanged %v, replicasChanged %v, nodeAffinityChanged %v, imageChanged %v", copyDp.Name, labelChanged, replicasChanged, nodeAffinityChanged, imageChanged)
 	}
 
 	return copyDp, changed, nil

@@ -24,12 +24,12 @@ import (
 	"github.com/caicloud/clientset/kubernetes"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/loadbalancer-controller/pkg/util/taints"
-	log "github.com/zoumo/logdog"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	log "k8s.io/klog"
 )
 
 // VerifiedNodes ...
@@ -55,7 +55,7 @@ func (nc *nodeController) syncNodes(lb *lbapi.LoadBalancer) error {
 	// varify desired nodes
 	desiredNodes, err := nc.getVerifiedNodes(lb, oldNodes)
 	if err != nil {
-		log.Error("varify nodes error", log.Fields{"err": err})
+		log.Errorf("varify nodes error: %v", err)
 		return err
 	}
 	return nc.doLabelAndTaints(desiredNodes)
@@ -117,7 +117,7 @@ func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*a
 		// get node
 		node, err := nc.nodeLister.Get(name)
 		if err != nil {
-			log.Error("Error when get node info, ignore it", log.Fields{"name": name})
+			log.Errorf("Error when get node %v info, ignore it", name)
 			continue
 		}
 
@@ -191,10 +191,7 @@ func (nc *nodeController) doLabelAndTaints(desiredNodes *VerifiedNodes) error {
 				log.Errorf("update node err: %v", err)
 				return err
 			}
-			log.Notice("Delete labels and taints from old nodes", log.Fields{
-				"node":  node.Name,
-				"patch": string(patch),
-			})
+			log.V(2).Infof("Delete labels and taints from node %v, patch %v", node.Name, string(patch))
 		}
 
 	}
@@ -231,10 +228,7 @@ func (nc *nodeController) doLabelAndTaints(desiredNodes *VerifiedNodes) error {
 				log.Errorf("update node err: %v", err)
 				return err
 			}
-			log.Notice("Ensure labels and taints for requested nodes", log.Fields{
-				"node":  node.Name,
-				"patch": string(patch),
-			})
+			log.V(2).Infof("Ensure labels and taints for requested nodes %v, patch %v", node.Name, string(patch))
 		}
 	}
 

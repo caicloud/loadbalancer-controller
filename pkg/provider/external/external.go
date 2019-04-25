@@ -11,11 +11,11 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
-	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 const (
@@ -57,13 +57,13 @@ func (f *external) Run(stopCh <-chan struct{}) {
 	workers := 1
 
 	if !f.initialized {
-		log.Panic("Please initialize provider before you run it")
+		panic("Please initialize provider before you run it")
 		return
 	}
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting external provider", log.Fields{"workers": workers})
+	log.Infof("Starting external provider, workers %v", workers)
 	defer log.Info("Shutting down external provider")
 
 	// lb controller has waited all the informer synced
@@ -81,7 +81,7 @@ func (f *external) Run(stopCh <-chan struct{}) {
 
 func (f *external) OnSync(lb *lbapi.LoadBalancer) {
 
-	log.Info("Syncing providers, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
+	log.Infof("Syncing providers, triggered by loadbalancer %v/%v", lb.Namespace, lb.Name)
 	f.queue.Enqueue(lb)
 }
 
@@ -89,12 +89,6 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 	lb, ok := obj.(*lbapi.LoadBalancer)
 	if !ok {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
-	}
-
-	// Validate loadbalancer scheme
-	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
-		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
-		return err
 	}
 
 	key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(lb)
@@ -144,7 +138,7 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 		)
 
 		if err != nil {
-			log.Error("Update loadbalancer status error", log.Fields{"err": err})
+			log.Errorf("Update loadbalancer status error, %v", err)
 			return err
 		}
 
@@ -157,7 +151,7 @@ func (f *external) deleteStatus(lb *lbapi.LoadBalancer) error {
 		return nil
 	}
 
-	log.Notice("delete external status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	log.Infof("delete external status for loadbalancer %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
 		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
@@ -170,7 +164,7 @@ func (f *external) deleteStatus(lb *lbapi.LoadBalancer) error {
 	)
 
 	if err != nil {
-		log.Error("Update loadbalancer status error", log.Fields{"err": err})
+		log.Errorf("Update loadbalancer status error: %v", err)
 		return err
 	}
 	return nil
