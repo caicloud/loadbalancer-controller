@@ -31,12 +31,12 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
-	log "github.com/zoumo/logdog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
@@ -97,7 +97,7 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 
 	// ensure loadbalancer tpr initialized
 	if err := lbc.ensureResource(); err != nil {
-		log.Error("Ensure loadbalancer resource error", log.Fields{"err": err})
+		log.Errorf("Ensure loadbalancer resource error: %v", err)
 		return
 	}
 
@@ -110,11 +110,11 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 	synced := lbc.factory.WaitForCacheSync(stopCh)
 	for tpy, sync := range synced {
 		if !sync {
-			log.Error("Wait for cache sync timeout", log.Fields{"type": tpy})
+			log.Errorf("Wait for %v cache sync timeout", tpy)
 			return
 		}
 	}
-	log.Info("All caches have synced, Running LoadBalancer Controller ...", log.Fields{"worker": workers})
+	log.Infof("All caches have synced, Running LoadBalancer Controller, workers %v", workers)
 
 	defer func() {
 		log.Info("Shuttingdown controller queue")
@@ -176,7 +176,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	// Validate loadbalancer scheme
 	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
-		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
+		log.Errorf("invalid loadbalancer scheme: %v", err)
 		return err
 	}
 
@@ -184,12 +184,12 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Since(startTime)})
+		log.V(5).Infof("Finished syncing loadbalancer, key: %v, uesdTime: %v", key, time.Since(startTime))
 	}()
 
 	nlb, err := lbc.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
 	if errors.IsNotFound(err) {
-		log.Warn("LoadBalancer has been deleted", log.Fields{"lb": key})
+		log.Warningf("LoadBalancer %v has been deleted", key)
 		// deleted
 		return lbc.sync(lb, true)
 	}
@@ -233,7 +233,7 @@ func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) er
 
 func (lbc *LoadBalancerController) addLoadBalancer(obj interface{}) {
 	lb := obj.(*lbapi.LoadBalancer)
-	log.Info("Adding LoadBalancer", log.Fields{"name": lb.Name})
+	log.Infof("Adding LoadBalancer %v", lb.Name)
 	lbc.queue.Enqueue(lb)
 }
 
@@ -251,7 +251,7 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 		return
 	}
 
-	log.Info("Updating LoadBalancer", log.Fields{"name": old.Name})
+	log.Infof("Updating LoadBalancer %v", old.Name)
 	lbc.queue.EnqueueAfter(cur, 1*time.Second)
 }
 
@@ -271,7 +271,7 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 		}
 	}
 
-	log.Info("Deleting LoadBalancer", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	log.Infof("Deleting LoadBalancer %v/%v", lb.Namespace, lb.Name)
 
 	lbc.queue.Enqueue(lb)
 }

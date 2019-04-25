@@ -21,7 +21,7 @@ import (
 
 	"github.com/caicloud/clientset/kubernetes"
 	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
-	cli "gopkg.in/urfave/cli.v1"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -50,6 +50,10 @@ func (a *additionalTolerations) String() string {
 	return strings.Join(*a, ",")
 }
 
+func (a *additionalTolerations) Type() string {
+	return "AdditionalTolerations"
+}
+
 // Configuration contains the global config of controller
 type Configuration struct {
 	Client                kubernetes.Interface
@@ -60,21 +64,16 @@ type Configuration struct {
 
 // Proxies contains all cli flags of proxies
 type Proxies struct {
-	DefaultHTTPBackend    string
-	DefaultSSLCertificate string
-	AnnotationPrefix      string
-	Sidecar               IngressSidecar
-	Nginx                 ProxyNginx
-}
-
-// IngressSidecar contains all cli flags of ingress controller sidecar
-type IngressSidecar struct {
-	Image string
+	Sidecar string
+	Nginx   ProxyNginx
 }
 
 // ProxyNginx contains all cli flags of nginx proxy
 type ProxyNginx struct {
-	Image string
+	Image                 string
+	DefaultHTTPBackend    string
+	AnnotationPrefix      string
+	DefaultSSLCertificate string
 }
 
 // Providers contains all cli flags of providers
@@ -96,80 +95,21 @@ type ProviderAzure struct {
 }
 
 // AddFlags add flags to app
-func (c *Configuration) AddFlags(app *cli.App) {
+func (c *Configuration) AddFlags(fs *pflag.FlagSet) {
 
-	flags := []cli.Flag{
-		// other
-		cli.GenericFlag{
-			Name:   "additional-tolerations",
-			Usage:  "A comma separated list of k8s `TolerationKeys`",
-			EnvVar: "ADDITIONAL_TOLERATIONS",
-			Value:  &c.AdditionalTolerations,
-		},
-		// proxies
-		cli.StringFlag{
-			Name:        "default-http-backend",
-			Usage:       "Default http backend `Image` for ingress controller",
-			EnvVar:      "DEFAULT_HTTP_BACKEND",
-			Value:       defaultHTTPBackendImage,
-			Destination: &c.Proxies.DefaultHTTPBackend,
-		},
-		cli.StringFlag{
-			Name:        "default-ssl-certificate",
-			Usage:       "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server",
-			EnvVar:      "DEFAULT_SSL_CERTIFICATE",
-			Destination: &c.Proxies.DefaultSSLCertificate,
-		},
-		cli.StringFlag{
-			Name:        "proxy-annotation-prefix",
-			Usage:       "Prefix of ingress annotation",
-			EnvVar:      "PROXY_SIDECAR",
-			Value:       defaultIngressAnnotationPrefix,
-			Destination: &c.Proxies.AnnotationPrefix,
-		},
-		cli.StringFlag{
-			Name:        "proxy-sidecar",
-			Usage:       "`Image` of ingress controller sidecar",
-			EnvVar:      "PROXY_SIDECAR",
-			Value:       defaultIngressSidecarImage,
-			Destination: &c.Proxies.Sidecar.Image,
-		},
-		// nginx
-		cli.StringFlag{
-			Name:        "proxy-nginx",
-			Usage:       "`Image` of nginx ingress controller",
-			EnvVar:      "PROXY_NGINX",
-			Value:       defaultNginxIngressImage,
-			Destination: &c.Proxies.Nginx.Image,
-		},
-		// ipvsdr
-		cli.StringFlag{
-			Name:        "provider-ipvsdr",
-			Usage:       "`Image` of ipvsdr provider",
-			EnvVar:      "PROVIDER_IPVS_DR",
-			Value:       defaultIpvsdrImage,
-			Destination: &c.Providers.Ipvsdr.Image,
-		},
-		cli.StringFlag{
-			Name:        "nodeip-label",
-			EnvVar:      "NODEIP_LABEL",
-			Usage:       "tell provider which label of node stores node ip",
-			Destination: &c.Providers.Ipvsdr.NodeIPLabel,
-		},
-		cli.StringFlag{
-			Name:        "nodeip-annotation",
-			EnvVar:      "NODEIP_ANNOTATION",
-			Usage:       "tell provider which annotation of node stores node ip",
-			Destination: &c.Providers.Ipvsdr.NodeIPAnnotation,
-		},
-		// azure
-		cli.StringFlag{
-			Name:        "provider-azure",
-			Usage:       "`Image` of azure provider",
-			EnvVar:      "PROVIDER_AZURE",
-			Value:       defaultAzureProviderImage,
-			Destination: &c.Providers.Azure.Image,
-		},
-	}
-	app.Flags = append(app.Flags, flags...)
+	fs.Var(&c.AdditionalTolerations, "additional-tolerations", "A comma separated list of k8s `TolerationKeys`")
+
+	fs.StringVar(&c.Proxies.Sidecar, "proxy-sidecar", defaultIngressSidecarImage, "`Image` of ingress controller sidecar")
+
+	fs.StringVar(&c.Proxies.Nginx.Image, "proxy-nginx", defaultNginxIngressImage, "`Image` of nginx ingress controller image")
+	fs.StringVar(&c.Proxies.Nginx.DefaultHTTPBackend, "default-http-backend", defaultHTTPBackendImage, "Default http backend `Image` for ingress controller")
+	fs.StringVar(&c.Proxies.Nginx.DefaultSSLCertificate, "default-ssl-certificate", "", "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server")
+	fs.StringVar(&c.Proxies.Nginx.AnnotationPrefix, "proxy-nginx-annotation-prefix", defaultIngressAnnotationPrefix, "Prefix of ingress annotation")
+
+	fs.StringVar(&c.Providers.Ipvsdr.Image, "provider-ipvsdr", defaultNginxIngressImage, "`Image` of ipvsdr provider")
+	fs.StringVar(&c.Providers.Ipvsdr.NodeIPLabel, "nodeip-label", "", "tell provider which label of node stores node ip")
+	fs.StringVar(&c.Providers.Ipvsdr.NodeIPAnnotation, "nodeip-annotation", "", "tell provider which annotation of node stores node ip")
+
+	fs.StringVar(&c.Providers.Azure.Image, "provider-azure", defaultAzureProviderImage, "`Image` of azure provider")
+
 }

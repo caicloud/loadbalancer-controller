@@ -32,7 +32,6 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
-	log "github.com/zoumo/logdog"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
@@ -43,6 +42,7 @@ import (
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 const (
@@ -79,10 +79,10 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 
 	log.Info("Initialize the nginx proxy")
 	// set config
-	f.defaultHTTPbackend = cfg.Proxies.DefaultHTTPBackend
-	f.defaultSSLCertificate = cfg.Proxies.DefaultSSLCertificate
-	f.annotationPrefix = cfg.Proxies.AnnotationPrefix
-	f.sidecar = cfg.Proxies.Sidecar.Image
+	f.defaultHTTPbackend = cfg.Proxies.Nginx.DefaultHTTPBackend
+	f.defaultSSLCertificate = cfg.Proxies.Nginx.DefaultSSLCertificate
+	f.annotationPrefix = cfg.Proxies.Nginx.AnnotationPrefix
+	f.sidecar = cfg.Proxies.Sidecar
 	f.image = cfg.Proxies.Nginx.Image
 	f.client = cfg.Client
 
@@ -104,21 +104,16 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 func (f *nginx) Run(stopCh <-chan struct{}) {
 	workers := 1
 	if !f.initialized {
-		log.Panic("Please initialize proxy before you run it")
+		panic("Please initialize proxy before you run it")
 		return
 	}
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting nginx proxy", log.Fields{
-		"workers":              workers,
-		"image":                f.image,
-		"default-http-backend": f.defaultHTTPbackend,
-		"sidecar":              f.sidecar,
-	})
+	log.Infof("Starting nginx proxy, workers %v, image %v, default-http-backend %v, sidecar %v", workers, f.image, f.defaultHTTPbackend, f.sidecar)
 
 	if err := f.ensureDefaultHTTPBackend(); err != nil {
-		log.Panicf("Ensure default http backend service error, %v", err)
+		panic(fmt.Sprintf("Ensure default http backend service error, %v", err))
 	}
 
 	// lb controller has waited all the informer synced
@@ -160,7 +155,7 @@ func (f *nginx) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 }
 
 func (f *nginx) OnSync(lb *lbapi.LoadBalancer) {
-	log.Info("Syncing proxy, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
+	log.Infof("Syncing proxy, triggered by loadbalancer %v/%v", lb.Namespace, lb.Name)
 	f.queue.Enqueue(lb)
 }
 
@@ -173,22 +168,16 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
 	}
 
-	// Validate loadbalancer scheme
-	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
-		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
-		return err
-	}
-
 	key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(lb)
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing nginx proxy", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
+		log.V(5).Infof("Finished syncing nginx proxy for %v, usedTime %v", key, time.Since(startTime))
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
 	if errors.IsNotFound(err) {
-		log.Warn("LoadBalancer has been deleted, clean up proxy", log.Fields{"lb": key})
+		log.Warningf("LoadBalancer %v has been deleted, clean up proxy", key)
 
 		return f.cleanup(lb)
 	}
@@ -274,7 +263,6 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 				continue
 			}
 			// scale unexpected deployment replicas to zero
-			log.Info("Scale unexpected proxy replicas to zero", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
@@ -293,7 +281,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 				continue
 			}
 			if changed {
-				log.Info("Sync nginx for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+				log.Infof("Sync nginx deployment %v for loadbalancer %v", dp.Name, lb.Name)
 				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
 				if err != nil {
 					return err
@@ -306,7 +294,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create nginx for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		log.Infof("Create nginx deployment %v for loadbalancer %v", desiredDeploy.Name, lb.Name)
 		_, err = f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
@@ -370,13 +358,7 @@ func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*
 
 	changed := labelChanged || replicasChanged || nodeAffinityChanged || containersChanged
 	if changed {
-		log.Info("Abount to correct nginx proxy", log.Fields{
-			"dp.name":             copyDp.Name,
-			"labelChanged":        labelChanged,
-			"replicasChanged":     replicasChanged,
-			"nodeAffinityChanged": nodeAffinityChanged,
-			"containersChanged":   containersChanged,
-		})
+		log.Infof("About to correct nginx proxy deployment %v, labelChanged %v, replicasChanged %v, nodeAffinityChanged %v, containersChanged %v", copyDp.Name, labelChanged, replicasChanged, nodeAffinityChanged, containersChanged)
 	}
 
 	return copyDp, changed, nil
@@ -401,7 +383,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 			PropagationPolicy:  &policy,
 		})
 		if err != nil {
-			log.Warn("Cleanup proxy error", log.Fields{"ns": d.Namespace, "d.name": d.Name, "err": err})
+			log.Errorf("Cleanup proxy error: %v", err)
 			return err
 		}
 	}
@@ -411,7 +393,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
-		log.Warn("Cleanup ConfigMap error", log.Fields{"err": err})
+		log.Errorf("Cleanup ConfigMap error: %v", err)
 		return err
 	}
 
@@ -425,14 +407,14 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 	})
 
 	if err != nil {
-		log.Warn("Cleanup Ingress error", log.Fields{"err": err})
+		log.Errorf("Cleanup Ingress error: %v", err)
 		return err
 	}
 
 	for _, ingress := range ingresses.Items {
 		err = f.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
 		if err != nil {
-			log.Warn("Cleanup Ingress error", log.Fields{"err": err})
+			log.Errorf("Cleanup Ingress error: %v", err)
 			return err
 		}
 	}
