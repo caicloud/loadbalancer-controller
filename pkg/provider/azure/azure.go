@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/zoumo/logdog"
-
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
@@ -46,6 +44,7 @@ import (
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 const (
@@ -101,13 +100,12 @@ func (f *azure) Run(stopCh <-chan struct{}) {
 	workers := 1
 
 	if !f.initialized {
-		log.Panic("Please initialize provider before you run it")
-		return
+		panic("Please initialize provider before you run it")
 	}
 
 	defer utilruntime.HandleCrash()
 
-	log.Info("Starting azure provider", log.Fields{"workers": workers, "image": f.image})
+	log.Infof("Starting azure provider, workers %v, image %v", workers, f.image)
 	defer log.Info("Shutting down azure provider")
 
 	// lb controller has waited all the informer synced
@@ -149,7 +147,7 @@ func (f *azure) filteredByLabel(obj metav1.ObjectMetaAccessor) bool {
 }
 
 func (f *azure) OnSync(lb *lbapi.LoadBalancer) {
-	log.Info("Syncing providers, triggered by lb controller", log.Fields{"lb": lb.Name, "namespace": lb.Namespace})
+	log.Infof("Syncing providers, triggered by loadbalancer %v/%v", lb.Namespace, lb.Name)
 	f.queue.Enqueue(lb)
 }
 
@@ -159,22 +157,16 @@ func (f *azure) syncLoadBalancer(obj interface{}) error {
 		return fmt.Errorf("expect loadbalancer, got %v", obj)
 	}
 
-	// Validate loadbalancer scheme
-	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
-		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
-		return err
-	}
-
 	key, _ := cache.DeletionHandlingMetaNamespaceKeyFunc(lb)
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing azure provider", log.Fields{"lb": key, "usedTime": time.Since(startTime)})
+		log.V(5).Infof("Finished syncing azure provider for %v, usedTime %v", key, time.Since(startTime))
 	}()
 
 	nlb, err := f.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
 	if errors.IsNotFound(err) {
-		log.Warn("LoadBalancer has been deleted, clean up provider", log.Fields{"lb": key})
+		log.Warningf("LoadBalancer %v has been deleted, clean up provider", key)
 
 		return f.cleanup(lb, false)
 	}
@@ -254,7 +246,6 @@ func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 				continue
 			}
 			// scale unexpected deployment replicas to zero
-			log.Info("Scale unexpected provider replicas to zero", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
@@ -270,7 +261,7 @@ func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 				continue
 			}
 			if changed {
-				log.Info("Sync azure for lb", log.Fields{"d.name": dp.Name, "lb.name": lb.Name})
+				log.Infof("Sync azure deployment %v for lb %v", dp.Name, lb.Name)
 				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
 				if err != nil {
 					return err
@@ -282,7 +273,7 @@ func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create azure for lb", log.Fields{"d.name": desiredDeploy.Name, "lb.name": lb.Name})
+		log.Infof("Create azure deployment %v for lb %v", desiredDeploy.Name, lb.Name)
 		_, err := f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
@@ -311,12 +302,7 @@ func (f *azure) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*
 
 	changed := labelChanged || replicasChanged || imageChanged
 	if changed {
-		log.Info("Abount to correct azure provider", log.Fields{
-			"dp.name":         copyDp.Name,
-			"labelChanged":    labelChanged,
-			"replicasChanged": replicasChanged,
-			"imageChanged":    imageChanged,
-		})
+		log.Infof("About to correct azure provider for deployment %v, labelChanged %v, replicasChanged %v, imageChanged %v", copyDp.Name, labelChanged, replicasChanged, imageChanged)
 	}
 
 	return copyDp, changed, nil

@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"sort"
 
-	log "github.com/zoumo/logdog"
-
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
@@ -29,6 +27,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	log "k8s.io/klog"
 )
 
 func (f *nginx) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployment) error {
@@ -50,7 +49,7 @@ func (f *nginx) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployme
 
 	podList, err := f.podLister.List(f.selector(lb).AsSelector())
 	if err != nil {
-		log.Error("get pod list error", log.Fields{"lb.ns": lb.Namespace, "lb.name": lb.Name, "err": err})
+		log.Errorf("get pod list error: %v", err)
 		return err
 	}
 
@@ -71,7 +70,6 @@ func (f *nginx) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployme
 	if !lbutil.ProxyStatusEqual(lb.Status.ProxyStatus, proxyStatus) {
 		// js, _ := json.Marshal(proxyStatus)
 		// replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
-		log.Notice("update nginx proxy status", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
 		// _, err := f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		_, err := lbutil.UpdateLBWithRetries(
 			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
@@ -85,7 +83,7 @@ func (f *nginx) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployme
 		)
 
 		if err != nil {
-			log.Error("Update loadbalancer status error", log.Fields{"err": err})
+			log.Errorf("Update loadbalancer status error: %v", err)
 			return err
 		}
 	}

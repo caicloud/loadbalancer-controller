@@ -21,10 +21,11 @@ import (
 	"reflect"
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
-	log "github.com/zoumo/logdog"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	log "k8s.io/klog"
 )
 
 var (
@@ -86,7 +87,7 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]
 			},
 			Data: data,
 		}
-		log.Info("About to craete ConfigMap for proxy", log.Fields{"cm.ns": namespace, "cm.name": cm.Name})
+		log.Infof("About to craete ConfigMap %v/%v for proxy", namespace, cm.Name)
 		_, nerr := f.client.CoreV1().ConfigMaps(namespace).Create(cm)
 		if nerr != nil {
 			return nerr
@@ -100,17 +101,16 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]
 		return nil
 	}
 
-	// replace cm.Data of data
-	// the data follows the priority
-	// 1. lb.Spec.Proxy.Config
-	// 2. default config
-
 	if reflect.DeepEqual(cm.Data, data) {
 		return nil
 	}
 
+	// replace cm.Data of data
+	// the data follows the priority
+	// 1. lb.Spec.Proxy.Config
+	// 2. default config
 	cm.Data = data
-	log.Info("About to update ConfigMap data", log.Fields{"cm.ns": namespace, "cm.name": cm.Name})
+	log.Infof("About to update ConfigMap %v/%v data", namespace, cm.Name)
 	_, err = f.client.CoreV1().ConfigMaps(namespace).Update(cm)
 
 	return err
