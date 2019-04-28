@@ -19,7 +19,6 @@ package ipvsdr
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
 	"strings"
 	"time"
 
@@ -107,7 +106,6 @@ func (f *ipvsdr) Run(stopCh <-chan struct{}) {
 
 	if !f.initialized {
 		panic("Please initialize provider before you run it")
-		return
 	}
 
 	defer utilruntime.HandleCrash()
@@ -241,8 +239,6 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 
 	// update
 	updated := false
-	activeDeploy := desiredDeploy
-
 	for _, dp := range dps {
 		// two conditions will trigger controller to scale down deployment
 		// 1. deployment does not have auto-generated prefix
@@ -261,65 +257,30 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		}
 
 		updated = true
-		if lbutil.IsStatic(lb) {
-			// do not change deployment if the loadbalancer is static
-			activeDeploy = dp
-		} else {
-			copyDp, changed, err := f.ensureDeployment(desiredDeploy, dp)
-			if err != nil {
-				continue
-			}
+		// do not change deployment if the loadbalancer is static
+		if !lbutil.IsStatic(lb) {
+			merged, changed := lbutil.MergeDeployment(dp, desiredDeploy)
 			if changed {
 				log.Infof("Sync ipvsdr deployment %v for lb %v", dp.Name, lb.Name)
-				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
+				_, err := f.client.AppsV1().Deployments(lb.Namespace).Update(merged)
 				if err != nil {
 					return err
 				}
 			}
-
-			activeDeploy = copyDp
 		}
 	}
 
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		log.Info("Create ipvsdr deployment %v for lb %v", desiredDeploy.Name, lb.Name)
+		log.Infof("Create ipvsdr deployment %v for lb %v", desiredDeploy.Name, lb.Name)
 		_, err := f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
 	}
 
-	return f.syncStatus(lb, activeDeploy)
-}
-
-func (f *ipvsdr) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
-	copyDp := oldDeploy.DeepCopy()
-
-	// ensure labels
-	for k, v := range desiredDeploy.Labels {
-		copyDp.Labels[k] = v
-	}
-	// ensure replicas
-	copyDp.Spec.Replicas = desiredDeploy.Spec.Replicas
-	// ensure image
-	copyDp.Spec.Template.Spec.Containers[0].Image = desiredDeploy.Spec.Template.Spec.Containers[0].Image
-	// ensure nodeaffinity
-	copyDp.Spec.Template.Spec.Affinity.NodeAffinity = desiredDeploy.Spec.Template.Spec.Affinity.NodeAffinity
-
-	// check if changed
-	nodeAffinityChanged := !reflect.DeepEqual(copyDp.Spec.Template.Spec.Affinity.NodeAffinity, oldDeploy.Spec.Template.Spec.Affinity.NodeAffinity)
-	imageChanged := copyDp.Spec.Template.Spec.Containers[0].Image != oldDeploy.Spec.Template.Spec.Containers[0].Image
-	labelChanged := !reflect.DeepEqual(copyDp.Labels, oldDeploy.Labels)
-	replicasChanged := *(copyDp.Spec.Replicas) != *(oldDeploy.Spec.Replicas)
-
-	changed := labelChanged || replicasChanged || nodeAffinityChanged || imageChanged
-	if changed {
-		log.Infof("About to correct ipvsdr provider %v, labelChanged %v, replicasChanged %v, nodeAffinityChanged %v, imageChanged %v", copyDp.Name, labelChanged, replicasChanged, nodeAffinityChanged, imageChanged)
-	}
-
-	return copyDp, changed, nil
+	return f.syncStatus(lb)
 }
 
 // cleanup deployment and other resource controlled by ipvsdr provider
