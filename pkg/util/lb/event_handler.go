@@ -165,7 +165,7 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 		if labelChanged || controllerRefChanged {
 			lb, err := eh.lbLister.GetLoadBalancerForControllee(cur)
 			if err != nil {
-				log.Error("Can not get loadbalancer for orpha Deployment %v/%v, ignore it, deployment's labels %v", cur.Namespace, cur.Name, cur.Labels)
+				log.Errorf("Can not get loadbalancer for orpha Deployment %v/%v, ignore it, deployment's labels %v", cur.Namespace, cur.Name, cur.Labels)
 				return
 			}
 			log.Infof("Orphan Deployment %v updated", cur.Name)

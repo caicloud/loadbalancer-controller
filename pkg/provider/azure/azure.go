@@ -18,7 +18,6 @@ package azure
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -256,13 +255,10 @@ func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		updated = true
 		if !lbutil.IsStatic(lb) {
 			// do not change deployment if the loadbalancer is static
-			copyDp, changed, err := f.ensureDeployment(desiredDeploy, dp)
-			if err != nil {
-				continue
-			}
+			merged, changed := lbutil.MergeDeployment(dp, desiredDeploy)
 			if changed {
 				log.Infof("Sync azure deployment %v for lb %v", dp.Name, lb.Name)
-				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
+				_, err := f.client.AppsV1().Deployments(lb.Namespace).Update(merged)
 				if err != nil {
 					return err
 				}
@@ -281,31 +277,6 @@ func (f *azure) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	}
 
 	return f.syncStatus(lb)
-}
-
-func (f *azure) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
-	copyDp := oldDeploy.DeepCopy()
-
-	// ensure labels
-	for k, v := range desiredDeploy.Labels {
-		copyDp.Labels[k] = v
-	}
-	// ensure replicas
-	copyDp.Spec.Replicas = desiredDeploy.Spec.Replicas
-	// ensure image
-	copyDp.Spec.Template.Spec.Containers[0].Image = desiredDeploy.Spec.Template.Spec.Containers[0].Image
-
-	// check if changed
-	imageChanged := copyDp.Spec.Template.Spec.Containers[0].Image != oldDeploy.Spec.Template.Spec.Containers[0].Image
-	labelChanged := !reflect.DeepEqual(copyDp.Labels, oldDeploy.Labels)
-	replicasChanged := *(copyDp.Spec.Replicas) != *(oldDeploy.Spec.Replicas)
-
-	changed := labelChanged || replicasChanged || imageChanged
-	if changed {
-		log.Infof("About to correct azure provider for deployment %v, labelChanged %v, replicasChanged %v, imageChanged %v", copyDp.Name, labelChanged, replicasChanged, imageChanged)
-	}
-
-	return copyDp, changed, nil
 }
 
 // cleanup deployment and other resource controlled by azure provider

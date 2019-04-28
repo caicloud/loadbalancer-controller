@@ -74,7 +74,6 @@ func (f *external) Run(stopCh <-chan struct{}) {
 
 	if !f.initialized {
 		panic("Please initialize provider before you run it")
-		return
 	}
 
 	defer utilruntime.HandleCrash()
