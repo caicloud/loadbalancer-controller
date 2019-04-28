@@ -39,7 +39,7 @@ func NewCommand() *cobra.Command {
 // Run runs the Config.  This should never exit.
 func Run(c *config.Config, stopCh <-chan struct{}) error {
 	klog.Info(version.Get().Pretty())
-	klog.Info("Controller Running with additionalTolerations %v", c.Cfg.AdditionalTolerations)
+	klog.Infof("Controller Running with additionalTolerations %v", c.Cfg.AdditionalTolerations)
 
 	// start a controller on instances of lb
 	controller := lbcontroller.NewLoadBalancerController(c.Cfg)
