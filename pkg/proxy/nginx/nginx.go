@@ -18,7 +18,6 @@ package nginx
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
+
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 
@@ -105,7 +105,6 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 	workers := 1
 	if !f.initialized {
 		panic("Please initialize proxy before you run it")
-		return
 	}
 
 	defer utilruntime.HandleCrash()
@@ -250,7 +249,6 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	// update
 	var err error
 	updated := false
-	activeDeploy := desiredDeploy
 
 	for _, dp := range dps {
 
@@ -271,23 +269,16 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		}
 
 		updated = true
-		if lbutil.IsStatic(lb) {
-			// do not change deployment if the loadbalancer is static
-			activeDeploy = dp
-		} else {
-			copyDp, changed, newErr := f.ensureDeployment(desiredDeploy, dp)
-			if newErr != nil {
-				err = newErr
-				continue
-			}
+		// do not change deployment if the loadbalancer is static
+		if !lbutil.IsStatic(lb) {
+			merged, changed := lbutil.MergeDeployment(dp, desiredDeploy)
 			if changed {
 				log.Infof("Sync nginx deployment %v for loadbalancer %v", dp.Name, lb.Name)
-				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(copyDp)
+				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(merged)
 				if err != nil {
 					return err
 				}
 			}
-			activeDeploy = copyDp
 		}
 	}
 
@@ -307,61 +298,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	}
 
 	// update status
-	return f.syncStatus(lb, activeDeploy)
-}
-
-func (f *nginx) ensureDeployment(desiredDeploy, oldDeploy *appsv1.Deployment) (*appsv1.Deployment, bool, error) {
-	copyDp := oldDeploy.DeepCopy()
-
-	// ensure labels
-	for k, v := range desiredDeploy.Labels {
-		copyDp.Labels[k] = v
-	}
-	// ensure replicas
-	copyDp.Spec.Replicas = desiredDeploy.Spec.Replicas
-	// ensure containers
-	var containersChanged = false
-	copyContainers := copyDp.Spec.Template.Spec.Containers
-	desiredContainers := desiredDeploy.Spec.Template.Spec.Containers
-	if len(copyContainers) != len(desiredContainers) {
-		containersChanged = true
-	} else {
-		for _, c1 := range desiredContainers {
-			found := false
-			for _, c2 := range copyContainers {
-				if c1.Name == c2.Name {
-					found = true
-					// change of image and quota will triger deployment updation
-					if c1.Image != c2.Image || !reflect.DeepEqual(c1.Resources, c2.Resources) {
-						containersChanged = true
-					}
-					break
-				}
-			}
-			if !found {
-				containersChanged = true
-			}
-		}
-	}
-
-	if containersChanged {
-		copyDp.Spec.Template.Spec.Containers = desiredContainers
-	}
-
-	// ensure nodeaffinity
-	copyDp.Spec.Template.Spec.Affinity.NodeAffinity = desiredDeploy.Spec.Template.Spec.Affinity.NodeAffinity
-
-	// check if changed
-	nodeAffinityChanged := !reflect.DeepEqual(copyDp.Spec.Template.Spec.Affinity.NodeAffinity, oldDeploy.Spec.Template.Spec.Affinity.NodeAffinity)
-	labelChanged := !reflect.DeepEqual(copyDp.Labels, oldDeploy.Labels)
-	replicasChanged := *(copyDp.Spec.Replicas) != *(oldDeploy.Spec.Replicas)
-
-	changed := labelChanged || replicasChanged || nodeAffinityChanged || containersChanged
-	if changed {
-		log.Infof("About to correct nginx proxy deployment %v, labelChanged %v, replicasChanged %v, nodeAffinityChanged %v, containersChanged %v", copyDp.Name, labelChanged, replicasChanged, nodeAffinityChanged, containersChanged)
-	}
-
-	return copyDp, changed, nil
+	return f.syncStatus(lb)
 }
 
 // cleanup deployment and other resource controlled by lb proxy

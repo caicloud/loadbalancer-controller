@@ -21,28 +21,24 @@ import (
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
-	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
 
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	log "k8s.io/klog"
 )
 
-func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployment) error {
+func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer) error {
 	if lb.Spec.Providers.Ipvsdr == nil {
 		return f.deleteStatus(lb)
 	}
+	replicas, _ := lbutil.CalculateReplicas(lb)
 	// caculate proxy status
 	providerStatus := lbapi.IpvsdrProviderStatus{
 		PodStatuses: lbapi.PodStatuses{
-			Replicas:      *activeDeploy.Spec.Replicas,
+			Replicas:      replicas,
 			ReadyReplicas: 0,
 			TotalReplicas: 0,
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
-		VIP:        lb.Spec.Providers.Ipvsdr.VIP,
-		Deployment: activeDeploy.Name,
+		VIP: lb.Spec.Providers.Ipvsdr.VIP,
 	}
 
 	// the following loadbalancer need to get a valid vrid
@@ -64,7 +60,7 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploym
 	}
 
 	for _, pod := range podList {
-		f.evictPod(lb, pod)
+		lbutil.EvictPod(f.client, lb, pod)
 
 		status := lbutil.ComputePodStatus(pod)
 		providerStatus.TotalReplicas++
@@ -122,39 +118,4 @@ func (f *ipvsdr) deleteStatus(lb *lbapi.LoadBalancer) error {
 		return err
 	}
 	return nil
-}
-
-func (f *ipvsdr) evictPod(lb *lbapi.LoadBalancer, pod *v1.Pod) {
-
-	if len(lb.Spec.Nodes.Names) == 0 {
-		return
-	}
-
-	// fix: avoid evict pending pod
-	if pod.Spec.NodeName == "" {
-		return
-	}
-
-	evict := func() {
-		f.client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
-	}
-
-	// FIXME: when RequiredDuringSchedulingRequiredDuringExecution finished
-	// This is a special issue.
-	// There is bug when the nodes.Names change。
-	// According to nodeAffinity RequiredDuringSchedulingIgnoredDuringExecution,
-	// the system may or may not try to eventually evict the pod from its node.
-	// the pod may still running on the wrong node, so we evict it manually
-	if !stringsutil.StringInSlice(pod.Spec.NodeName, lb.Spec.Nodes.Names) &&
-		pod.DeletionTimestamp == nil {
-		evict()
-		return
-	}
-
-	// evict pod MatchNodeSelector Failed
-	if lbutil.IsPodMatchNodeSelectorFailed(pod) && pod.DeletionTimestamp == nil {
-		evict()
-		return
-	}
-
 }
