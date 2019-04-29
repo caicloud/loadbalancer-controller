@@ -8,4 +8,4 @@ COPY bin/linux_amd64/controller /usr/bin/controller
 
 ENTRYPOINT ["/usr/bin/controller"]
 
-CMD ["--debug"]
+CMD ["--v=2"]
