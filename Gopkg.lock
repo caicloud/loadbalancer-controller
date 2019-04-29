@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:9994bf7c1ebadc98438a920859a7d37101da024611108d47dfd312257c63b6d8"
+  name = "github.com/InVisionApp/conjungo"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "b3e69d3d701c8ca2652b517823173d58471ae1c2"
+
+[[projects]]
   branch = "release-1.12"
   digest = "1:db182bb75aa44edc0e101914eca70eb2912d77eec9697461380c9807337428dc"
   name = "github.com/caicloud/clientset"
@@ -231,6 +239,14 @@
   version = "v1.1.5"
 
 [[projects]]
+  digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
   branch = "master"
   digest = "1:0e9bfc47ab9941ecc3344e580baca5deb4091177e84dd9773b48b38ec26b93d5"
   name = "github.com/mattbaird/jsonpatch"
@@ -277,6 +293,14 @@
   pruneopts = "NUT"
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  digest = "1:998e4640c25e00ccb7b2569bf94562283937b8afb3485c0e1a0a05a15330240d"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
+  version = "v1.4.1"
 
 [[projects]]
   digest = "1:343d44e06621142ab09ae0c76c1799104cdfddd3ffb445d78b1adf8dc3ffaf3d"
@@ -759,6 +783,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/InVisionApp/conjungo",
     "github.com/caicloud/clientset/informers",
     "github.com/caicloud/clientset/kubernetes",
     "github.com/caicloud/clientset/kubernetes/typed/loadbalance/v1alpha2",
@@ -768,7 +793,6 @@
     "github.com/caicloud/clientset/util/controller",
     "github.com/caicloud/clientset/util/status",
     "github.com/caicloud/clientset/util/syncqueue",
-    "github.com/imdario/mergo",
     "github.com/mattbaird/jsonpatch",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
