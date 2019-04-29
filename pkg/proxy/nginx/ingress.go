@@ -46,8 +46,7 @@ const (
 func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 	terminationGracePeriodSeconds := int64(30)
 	dnsPolicy := v1.DNSClusterFirst
-	hostNetwork := true
-	replicas, _ := lbutil.CalculateReplicas(lb)
+	replicas, hostNetwork := lbutil.CalculateReplicas(lb)
 	maxSurge := intstr.FromInt(0)
 	t := true
 	labels := f.selector(lb)

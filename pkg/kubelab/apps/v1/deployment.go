@@ -2,11 +2,12 @@ package v1
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 
+	"github.com/InVisionApp/conjungo"
 	libcorev1 "github.com/caicloud/loadbalancer-controller/pkg/kubelab/core/v1"
 	libmetav1 "github.com/caicloud/loadbalancer-controller/pkg/kubelab/meta/v1"
-	"github.com/imdario/mergo"
 	"github.com/mattbaird/jsonpatch"
 
 	"k8s.io/api/apps/v1"
@@ -33,14 +34,37 @@ type DeploymentLab interface {
 	IsEqual(a, b *v1.Deployment, ignoreFields func(*v1.Deployment)) bool
 }
 
+func newOptions() *conjungo.Options {
+	o := conjungo.NewOptions()
+	o.SetKindMergeFunc(reflect.Slice, func(t, s reflect.Value, o *conjungo.Options) (reflect.Value, error) {
+		// Merges two slices of the same type by appending source to target.
+		if t.Type() != s.Type() {
+			return reflect.Value{}, fmt.Errorf("slices must have same type: T: %v S: %v", t.Type(), s.Type())
+		}
+		if !t.CanSet() {
+			return reflect.Value{}, fmt.Errorf("the target value can not be set")
+		}
+		if o.Overwrite {
+			// overwrite it no matter what it is
+			t.Set(s)
+		} else if t.Len() == 0 && s.Len() > 0 {
+			// without overwrite
+			// only change target when it is empty but src is not
+			t.Set(s)
+		}
+		return t, nil
+	})
+
+	return o
+}
+
 type deploymentImpl struct{}
 
 func (l *deploymentImpl) Merge(dst, src *v1.Deployment) error {
 	setObjectDefaultsDeployments(src)
 	libmetav1.DefaultObjectMetaLab.Merge(&dst.ObjectMeta, &src.ObjectMeta)
-
 	// merge spec
-	err := mergo.Merge(&dst.Spec, &src.Spec, mergo.WithOverride)
+	err := conjungo.Merge(&dst.Spec, src.Spec, newOptions())
 	if err != nil {
 		return err
 	}
@@ -50,6 +74,9 @@ func (l *deploymentImpl) Merge(dst, src *v1.Deployment) error {
 func (l *deploymentImpl) IsEqual(a, b *v1.Deployment, ignoreFields func(*v1.Deployment)) bool {
 	acopy := a.DeepCopy()
 	bcopy := b.DeepCopy()
+
+	setObjectDefaultsDeployments(acopy)
+	setObjectDefaultsDeployments(bcopy)
 
 	if ignoreFields != nil {
 		ignoreFields(acopy)
