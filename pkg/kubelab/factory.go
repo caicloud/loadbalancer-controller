@@ -9,7 +9,7 @@ type Interface interface {
 
 type kubelab struct{}
 
-// New constructs a new instance of a Kubelib
+// New constructs a new instance of a kubelab
 func New() Interface {
 	return &kubelab{}
 }
