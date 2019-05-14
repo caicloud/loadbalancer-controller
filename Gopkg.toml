@@ -24,6 +24,10 @@
   name = "github.com/spf13/pflag"
   version = "v1.0.3"
 
+[[constraint]]
+  name = "github.com/InVisionApp/conjungo"
+  branch = "master"
+
 [[override]]
   name = "github.com/caicloud/clientset"
   branch = "release-1.12"
