@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "release-1.14"
-  digest = "1:409d727609f3c7e9ebb5b45307292d1fc5b9b68b1263df8dd9ea68a02a387696"
+  digest = "1:c714a854b1847bf14a487d0b697c2ff9d068a0f6b1edf3869bfc519aac50674a"
   name = "github.com/caicloud/clientset"
   packages = [
     "informers",
@@ -56,6 +56,8 @@
     "informers/serving/v1alpha1",
     "informers/tenant",
     "informers/tenant/v1alpha1",
+    "informers/workload",
+    "informers/workload/v1alpha1",
     "kubernetes",
     "kubernetes/scheme",
     "kubernetes/typed/alerting/v1alpha1",
@@ -80,6 +82,7 @@
     "kubernetes/typed/servicemesh/v1alpha1",
     "kubernetes/typed/serving/v1alpha1",
     "kubernetes/typed/tenant/v1alpha1",
+    "kubernetes/typed/workload/v1alpha1",
     "listers/alerting/v1alpha1",
     "listers/apiextensions/v1beta1",
     "listers/apiregistration/v1",
@@ -102,6 +105,7 @@
     "listers/servicemesh/v1alpha1",
     "listers/serving/v1alpha1",
     "listers/tenant/v1alpha1",
+    "listers/workload/v1alpha1",
     "pkg/apis/alerting/v1alpha1",
     "pkg/apis/apiextensions/v1beta1",
     "pkg/apis/apiregistration/v1",
@@ -124,13 +128,14 @@
     "pkg/apis/servicemesh/v1alpha1",
     "pkg/apis/serving/v1alpha1",
     "pkg/apis/tenant/v1alpha1",
+    "pkg/apis/workload/v1alpha1",
     "util/controller",
     "util/event",
     "util/status",
     "util/syncqueue",
   ]
   pruneopts = "NUT"
-  revision = "c4a55061218a32d174a27eb0c86bd57e0715a1f0"
+  revision = "efe82ec3d7063d342ee593596818d1ddd34394d2"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -317,7 +322,7 @@
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = "NUT"
-  revision = "ea8f1a30c4438cc8b13f05538385ad8dc6049b43"
+  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[projects]]
   branch = "master"
@@ -347,14 +352,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4101185d3109012c068fd0ca97f616aa024ad899bc36142f8e397bc242fa8f90"
+  digest = "1:3b0776f2db863b8e8c7171671ff28c6bd073679476f34780b6a298cac01b0df1"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "6f217b454f458f9c81d48c1fff9e6f5ea6b0bbf2"
+  revision = "c5567b49c5d04a5f83870795b8c0e2df43a8ce32"
 
 [[projects]]
   digest = "1:8d8faad6b12a3a4c819a3f9618cb6ee1fa1cfc33253abeeea8b55336721e3405"

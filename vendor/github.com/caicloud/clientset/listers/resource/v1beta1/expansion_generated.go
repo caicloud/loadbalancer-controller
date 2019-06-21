@@ -14,6 +14,14 @@ type ClusterListerExpansion interface{}
 // ConfigLister.
 type ConfigListerExpansion interface{}
 
+// ExtendedResourceListerExpansion allows custom methods to be added to
+// ExtendedResourceLister.
+type ExtendedResourceListerExpansion interface{}
+
+// InfraNetworkListerExpansion allows custom methods to be added to
+// InfraNetworkLister.
+type InfraNetworkListerExpansion interface{}
+
 // MachineListerExpansion allows custom methods to be added to
 // MachineLister.
 type MachineListerExpansion interface{}
@@ -22,6 +30,14 @@ type MachineListerExpansion interface{}
 // MachineAutoScalingGroupLister.
 type MachineAutoScalingGroupListerExpansion interface{}
 
+// NetworkListerExpansion allows custom methods to be added to
+// NetworkLister.
+type NetworkListerExpansion interface{}
+
+// NodeClaimListerExpansion allows custom methods to be added to
+// NodeClaimLister.
+type NodeClaimListerExpansion interface{}
+
 // NodeLocalStorageListerExpansion allows custom methods to be added to
 // NodeLocalStorageLister.
 type NodeLocalStorageListerExpansion interface{}
@@ -29,6 +45,10 @@ type NodeLocalStorageListerExpansion interface{}
 // RequirementGapListerExpansion allows custom methods to be added to
 // RequirementGapLister.
 type RequirementGapListerExpansion interface{}
+
+// ResourceClassListerExpansion allows custom methods to be added to
+// ResourceClassLister.
+type ResourceClassListerExpansion interface{}
 
 // SnapshotListerExpansion allows custom methods to be added to
 // SnapshotLister.
@@ -49,3 +69,11 @@ type StorageTypeListerExpansion interface{}
 // TagListerExpansion allows custom methods to be added to
 // TagLister.
 type TagListerExpansion interface{}
+
+// WorkloadNetworkListerExpansion allows custom methods to be added to
+// WorkloadNetworkLister.
+type WorkloadNetworkListerExpansion interface{}
+
+// WorkloadNetworkNamespaceListerExpansion allows custom methods to be added to
+// WorkloadNetworkNamespaceLister.
+type WorkloadNetworkNamespaceListerExpansion interface{}
