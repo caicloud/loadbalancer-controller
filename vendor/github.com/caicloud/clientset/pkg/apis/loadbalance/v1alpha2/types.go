@@ -226,6 +226,8 @@ type LoadBalancerStatus struct {
 	Accessible bool `json:"accessible,omitempty"`
 	// AccessIPs specify the entrance ip of loadbalancer
 	AccessIPs []string `json:"accessIPs,omitempty"`
+	// NodeIPs specify the entrance node ip of loadbalancer
+	NodeIPs []string `json:"nodeIPs,omitempty"`
 	// +optional
 	ProxyStatus ProxyStatus `json:"proxyStatus"`
 	// +optional
@@ -281,6 +283,8 @@ type AzureProviderStatus struct {
 	Message string `json:"message,omitempty"`
 	// ProvisioningState azure lb state
 	ProvisioningState string `json:"provisioningState,omitempty"`
+	// PublicIPAddress - The reference of the Public IP address.
+	PublicIPAddress *string `json:"publicIPAddress,omitempty"`
 }
 
 // AzureProviderPhase azure loadbalancer phase

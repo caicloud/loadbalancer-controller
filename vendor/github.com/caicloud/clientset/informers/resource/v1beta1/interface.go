@@ -16,14 +16,24 @@ type Interface interface {
 	Clusters() ClusterInformer
 	// Configs returns a ConfigInformer.
 	Configs() ConfigInformer
+	// ExtendedResources returns a ExtendedResourceInformer.
+	ExtendedResources() ExtendedResourceInformer
+	// InfraNetworks returns a InfraNetworkInformer.
+	InfraNetworks() InfraNetworkInformer
 	// Machines returns a MachineInformer.
 	Machines() MachineInformer
 	// MachineAutoScalingGroups returns a MachineAutoScalingGroupInformer.
 	MachineAutoScalingGroups() MachineAutoScalingGroupInformer
+	// Networks returns a NetworkInformer.
+	Networks() NetworkInformer
+	// NodeClaims returns a NodeClaimInformer.
+	NodeClaims() NodeClaimInformer
 	// NodeLocalStorages returns a NodeLocalStorageInformer.
 	NodeLocalStorages() NodeLocalStorageInformer
 	// RequirementGaps returns a RequirementGapInformer.
 	RequirementGaps() RequirementGapInformer
+	// ResourceClasses returns a ResourceClassInformer.
+	ResourceClasses() ResourceClassInformer
 	// Snapshots returns a SnapshotInformer.
 	Snapshots() SnapshotInformer
 	// StorageServices returns a StorageServiceInformer.
@@ -32,6 +42,8 @@ type Interface interface {
 	StorageTypes() StorageTypeInformer
 	// Tags returns a TagInformer.
 	Tags() TagInformer
+	// WorkloadNetworks returns a WorkloadNetworkInformer.
+	WorkloadNetworks() WorkloadNetworkInformer
 }
 
 type version struct {
@@ -55,6 +67,16 @@ func (v *version) Configs() ConfigInformer {
 	return &configInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
+// ExtendedResources returns a ExtendedResourceInformer.
+func (v *version) ExtendedResources() ExtendedResourceInformer {
+	return &extendedResourceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// InfraNetworks returns a InfraNetworkInformer.
+func (v *version) InfraNetworks() InfraNetworkInformer {
+	return &infraNetworkInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
 // Machines returns a MachineInformer.
 func (v *version) Machines() MachineInformer {
 	return &machineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
@@ -65,6 +87,16 @@ func (v *version) MachineAutoScalingGroups() MachineAutoScalingGroupInformer {
 	return &machineAutoScalingGroupInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
+// Networks returns a NetworkInformer.
+func (v *version) Networks() NetworkInformer {
+	return &networkInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// NodeClaims returns a NodeClaimInformer.
+func (v *version) NodeClaims() NodeClaimInformer {
+	return &nodeClaimInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
 // NodeLocalStorages returns a NodeLocalStorageInformer.
 func (v *version) NodeLocalStorages() NodeLocalStorageInformer {
 	return &nodeLocalStorageInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
@@ -73,6 +105,11 @@ func (v *version) NodeLocalStorages() NodeLocalStorageInformer {
 // RequirementGaps returns a RequirementGapInformer.
 func (v *version) RequirementGaps() RequirementGapInformer {
 	return &requirementGapInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ResourceClasses returns a ResourceClassInformer.
+func (v *version) ResourceClasses() ResourceClassInformer {
+	return &resourceClassInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Snapshots returns a SnapshotInformer.
@@ -93,4 +130,9 @@ func (v *version) StorageTypes() StorageTypeInformer {
 // Tags returns a TagInformer.
 func (v *version) Tags() TagInformer {
 	return &tagInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// WorkloadNetworks returns a WorkloadNetworkInformer.
+func (v *version) WorkloadNetworks() WorkloadNetworkInformer {
+	return &workloadNetworkInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

@@ -88,11 +88,18 @@ type Reference struct {
 
 // ExtraInfo describes the extra infomation of config reference.
 type ExtraInfo struct {
-	ReleaseExtraInfo `json:",inline"`
-	IngressExtraInfo `json:",inline"`
+	ReleaseExtraInfo  `json:",inline"`
+	IngressExtraInfo  `json:",inline"`
+	WorkloadExtraInfo `json:",inline"`
 }
 
-// ExtraInfo describes the release extra infomation of config reference.
+// WorkloadExtraInfo describes the workload extra infomation of config reference.
+type WorkloadExtraInfo struct {
+	Alias        string `json:"alias,omitempty"`
+	WorkloadKind string `json:"workloadKind,omitempty"`
+}
+
+// ReleaseExtraInfo describes the release extra infomation of config reference.
 type ReleaseExtraInfo struct {
 	Alias        string        `json:"alias,omitempty"`
 	ReleaseKind  string        `json:"releaseKind,omitempty"`

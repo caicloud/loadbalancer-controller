@@ -3,7 +3,7 @@ package event
 import (
 	"strings"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // copy from k8s.io/kubernetes/pkg/kubelet/evnets/event.go
@@ -19,6 +19,9 @@ const (
 	// FailedCreatePodReason is added in an event and in a replica set condition
 	// when a pod for a replica set is failed to be created.
 	FailedCreatePodReason = "FailedCreate"
+	// FailedCreatePodReason is added in an event and in a replica set condition
+	// when a pod for a replica set is failed to be created. use for DaemonSet
+	FailedPlacementPodReason = "FailedPlacement"
 	// SuccessfulCreatePodReason is added in an event when a pod for a replica set
 	// is successfully created.
 	SuccessfulCreatePodReason = "SuccessfulCreate"
@@ -31,7 +34,7 @@ const (
 )
 
 // EventByLastTimestamp sorts event by lastTimestamp
-type EventByLastTimestamp []*v1.Event
+type EventByLastTimestamp []*corev1.Event
 
 func (x EventByLastTimestamp) Len() int {
 	return len(x)
@@ -53,7 +56,7 @@ type EventCase struct {
 	MsgKeys   []string
 }
 
-func (c *EventCase) Match(event *v1.Event) bool {
+func (c *EventCase) Match(event *corev1.Event) bool {
 	if event == nil {
 		return false
 	}
