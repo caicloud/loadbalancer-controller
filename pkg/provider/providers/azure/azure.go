@@ -195,10 +195,10 @@ func (f *azure) syncLoadBalancer(obj interface{}) error {
 	}
 	lb = nlb.DeepCopy()
 
-	if lb.Spec.Providers.Azure == nil {
-		// It is not my responsible, clean up legacies
-		return f.cleanup(lb, true)
-	}
+	// if lb.Spec.Providers.Azure == nil {
+	// 	// It is not my responsible, clean up legacies
+	// 	return f.cleanup(lb, true)
+	// }
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
