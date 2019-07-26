@@ -51,6 +51,7 @@ import (
 const (
 	providerNameSuffix = "-provider-azure"
 	providerName       = "azure"
+	BACKENDPOOL_STATUS = "loadbalance.caicloud.io/azureBackendPoolStatus"
 )
 
 func init() {
@@ -195,7 +196,7 @@ func (f *azure) syncLoadBalancer(obj interface{}) error {
 	}
 	lb = nlb.DeepCopy()
 
-	if lb.Spec.Providers.Azure == nil {
+	if lb.Spec.Providers.Azure == nil && lb.Annotations != nil && lb.Annotations[BACKENDPOOL_STATUS] == "" {
 		// It is not my responsible, clean up legacies
 		return f.cleanup(lb, true)
 	}
