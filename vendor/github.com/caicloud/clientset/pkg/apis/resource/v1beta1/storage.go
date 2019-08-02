@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -77,6 +78,13 @@ type StorageService struct {
 	// StorageMetaData represents the current metadata for each storage backend.
 	// +optional
 	StorageMetaData StorageMetaData `json:"storageMetaData,omitempty"`
+
+	// quota
+
+	// Hard is the set of desired hard limits for each named resource.
+	Hard corev1.ResourceList `json:"hard"`
+	// Allocated is the amount of resources that have been allocated.
+	Allocated corev1.ResourceList `json:"allocated"`
 }
 
 // StorageMetaData is the data structure for each storage backend metadata.

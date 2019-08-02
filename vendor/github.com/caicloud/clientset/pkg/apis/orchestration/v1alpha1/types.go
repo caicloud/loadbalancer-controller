@@ -112,6 +112,12 @@ type VertexSpec struct {
 
 	// Config is the config for parsing template
 	Config string `json:"config,omitempty"`
+
+	// AdoptedIfOrphan means if the vertex is orphan,
+	// it could be adopted by the application.
+	// Defaults to false.
+	// +optional
+	AdoptedIfOrphan *bool `json:"adoptedIfOrphan,omitempty"`
 }
 
 // Edge is edge in workflows startup sequence DAG

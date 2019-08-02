@@ -78,6 +78,12 @@ type ProxySpec struct {
 	// Cannot be updated.
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	// HttpPort is the port that LoadBalancer listen http protocol
+	// default is 80
+	HttpPort int `json:"httpPort"`
+	// HttpsPort is the port that LoadBalancer listen https protocol
+	// default is 443
+	HttpsPort int `json:"httpsPort"`
 }
 
 // ProxyType ...
@@ -281,6 +287,8 @@ type AzureProviderStatus struct {
 	Message string `json:"message,omitempty"`
 	// ProvisioningState azure lb state
 	ProvisioningState string `json:"provisioningState,omitempty"`
+	// PublicIPAddress - The reference of the Public IP address.
+	PublicIPAddress *string `json:"publicIPAddress,omitempty"`
 }
 
 // AzureProviderPhase azure loadbalancer phase
