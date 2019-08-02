@@ -83,6 +83,17 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		},
 	}
 
+	httpPort := lb.Spec.Proxy.HttpPort
+	httpsPort := lb.Spec.Proxy.HttpsPort
+	if httpPort <= 0 {
+		// default http port is 80
+		httpPort = 80
+	}
+	if httpsPort <= 0 {
+		// default https port is 443
+		httpsPort = 443
+	}
+
 	ingressContainer := v1.Container{
 		Name:            "proxy",
 		Image:           f.image,
@@ -90,10 +101,10 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		Resources:       lb.Spec.Proxy.Resources,
 		Ports: []v1.ContainerPort{
 			{
-				ContainerPort: 80,
+				ContainerPort: int32(httpPort),
 			},
 			{
-				ContainerPort: 443,
+				ContainerPort: int32(httpsPort),
 			},
 			{
 				ContainerPort: ingressControllerPort,
@@ -134,12 +145,14 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			"--annotations-prefix=" + f.annotationPrefix,
 			"--enable-ssl-passthrough",
 			"--enable-ssl-chain-completion=false",
+			"--http-port=" + strconv.Itoa(httpPort),
+			"--https-port=" + strconv.Itoa(httpsPort),
 		},
 		ReadinessProbe: &v1.Probe{
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path:   healthCheckPath,
-					Port:   intstr.FromInt(80),
+					Port:   intstr.FromInt(httpPort),
 					Scheme: v1.URISchemeHTTP,
 				},
 			},
@@ -150,7 +163,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path:   healthCheckPath,
-					Port:   intstr.FromInt(80),
+					Port:   intstr.FromInt(httpPort),
 					Scheme: v1.URISchemeHTTP,
 				},
 			},
