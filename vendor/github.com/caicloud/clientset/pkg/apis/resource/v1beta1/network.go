@@ -8,7 +8,6 @@ import (
 
 // +genclient
 // +genclient:nonNamespaced
-// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Network are non-namespaced; the id of the network
@@ -18,7 +17,8 @@ type Network struct {
 	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              NetworkSpec `json:"spec"`
+	Spec              NetworkSpec   `json:"spec"`
+	Status            NetworkStatus `json:"status,omitempty"`
 }
 
 type NetworkSpec struct {
@@ -59,6 +59,26 @@ type Subnet struct {
 	RangeEnd   net.IP `json:"rangeEnd,omitempty"`
 	// NodeCidrMaskSize define canal network node cidr mask size
 	NodeCidrMaskSize int `json:"nodeCidrMaskSize,omitempty"`
+}
+
+// NetworkStatus represent the status of network
+type NetworkStatus struct {
+	// SubnetStatuses contains a list of SubnetStatus
+	SubnetStatuses []SubnetStatus `json:"subnetStatuses,omitempty"`
+}
+
+// SubnetStatus define the status of subnet
+type SubnetStatus struct {
+	// ID of the subnet
+	ID string `json:"id,omitempty"`
+	// RangeStart represent the start ip of range
+	RangeStart net.IP `json:"rangeStart,omitempty"`
+	// RangeEnd represent the end ip of range
+	RangeEnd net.IP `json:"rangeEnd,omitempty"`
+	// Bitset represent all ips in the range
+	Bitset string `json:"bitset,omitempty"`
+	// Available number of ips in the range
+	Available int `json:"available,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

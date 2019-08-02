@@ -101,8 +101,13 @@ type CephMetaData struct {
 type CephPool struct {
 	Name        string `json:"name"`
 	ReplicaSize int    `json:"replicaSize"`
+	// Deprecated
 	// total capacity of the current pool, kb
 	Capacity int `json:"capacity"`
+	// maximum available capacity, kb
+	MaxAvailable int `json:"maxAvailable"`
+	// capacity usage, 0 - 100
+	PercentUsed float32 `json:"percentUsed"`
 	// capacity used, kb
 	Used int `json:"used"`
 	// number of objects in the pool

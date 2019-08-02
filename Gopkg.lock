@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "release-1.14"
-  digest = "1:c714a854b1847bf14a487d0b697c2ff9d068a0f6b1edf3869bfc519aac50674a"
+  digest = "1:d22fbbc64218c6b12b9fe18113eb5640ce31597b45f170488067653edb059098"
   name = "github.com/caicloud/clientset"
   packages = [
     "informers",
@@ -135,7 +135,7 @@
     "util/syncqueue",
   ]
   pruneopts = "NUT"
-  revision = "efe82ec3d7063d342ee593596818d1ddd34394d2"
+  revision = "874a70ee1b86eaaae050a7638ca073deecb75b86"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
