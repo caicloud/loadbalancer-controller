@@ -80,10 +80,10 @@ type ProxySpec struct {
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// HttpPort is the port that LoadBalancer listen http protocol
 	// default is 80
-	HttpPort int `json:"httpPort"`
+	HttpPort int `json:"httpPort,omitempty"`
 	// HttpsPort is the port that LoadBalancer listen https protocol
 	// default is 443
-	HttpsPort int `json:"httpsPort"`
+	HttpsPort int `json:"httpsPort,omitempty"`
 }
 
 // ProxyType ...
