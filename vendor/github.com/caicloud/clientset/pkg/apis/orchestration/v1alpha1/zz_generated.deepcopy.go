@@ -297,6 +297,11 @@ func (in *VertexSpec) DeepCopyInto(out *VertexSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.AdoptedIfOrphan != nil {
+		in, out := &in.AdoptedIfOrphan, &out.AdoptedIfOrphan
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

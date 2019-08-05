@@ -16,6 +16,7 @@ import (
 	config "github.com/caicloud/clientset/informers/config"
 	dataset "github.com/caicloud/clientset/informers/dataset"
 	devops "github.com/caicloud/clientset/informers/devops"
+	evaluation "github.com/caicloud/clientset/informers/evaluation"
 	loadbalance "github.com/caicloud/clientset/informers/loadbalance"
 	logging "github.com/caicloud/clientset/informers/logging"
 	microservice "github.com/caicloud/clientset/informers/microservice"
@@ -23,6 +24,7 @@ import (
 	orchestration "github.com/caicloud/clientset/informers/orchestration"
 	release "github.com/caicloud/clientset/informers/release"
 	resource "github.com/caicloud/clientset/informers/resource"
+	serving "github.com/caicloud/clientset/informers/serving"
 	tenant "github.com/caicloud/clientset/informers/tenant"
 	kubernetes "github.com/caicloud/clientset/kubernetes"
 	"k8s.io/api/core/v1"
@@ -95,6 +97,7 @@ type SharedInformerFactory interface {
 	Config() config.Interface
 	Dataset() dataset.Interface
 	Devops() devops.Interface
+	Evaluation() evaluation.Interface
 	Loadbalance() loadbalance.Interface
 	Logging() logging.Interface
 	Microservice() microservice.Interface
@@ -102,6 +105,7 @@ type SharedInformerFactory interface {
 	Orchestration() orchestration.Interface
 	Release() release.Interface
 	Resource() resource.Interface
+	Serving() serving.Interface
 	Tenant() tenant.Interface
 }
 
@@ -133,6 +137,10 @@ func (f *sharedInformerFactory) Devops() devops.Interface {
 	return devops.New(f, f.namespace, f.tweakListOptions)
 }
 
+func (f *sharedInformerFactory) Evaluation() evaluation.Interface {
+	return evaluation.New(f, f.namespace, f.tweakListOptions)
+}
+
 func (f *sharedInformerFactory) Loadbalance() loadbalance.Interface {
 	return loadbalance.New(f, f.namespace, f.tweakListOptions)
 }
@@ -159,6 +167,10 @@ func (f *sharedInformerFactory) Release() release.Interface {
 
 func (f *sharedInformerFactory) Resource() resource.Interface {
 	return resource.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Serving() serving.Interface {
+	return serving.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Tenant() tenant.Interface {
