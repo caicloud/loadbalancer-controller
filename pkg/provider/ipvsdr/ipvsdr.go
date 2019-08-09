@@ -49,8 +49,9 @@ import (
 )
 
 const (
-	providerNameSuffix = "-provider-ipvsdr"
-	providerName       = "ipvsdr"
+	providerNameSuffix    = "-provider-ipvsdr"
+	providerName          = "ipvsdr"
+	providerPriorityClass = "system-node-critical"
 )
 
 type ipvsdr struct {
@@ -383,6 +384,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 					HostNetwork: hostNetwork,
 					DNSPolicy:   dnsPolicy,
 					// TODO
+					PriorityClassName:             providerPriorityClass,
 					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 					Affinity: &v1.Affinity{
 						// decide running on which node
