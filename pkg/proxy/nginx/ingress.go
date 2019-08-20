@@ -41,6 +41,8 @@ const (
 	ingressControllerPort = 450
 	// ingress controller use this port to export nginx status page
 	ingressStatusPort = 451
+	// ingress controller use this priority class to create pod
+	ingressPriorityClass = "system-node-critical"
 )
 
 func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
@@ -272,6 +274,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 					Affinity:                      &affinity,
 					Tolerations:                   toleration.GenerateTolerations(),
 					Containers:                    containers,
+					PriorityClassName:             ingressPriorityClass,
 				},
 			},
 		},
