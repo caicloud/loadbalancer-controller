@@ -143,7 +143,7 @@ func judgePod(pod *v1.Pod) PodStatus {
 		if pod.Status.Reason == NodeUnreachablePodReason {
 			phase = v1.PodUnknown
 		} else {
-			if phase == v1.PodRunning {
+			if phase == v1.PodRunning || phase == v1.PodPending {
 				// only if phase is Running, change phase to terminating
 				phase = PodTerminating
 			}
