@@ -25,7 +25,7 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/toleration"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -83,8 +83,8 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		},
 	}
 
-	httpPort := lb.Spec.Proxy.HttpPort
-	httpsPort := lb.Spec.Proxy.HttpsPort
+	httpPort := lb.Spec.Proxy.HTTPPort
+	httpsPort := lb.Spec.Proxy.HTTPSPort
 	if httpPort <= 0 {
 		// default http port is 80
 		httpPort = 80
@@ -169,7 +169,6 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			},
 		},
 	}
-
 
 	sidecarContainer := v1.Container{
 		Name:            "sidecar",
