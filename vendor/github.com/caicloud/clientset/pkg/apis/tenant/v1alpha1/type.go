@@ -118,6 +118,11 @@ type ClusterQuota struct {
 }
 
 type ClusterQuotaSpec struct {
+	// Hard is the set of desired hard limits for each named (StorageClass) resource, set up and managed by storage component.
+	// "storage-class-name.storageclass.storage.k8s.io/persistentvolumeclaims" key indicates the total number of PVCs
+	// that the cluster can allocate.
+	// "storage-class-name.storageclass.storage.k8s.io/requests.storage" key indicates the total storage capacity
+	// that the cluster can allocate.
 	Hard  v1.ResourceList           `json:"hard"`
 	Ratio map[v1.ResourceName]int64 `json:"ratio"`
 }

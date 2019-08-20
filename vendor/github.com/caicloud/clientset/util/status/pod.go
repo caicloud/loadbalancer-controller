@@ -34,6 +34,22 @@ func judgePod(pod *v1.Pod) PodStatus {
 				message = condition.Message
 			}
 		}
+		// use v1.PodScheduled error first
+		if phase != PodError {
+			// detect pending error from ContainerStatuses
+			for i := range pod.Status.ContainerStatuses {
+				cs := pod.Status.ContainerStatuses[i]
+				if cs.State.Waiting != nil {
+					w := cs.State.Waiting
+					// CreateContainerConfigError error
+					if w.Reason == "CreateContainerConfigError" {
+						phase = PodError
+						reason = w.Reason
+						message = w.Message
+					}
+				}
+			}
+		}
 	}
 
 	initializing := false

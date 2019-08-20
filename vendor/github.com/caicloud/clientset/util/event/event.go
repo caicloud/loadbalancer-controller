@@ -31,6 +31,8 @@ const (
 	// SuccessfulDeletePodReason is added in an event when a pod for a replica set
 	// is successfully deleted.
 	SuccessfulDeletePodReason = "SuccessfulDelete"
+	// FailedCreatePodSandBoxReason is added when a pod failed to create pod sandbox
+	FailedCreatePodSandBoxReason = "FailedCreatePodSandBox"
 )
 
 // EventByLastTimestamp sorts event by lastTimestamp
