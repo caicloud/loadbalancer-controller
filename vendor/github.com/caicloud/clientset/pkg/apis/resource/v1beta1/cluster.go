@@ -23,13 +23,20 @@ type Cluster struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	Spec   ClusterSpec   `json:"spec"`
+	// Spec defines a specification of a cluster.
+	// Provisioned by an administrator.
+	Spec ClusterSpec `json:"spec"`
+
+	// Status represents the current information/status for the cluster.
+	// Populated by the system.
 	Status ClusterStatus `json:"status"`
 }
 
 // ClusterSpec is a description of a cluster.
 type ClusterSpec struct {
-	DisplayName      string                     `json:"displayName"`
+	// DisplayName is the human-readable name for cluster.
+	DisplayName string `json:"displayName"`
+
 	Provider         CloudProvider              `json:"provider"`
 	ProviderConfig   ClusterCloudProviderConfig `json:"providerConfig"`
 	IsControlCluster bool                       `json:"isControlCluster"`
@@ -40,6 +47,7 @@ type ClusterSpec struct {
 	Versions         *ClusterVersions           `json:"versions,omitempty"`
 	Masters          []string                   `json:"masters"`
 	Nodes            []string                   `json:"nodes"`
+	Etcds            []string                   `json:"etcds"`
 	// deploy
 	DeployToolsExternalVars map[string]string `json:"deployToolsExternalVars"`
 	// adapt expired
@@ -53,6 +61,7 @@ type ClusterStatus struct {
 	Conditions     []ClusterCondition                 `json:"conditions"`
 	Masters        []MachineThumbnail                 `json:"masters"`
 	Nodes          []MachineThumbnail                 `json:"nodes"`
+	Etcds          []MachineThumbnail                 `json:"etcds"`
 	Capacity       map[ResourceName]resource.Quantity `json:"capacity"`
 	OperationLogs  []OperationLog                     `json:"operationLogs,omitempty"`
 	AutoScaling    ClusterAutoScalingStatus           `json:"autoScaling,omitempty"`
@@ -104,6 +113,7 @@ type MachineSpec struct {
 	Versions         MachineVersions            `json:"versions,omitempty"`
 	Cluster          string                     `json:"cluster"`
 	IsMaster         bool                       `json:"isMaster"`
+	IsEtcd           bool                       `json:"isEtcd"`
 	HostnameReadonly bool                       `json:"hostnameReadonly,omitempty"`
 	Tags             map[string]string          `json:"tags"`
 }
@@ -119,6 +129,9 @@ type MachineStatus struct {
 	// role
 	// machine is a master in cluster
 	IsMaster bool `json:"isMaster"`
+
+	// IsEtcd represents if the node is etcd-specify node
+	IsEtcd bool `json:"isEtcd"`
 
 	// reference
 
@@ -250,7 +263,7 @@ type MachineTemplate struct {
 	Spec MachineSpec `json:"spec"`
 }
 
-// MachineStatus represents information about the status of a node claim.
+// NodeClaimStatus represents information about the status of a node claim.
 type NodeClaimStatus struct {
 	// node reference
 	// has value if node created
@@ -258,6 +271,9 @@ type NodeClaimStatus struct {
 	// role
 	// node claim is a master in cluster
 	IsMaster bool `json:"isMaster"`
+
+	// IsEtcd represents node claim is a etcd in cluster
+	IsEtcd bool `json:"isEtcd"`
 	// Current service state of node claim.
 	// +optional
 	// +patchMergeKey=type

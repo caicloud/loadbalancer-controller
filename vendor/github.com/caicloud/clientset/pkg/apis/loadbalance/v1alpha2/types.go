@@ -78,12 +78,21 @@ type ProxySpec struct {
 	// Cannot be updated.
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// HttpPort is the port that LoadBalancer listen http protocol
+	// HTTPPort is the port that LoadBalancer listen http protocol
 	// default is 80
-	HttpPort int `json:"httpPort"`
-	// HttpsPort is the port that LoadBalancer listen https protocol
+	HTTPPort int `json:"httpPort,omitempty"`
+	// HTTPSPort is the port that LoadBalancer listen https protocol
 	// default is 443
-	HttpsPort int `json:"httpsPort"`
+	HTTPSPort int `json:"httpsPort,omitempty"`
+	// PortRanges define a list of port-ranges the proxy can use
+	// default is [{20000,29999}]
+	PortRanges []PortRange `json:"portRanges,omitempty"`
+}
+
+// PortRange describe a port range in {start, end}
+type PortRange struct {
+	Start int32 `json:"start"`
+	End   int32 `json:"end"`
 }
 
 // ProxyType ...

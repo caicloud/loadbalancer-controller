@@ -1399,6 +1399,11 @@ func (in *ClusterSpec) DeepCopyInto(out *ClusterSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Etcds != nil {
+		in, out := &in.Etcds, &out.Etcds
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.DeployToolsExternalVars != nil {
 		in, out := &in.DeployToolsExternalVars, &out.DeployToolsExternalVars
 		*out = make(map[string]string, len(*in))
@@ -1437,6 +1442,11 @@ func (in *ClusterStatus) DeepCopyInto(out *ClusterStatus) {
 	}
 	if in.Nodes != nil {
 		in, out := &in.Nodes, &out.Nodes
+		*out = make([]MachineThumbnail, len(*in))
+		copy(*out, *in)
+	}
+	if in.Etcds != nil {
+		in, out := &in.Etcds, &out.Etcds
 		*out = make([]MachineThumbnail, len(*in))
 		copy(*out, *in)
 	}

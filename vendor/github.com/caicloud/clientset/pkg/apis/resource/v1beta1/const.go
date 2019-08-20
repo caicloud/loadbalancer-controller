@@ -79,7 +79,11 @@ const (
 	// node machine status
 	AnnotationKeyNodeMachineStatus = "machine.resource.caicloud.io/status"
 	// node machine info
-	AnnotationKeyNodeMachineIsMaster  = "machine.resource.caicloud.io/is-master"
+	AnnotationKeyNodeMachineIsMaster = "machine.resource.caicloud.io/is-master"
+
+	// AnnotationKeyNodeMachineIsEtcd for etcd node annotation key, it's value is true when node is etcd node
+	AnnotationKeyNodeMachineIsEtcd = "machine.resource.caicloud.io/is-etcd"
+
 	AnnotationKeyNodeMachineDiskTotal = "machine.resource.caicloud.io/disk-total"
 	AnnotationKeyNodeMASG             = "machine.resource.caicloud.io/auto-scaling-group"
 	// node machine cloud provider about
@@ -92,6 +96,9 @@ const (
 
 	// finalizers
 	FinalizerNameClusterController = "cluster.resource.caicloud.io/cluster-finalizer"
+
+	// TaintsKeyNodeEtcd represents the value of etcd node taints key
+	TaintsKeyNodeEtcd = "cluster.resource.caicloud.io/etcd"
 )
 
 // cluster/machine/node conditions about
@@ -102,6 +109,9 @@ const (
 	ClusterConditionNodeNumMismatch ClusterConditionType = "NodeNumMismatch"
 	ClusterConditionMastersReady    ClusterConditionType = "MasterReady"
 	ClusterConditionApiServerReady  ClusterConditionType = "ApiServerReady"
+
+	// ClusterConditionEtcdsReady represent the cluster etcd nodes status
+	ClusterConditionEtcdsReady      ClusterConditionType = "EtcdReady"
 	ClusterConditionAddonReady      ClusterConditionType = "AddonReady"
 	ClusterConditionAddonTimeout    ClusterConditionType = "AddonTimeout"
 	ClusterConditionDeletion        ClusterConditionType = "Deletion"
