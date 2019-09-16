@@ -35,6 +35,7 @@ var (
 		"force-ssl-redirect":     "false",
 		"enable-vts-status":      "true",
 		"proxy-body-size":        "5G",
+		"server-tokens":          "false",
 		"skip-access-log-urls":   "/nginx_status/format/json",
 	}
 )
