@@ -18,6 +18,9 @@ func NewCommand() *cobra.Command {
 		Use:  "loadbalancer-controller",
 		Long: `k8s loadbalancer resource controller`,
 		Run: func(cmd *cobra.Command, args []string) {
+			if s.Debug {
+				klog.Warning("--debug Run with debug mode (deprecated)")
+			}
 			c, err := s.Config()
 			if err != nil {
 				klog.Exitln(err)
