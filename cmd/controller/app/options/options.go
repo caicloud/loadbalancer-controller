@@ -37,6 +37,7 @@ const (
 type Options struct {
 	Master     string
 	Kubeconfig string
+	Debug      bool
 	Cfg        lbconfig.Configuration
 }
 
@@ -50,7 +51,7 @@ func (s *Options) Flags() *pflag.FlagSet {
 	fs := pflag.NewFlagSet("options", pflag.ExitOnError)
 
 	s.Cfg.AddFlags(fs)
-
+	fs.BoolVar(&s.Debug, "debug", s.Debug, "Run with debug mode (deprecated)")
 	fs.StringVar(&s.Kubeconfig, "kubeconfig", s.Kubeconfig, "Path to kubeconfig file with authorization and master location information.")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
 
