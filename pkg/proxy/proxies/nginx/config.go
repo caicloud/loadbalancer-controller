@@ -36,16 +36,33 @@ var (
 		"proxy-body-size":        "5G",
 		"skip-access-log-urls":   "/nginx_status/format/json",
 	}
+
+	// managedConfig is fully controlled by CPS. we should delete these from configmap if they are not specified.
+	managedConfig = map[string]string{
+		"proxy-buffer-size":        "",
+		"proxy-buffers-number":     "",
+		"proxy-read-timeout":       "",
+		"limit-conn-zone-variable": "",
+		"whitelist-source-range":   "",
+	}
 )
 
-func merge(dst, src map[string]string) map[string]string {
+func merge(base, del, add map[string]string) map[string]string {
 	ret := make(map[string]string)
 
-	for k, v := range dst {
+	for k, v := range base {
+		if del != nil {
+			if _, has := del[k]; has {
+				continue
+			}
+		}
 		ret[k] = v
 	}
-	for k, v := range src {
-		ret[k] = v
+	if add != nil {
+		for k, v := range add {
+			ret[k] = v
+		}
+
 	}
 
 	return ret
@@ -55,23 +72,23 @@ func (f *nginx) ensureConfigMaps(lb *lbapi.LoadBalancer) error {
 	labels := f.selector(lb)
 
 	cmName := fmt.Sprintf(configMapName, lb.Name)
-	config := merge(defaultConfig, lb.Spec.Proxy.Config)
-	err := f.ensureConfigMap(cmName, lb.Namespace, labels, config)
+	config := merge(defaultConfig, nil, lb.Spec.Proxy.Config)
+	err := f.ensureConfigMap(cmName, lb.Namespace, labels, managedConfig, config)
 	if err != nil {
 		return err
 	}
 	tcpcmName := fmt.Sprintf(tcpConfigMapName, lb.Name)
-	err = f.ensureConfigMap(tcpcmName, lb.Namespace, labels, nil)
+	err = f.ensureConfigMap(tcpcmName, lb.Namespace, labels, nil, nil)
 	if err != nil {
 		return err
 	}
 	udpcmName := fmt.Sprintf(udpConfigMapName, lb.Name)
-	err = f.ensureConfigMap(udpcmName, lb.Namespace, labels, nil)
+	err = f.ensureConfigMap(udpcmName, lb.Namespace, labels, nil, nil)
 
 	return err
 }
 
-func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]string) error {
+func (f *nginx) ensureConfigMap(name, namespace string, labels, del, data map[string]string) error {
 	cm, err := f.client.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
 
 	if err != nil && !errors.IsNotFound(err) {
@@ -99,6 +116,8 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]
 		// the controller only need to create it
 		return nil
 	}
+
+	data = merge(cm.Data, del, data)
 
 	// replace cm.Data of data
 	// the data follows the priority
