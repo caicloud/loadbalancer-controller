@@ -19,7 +19,7 @@ package taints
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
@@ -68,7 +68,6 @@ func DeleteTaints(taintsToRemove []v1.Taint, newTaints *[]v1.Taint) ([]error, bo
 	allErrs := []error{}
 	var removed bool
 	for _, taintToRemove := range taintsToRemove {
-		removed = false
 		if len(taintToRemove.Effect) > 0 {
 			*newTaints, removed = DeleteTaint(*newTaints, &taintToRemove)
 		} else {
