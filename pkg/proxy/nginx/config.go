@@ -22,7 +22,7 @@ import (
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	log "k8s.io/klog"
@@ -101,6 +101,8 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels, data map[string]
 		// the controller only need to create it
 		return nil
 	}
+
+	data = merge(cm.Data, data)
 
 	if reflect.DeepEqual(cm.Data, data) {
 		return nil
