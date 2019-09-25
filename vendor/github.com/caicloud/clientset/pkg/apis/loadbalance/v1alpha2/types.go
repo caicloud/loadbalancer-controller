@@ -84,6 +84,15 @@ type ProxySpec struct {
 	// HTTPSPort is the port that LoadBalancer listen https protocol
 	// default is 443
 	HTTPSPort int `json:"httpsPort,omitempty"`
+	// PortRanges define a list of port-ranges the proxy can use
+	// default is [{20000,29999}]
+	PortRanges []PortRange `json:"portRanges,omitempty"`
+}
+
+// PortRange describe a port range in {start, end}
+type PortRange struct {
+	Start int32 `json:"start"`
+	End   int32 `json:"end"`
 }
 
 // ProxyType ...
