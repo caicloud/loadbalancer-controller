@@ -109,12 +109,50 @@ type ExternalProvider struct {
 	VIP string `json:"vip"`
 }
 
+// KeepalivedBind is vip binding information
+type KeepalivedBind struct {
+	// bind to interface
+	Iface string `json:"iface,omitempty"`
+	// bind to interface which in subnet
+	Cidr string `json:"cidr,omitempty"`
+	// bind to ip from node annotation
+	NodeIPAnnotation string `json:"nodeIPAnnotation,omitempty"`
+	// bind to iface from node annotation
+	NodeIfaceAnnotation string `json:"nodeIfaceAnnotation,omitempty"`
+}
+
+// KeepalivedProvider is a keepalived provider
+type KeepalivedProvider struct {
+	// Virtual IP Address
+	VIP string `json:"vip"`
+	// virutal server shceduler algorithm type
+	Scheduler IpvsScheduler `json:"scheduler"`
+	// ActiveActive or ActivePassive
+	HAMode HAMode `json:"haMode"`
+	// vip bound to
+	Bind *KeepalivedBind `json:"bind,omitempty"`
+}
+
+// HAMode ...
+type HAMode string
+
+const (
+	// ActiveActiveHA ...
+	ActiveActiveHA HAMode = "ActiveActive"
+	// ActivePassiveHA ...
+	ActivePassiveHA HAMode = "ActivePassive"
+)
+
 // IpvsdrProvider is a ipvs dr provider
 type IpvsdrProvider struct {
 	// Virtual IP Address
 	VIP string `json:"vip"`
 	// ipvs shceduler algorithm type
 	Scheduler IpvsScheduler `json:"scheduler"`
+	// vip bound to
+	Bind *KeepalivedBind `json:"bind,omitempty"`
+	// slave keepalived provider
+	Slaves []KeepalivedProvider `json:"slaves,omitempty"`
 }
 
 // IpvsScheduler is ipvs shceduler algorithm type
