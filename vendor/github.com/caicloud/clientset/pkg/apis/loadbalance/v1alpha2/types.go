@@ -264,6 +264,8 @@ type LoadBalancerStatus struct {
 	Accessible bool `json:"accessible,omitempty"`
 	// AccessIPs specify the entrance ip of loadbalancer
 	AccessIPs []string `json:"accessIPs,omitempty"`
+	// NodeIPs specify the entrance node ip of loadbalancer
+	NodeIPs []string `json:"nodeIPs,omitempty"`
 	// +optional
 	ProxyStatus ProxyStatus `json:"proxyStatus"`
 	// +optional

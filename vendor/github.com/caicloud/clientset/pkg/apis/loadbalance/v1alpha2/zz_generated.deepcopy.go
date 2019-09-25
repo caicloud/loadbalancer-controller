@@ -358,6 +358,11 @@ func (in *LoadBalancerStatus) DeepCopyInto(out *LoadBalancerStatus) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.NodeIPs != nil {
+		in, out := &in.NodeIPs, &out.NodeIPs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	in.ProxyStatus.DeepCopyInto(&out.ProxyStatus)
 	in.ProvidersStatuses.DeepCopyInto(&out.ProvidersStatuses)
 	return
