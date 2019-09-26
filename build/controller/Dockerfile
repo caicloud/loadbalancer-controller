@@ -1,10 +1,10 @@
-FROM cargo.caicloudprivatetest.com/caicloud/alpine:3.6
+FROM cargo.caicloud.xyz/library/debian:stretch
 
 LABEL maintainer="Jun Zhang <jim.zhang@caicloud.io>"
 
 WORKDIR /root
 
-COPY bin/linux_amd64/controller /usr/bin/controller
+COPY bin/controller /usr/bin/controller
 
 ENTRYPOINT ["/usr/bin/controller"]
 
