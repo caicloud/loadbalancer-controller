@@ -99,7 +99,7 @@ func Run(c *Options, args []string) error {
 			i := bytes.Index(allFile, []byte("package"))
 
 			if !c.Dryrun {
-				ioutil.WriteFile(path, append(license, allFile[i:]...), 0655)
+				_ = ioutil.WriteFile(path, append(license, allFile[i:]...), 0655)
 			}
 			return nil
 		}

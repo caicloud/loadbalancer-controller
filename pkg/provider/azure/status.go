@@ -20,7 +20,7 @@ import (
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	log "k8s.io/klog"
 )
 

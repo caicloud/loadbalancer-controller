@@ -67,8 +67,8 @@ func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController
 		proxies:   plugin.NewRegistry(),
 		providers: plugin.NewRegistry(),
 	}
-	proxy.AddToRegistry(lbc.proxies)
-	provider.AddToRegistry(lbc.providers)
+	_ = proxy.AddToRegistry(lbc.proxies)
+	_ = provider.AddToRegistry(lbc.providers)
 
 	// setup lb controller helper
 	lbc.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, lbc.syncLoadBalancer)

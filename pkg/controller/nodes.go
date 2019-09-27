@@ -53,11 +53,8 @@ func (nc *nodeController) syncNodes(lb *lbapi.LoadBalancer) error {
 		return err
 	}
 	// varify desired nodes
-	desiredNodes, err := nc.getVerifiedNodes(lb, oldNodes)
-	if err != nil {
-		log.Errorf("varify nodes error: %v", err)
-		return err
-	}
+	desiredNodes := nc.getVerifiedNodes(lb, oldNodes)
+
 	return nc.doLabelAndTaints(desiredNodes)
 }
 
@@ -68,7 +65,7 @@ func (nc *nodeController) getNodesForLoadBalancer(lb *lbapi.LoadBalancer) ([]*ap
 	return nc.nodeLister.List(selector)
 }
 
-func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*apiv1.Node) (*VerifiedNodes, error) {
+func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*apiv1.Node) *VerifiedNodes {
 	ran := &VerifiedNodes{
 		TaintsToAdd:    []apiv1.Taint{},
 		TaintsToDelete: []apiv1.Taint{},
@@ -92,7 +89,7 @@ func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*a
 		// delete all old nodes
 		ran.NodesToDelete = oldNodes
 
-		return ran, nil
+		return ran
 	}
 
 	if lb.Spec.Nodes.Effect != nil {
@@ -135,7 +132,7 @@ func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*a
 
 	ran.NodesToDelete = nc.nodesDiff(oldNodes, ran.NodesInUse)
 
-	return ran, nil
+	return ran
 }
 
 func (nc *nodeController) nodesDiff(oldNodes, desiredNodes []*apiv1.Node) []*apiv1.Node {

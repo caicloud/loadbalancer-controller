@@ -10,7 +10,7 @@ import (
 	libmetav1 "github.com/caicloud/loadbalancer-controller/pkg/kubelab/meta/v1"
 	"github.com/mattbaird/jsonpatch"
 
-	"k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/klog"
 	k8sappsv1 "k8s.io/kubernetes/pkg/apis/apps/v1"
 )

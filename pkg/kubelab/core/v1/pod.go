@@ -23,8 +23,8 @@ type podImpl struct{}
 // TODO: the feature in utilfeature.DefaultFeatureGate must be the same as apiserver
 func (l *podImpl) DropDisabledAlphaFields(in *v1.PodSpec) {
 	out := k8score.Pod{}
-	legacyscheme.Scheme.Convert(in, &out.Spec, nil)
+	_ = legacyscheme.Scheme.Convert(in, &out.Spec, nil)
 	// drop disabled alpha fields in podSpec
 	k8spodutil.DropDisabledPodFields(&out, nil)
-	legacyscheme.Scheme.Convert(&out.Spec, in, nil)
+	_ = legacyscheme.Scheme.Convert(&out.Spec, in, nil)
 }
