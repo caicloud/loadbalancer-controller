@@ -16,7 +16,7 @@ limitations under the License.
 
 package lb
 
-import "k8s.io/api/core/v1"
+import v1 "k8s.io/api/core/v1"
 
 // IsPodMatchNodeSelectorFailed returns true if pod is in MatchNodeSelector failed
 func IsPodMatchNodeSelectorFailed(pod *v1.Pod) bool {

@@ -29,7 +29,7 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
 	stringsutil "github.com/caicloud/loadbalancer-controller/pkg/util/strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -206,7 +206,7 @@ func EvictPod(client kubernetes.Interface, lb *lbapi.LoadBalancer, pod *v1.Pod) 
 	}
 
 	evict := func() {
-		client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		_ = client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 	}
 
 	// FIXME: when RequiredDuringSchedulingRequiredDuringExecution finished

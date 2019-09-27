@@ -1,6 +1,6 @@
 package core
 
-import "github.com/caicloud/loadbalancer-controller/pkg/kubelab/apps/v1"
+import v1 "github.com/caicloud/loadbalancer-controller/pkg/kubelab/apps/v1"
 
 // Interface provides access to each of this group's versions.
 type Interface interface {
