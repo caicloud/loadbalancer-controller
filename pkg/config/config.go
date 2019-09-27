@@ -106,7 +106,7 @@ func (c *Configuration) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.Proxies.Nginx.DefaultSSLCertificate, "default-ssl-certificate", "", "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server")
 	fs.StringVar(&c.Proxies.Nginx.AnnotationPrefix, "proxy-nginx-annotation-prefix", defaultIngressAnnotationPrefix, "Prefix of ingress annotation")
 
-	fs.StringVar(&c.Providers.Ipvsdr.Image, "provider-ipvsdr", defaultNginxIngressImage, "`Image` of ipvsdr provider")
+	fs.StringVar(&c.Providers.Ipvsdr.Image, "provider-ipvsdr", defaultIpvsdrImage, "`Image` of ipvsdr provider")
 	fs.StringVar(&c.Providers.Ipvsdr.NodeIPLabel, "nodeip-label", "", "tell provider which label of node stores node ip")
 	fs.StringVar(&c.Providers.Ipvsdr.NodeIPAnnotation, "nodeip-annotation", "", "tell provider which annotation of node stores node ip")
 

@@ -35,7 +35,7 @@ import (
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -253,7 +253,7 @@ func (f *ipvsdr) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
+			_, _ = f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 
@@ -295,7 +295,7 @@ func (f *ipvsdr) cleanup(lb *lbapi.LoadBalancer, deleteStatus bool) error {
 	policy := metav1.DeletePropagationForeground
 	gracePeriodSeconds := int64(30)
 	for _, d := range ds {
-		f.client.AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+		_ = f.client.AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})

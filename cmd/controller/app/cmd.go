@@ -31,7 +31,7 @@ func NewCommand() *cobra.Command {
 	fs := cmd.Flags()
 	fs.AddFlagSet(s.Flags())
 
-	fs.Set("logtostderr", "true")
+	_ = fs.Set("logtostderr", "true")
 
 	return cmd
 }
