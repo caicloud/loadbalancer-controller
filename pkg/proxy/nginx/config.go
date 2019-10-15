@@ -43,7 +43,6 @@ var (
 	managedConfig = map[string]string{
 		"proxy-buffer-size":        "",
 		"proxy-buffers-number":     "",
-		"proxy-read-timeout":       "",
 		"limit-conn-zone-variable": "",
 		"whitelist-source-range":   "",
 	}
