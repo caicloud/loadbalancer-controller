@@ -49,7 +49,10 @@ BASE_REGISTRY ?= cargo.caicloud.xyz/library
 #
 
 # It's necessary to set this because some environments don't link sh -> bash.
-SHELL := /bin/bash
+export SHELL := /bin/bash
+
+# It's necessary to set the errexit flags for the bash shell.
+export SHELLOPTS := errexit
 
 # Project main package location (can be multiple ones).
 CMD_DIR := ./cmd
@@ -64,7 +67,7 @@ BUILD_DIR := ./build
 VERSION ?= $(shell git describe --tags --always --dirty)
 
 # Available cpus for compiling, please refer to https://github.com/caicloud/engineering/issues/8186#issuecomment-518656946 for more information.
-CPUS ?= $(shell sh hack/read_cpus_available.sh)
+CPUS ?= $(shell /bin/bash hack/read_cpus_available.sh)
 
 # Track code version with Docker Label.
 DOCKER_LABELS ?= git-describe="$(shell date -u +v%Y%m%d)-$(shell git describe --tags --always --dirty)"
@@ -84,7 +87,6 @@ GOLANGCI_LINT := $(BIN_DIR)/golangci-lint
 build: build-local
 
 # more info about `GOGC` env: https://github.com/golangci/golangci-lint#memory-usage-of-golangci-lint
-
 lint: $(GOLANGCI_LINT)
 	@GOGC=5 $(GOLANGCI_LINT) run
 
@@ -104,12 +106,13 @@ build-local:
 	done
 
 build-linux:
-	@docker run --rm                                                                   \
+	@docker run --rm -t                                                                \
 	  -v $(PWD):/go/src/$(ROOT)                                                        \
 	  -w /go/src/$(ROOT)                                                               \
 	  -e GOOS=linux                                                                    \
 	  -e GOARCH=amd64                                                                  \
 	  -e GOPATH=/go                                                                    \
+	  -e SHELLOPTS=$(SHELLOPTS)                                                        \
 	  $(BASE_REGISTRY)/golang:1.12.9-stretch                                           \
 	    /bin/bash -c 'for target in $(TARGETS); do                                     \
 	      go build -i -v -o $(OUTPUT_DIR)/$${target} -p $(CPUS)                        \
