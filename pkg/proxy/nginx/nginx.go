@@ -274,6 +274,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		updated = true
 		// do not change deployment if the loadbalancer is static
 		if !lbutil.IsStatic(lb) {
+			lbutil.InsertHelmAnnotation(desiredDeploy, dp.Namespace, dp.Name)
 			merged, changed := lbutil.MergeDeployment(dp, desiredDeploy)
 			if changed {
 				log.Infof("Sync nginx deployment %v for loadbalancer %v", dp.Name, lb.Name)
@@ -289,6 +290,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	if !updated {
 		// create deployment
 		log.Infof("Create nginx deployment %v for loadbalancer %v", desiredDeploy.Name, lb.Name)
+		lbutil.InsertHelmAnnotation(desiredDeploy, desiredDeploy.Namespace, desiredDeploy.Name)
 		_, err = f.client.Native().AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
