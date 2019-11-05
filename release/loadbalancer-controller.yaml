@@ -20,11 +20,11 @@ _config:
           imagePullPolicy: IfNotPresent
           resources:
             limits:
-              cpu: 300m
-              memory: 300Mi
+              cpu: 50m
+              memory: 100Mi
             requests:
-              cpu: 200m
-              memory: 200Mi
+              cpu: 10m
+              memory: 50Mi
       controller:
         replica: 1
       pod:
