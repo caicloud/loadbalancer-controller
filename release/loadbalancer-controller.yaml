@@ -27,6 +27,4 @@ _config:
               memory: 200Mi
       controller:
         replica: 1
-      pod:
-        priorityClassName: platform-critical
       type: Deployment
