@@ -403,8 +403,12 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
 								Limits: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("200m"),
-									v1.ResourceMemory: resource.MustParse("100Mi"),
+									v1.ResourceCPU:    resource.MustParse("20m"),
+									v1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+								Requests: v1.ResourceList{
+									v1.ResourceCPU:    resource.MustParse("20m"),
+									v1.ResourceMemory: resource.MustParse("50Mi"),
 								},
 							},
 							SecurityContext: &v1.SecurityContext{
