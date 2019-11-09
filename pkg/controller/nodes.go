@@ -177,9 +177,9 @@ func (nc *nodeController) doLabelAndTaints(desiredNodes *VerifiedNodes) error {
 		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
 		if labelChanged || taintChanged {
 
-			orginal, _ := json.Marshal(node)
+			original, _ := json.Marshal(node)
 			modified, _ := json.Marshal(copyNode)
-			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
+			patch, err := strategicpatch.CreateTwoWayMergePatch(original, modified, node)
 			if err != nil {
 				return err
 			}
@@ -214,9 +214,9 @@ func (nc *nodeController) doLabelAndTaints(desiredNodes *VerifiedNodes) error {
 		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
 		if labelChanged || taintChanged {
 
-			orginal, _ := json.Marshal(node)
+			original, _ := json.Marshal(node)
 			modified, _ := json.Marshal(copyNode)
-			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
+			patch, err := strategicpatch.CreateTwoWayMergePatch(original, modified, node)
 			if err != nil {
 				return err
 			}
