@@ -11,7 +11,7 @@ func MergeDeployment(dst, src *appsv1.Deployment) (*appsv1.Deployment, bool) {
 	dstcopy := dst.DeepCopy()
 	helper := kubelab.New().Apps().V1().Deployments()
 
-	helper.Merge(dstcopy, src)
+	_ = helper.Merge(dstcopy, src)
 
 	equal := helper.IsEqual(dst, dstcopy, func(in *appsv1.Deployment) {
 		// ignore some fields for debug

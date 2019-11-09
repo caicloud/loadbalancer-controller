@@ -34,7 +34,7 @@ import (
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -264,7 +264,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
+			_, _ = f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 

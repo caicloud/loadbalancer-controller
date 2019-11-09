@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	defaultIpvsdrImage             = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.3.2"
 	defaultAzureProviderImage      = "cargo.caicloud.io/caicloud/loadbalancer-provider-azure:v0.3.2"
 	defaultHTTPBackendImage        = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
 	defaultNginxIngressImage       = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.12.0"

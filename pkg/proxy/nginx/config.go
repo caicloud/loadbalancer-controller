@@ -59,11 +59,8 @@ func merge(base, del, add map[string]string) map[string]string {
 		}
 		ret[k] = v
 	}
-	if add != nil {
-		for k, v := range add {
-			ret[k] = v
-		}
-
+	for k, v := range add {
+		ret[k] = v
 	}
 
 	return ret
