@@ -49,7 +49,7 @@ import (
 const (
 	providerNameSuffix = "-provider-azure"
 	providerName       = "azure"
-	BACKENDPOOL_STATUS = "loadbalance.caicloud.io/azureBackendPoolStatus"
+	BackendPoolStatus  = "loadbalance.caicloud.io/azureBackendPoolStatus"
 )
 
 type azure struct {
@@ -181,7 +181,7 @@ func (f *azure) syncLoadBalancer(obj interface{}) error {
 	}
 	lb = nlb.DeepCopy()
 
-	if lb.Spec.Providers.Azure == nil && lb.Annotations != nil && lb.Annotations[BACKENDPOOL_STATUS] == "" {
+	if lb.Spec.Providers.Azure == nil && lb.Annotations != nil && lb.Annotations[BackendPoolStatus] == "" {
 		// It is not my responsible, clean up legacies
 		return f.cleanup(lb, true)
 	}
