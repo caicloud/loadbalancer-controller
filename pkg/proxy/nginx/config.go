@@ -17,6 +17,7 @@ limitations under the License.
 package nginx
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -47,22 +48,36 @@ var (
 		"limit-conn-zone-variable": "",
 		"whitelist-source-range":   "",
 	}
+
+	annotationExternalConfigMaps string = "external-configs"
 )
 
-func merge(base, del, add map[string]string) map[string]string {
+func mapDel(base map[string]string, dels ...map[string]string) map[string]string {
 	ret := make(map[string]string)
-
 	for k, v := range base {
-		if del != nil {
-			if _, has := del[k]; has {
-				continue
+		has := false
+		for _, del := range dels {
+			if _, has = del[k]; has {
+				break
 			}
 		}
+		if !has {
+			ret[k] = v
+		}
+	}
+
+	return ret
+}
+func mapAdd(base map[string]string, adds ...map[string]string) map[string]string {
+	ret := make(map[string]string)
+	for k, v := range base {
 		ret[k] = v
 	}
 
-	for k, v := range add {
-		ret[k] = v
+	for _, add := range adds {
+		for k, v := range add {
+			ret[k] = v
+		}
 	}
 
 	return ret
@@ -71,65 +86,150 @@ func merge(base, del, add map[string]string) map[string]string {
 func (f *nginx) ensureConfigMaps(lb *lbapi.LoadBalancer) error {
 	labels := f.selector(lb)
 
+	// For ingress-nginx configuration
 	cmName := fmt.Sprintf(configMapName, lb.Name)
-	config := merge(defaultConfig, nil, lb.Spec.Proxy.Config)
-	err := f.ensureConfigMap(cmName, lb.Namespace, labels, managedConfig, config)
+	cm, err := f.ensureConfigMap(cmName, lb.Namespace, labels)
 	if err != nil {
 		return err
 	}
+
+	err = f.updateConfig(lb, cm)
+	if err != nil {
+		return err
+	}
+
+	// For L4 TCP rules
 	tcpcmName := fmt.Sprintf(tcpConfigMapName, lb.Name)
-	err = f.ensureConfigMap(tcpcmName, lb.Namespace, labels, nil, nil)
+	_, err = f.ensureConfigMap(tcpcmName, lb.Namespace, labels)
 	if err != nil {
 		return err
 	}
+
+	// For L4 UDP rules
 	udpcmName := fmt.Sprintf(udpConfigMapName, lb.Name)
-	err = f.ensureConfigMap(udpcmName, lb.Namespace, labels, nil, nil)
+	_, err = f.ensureConfigMap(udpcmName, lb.Namespace, labels)
 
 	return err
 }
 
-func (f *nginx) ensureConfigMap(name, namespace string, labels, del, data map[string]string) error {
+func (f *nginx) ensureConfigMap(name, namespace string, labels map[string]string) (*v1.ConfigMap, error) {
 	cm, err := f.client.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
 
-	if err != nil && !errors.IsNotFound(err) {
+	if err == nil {
+		return cm, nil
+	}
+
+	if !errors.IsNotFound(err) {
+		return nil, err
+	}
+	cm = &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+	}
+	log.Infof("About to craete ConfigMap %v/%v for proxy", namespace, cm.Name)
+	return f.client.CoreV1().ConfigMaps(namespace).Create(cm)
+}
+
+func (f *nginx) updateConfig(lb *lbapi.LoadBalancer, cm *v1.ConfigMap) error {
+	// 1. if cm has unmanaged config, we should generate cm.Data with old method
+	done, err := f.updateIfHasUnmanagedConfig(lb, cm)
+	if err != nil || done {
 		return err
 	}
 
-	if errors.IsNotFound(err) {
-		cm = &v1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   name,
-				Labels: labels,
-			},
-			Data: data,
-		}
-		log.Infof("About to craete ConfigMap %v/%v for proxy", namespace, cm.Name)
-		_, nerr := f.client.CoreV1().ConfigMaps(namespace).Create(cm)
-		if nerr != nil {
-			return nerr
-		}
+	// 2. otherwise, use new method that generate cm.Data by external configs
+	//externalConfigMaps, preset, override, err := f.getExternalConfig(lb)
+	externalConfigMaps, preset, override, err := f.getExternalConfig(lb)
+	if err != nil {
+		return err
 	}
+	newConfig := mapAdd(preset, defaultConfig, lb.Spec.Proxy.Config, override)
+	bs, _ := json.Marshal(externalConfigMaps)
+	externalConfigMapsStr := string(bs)
 
-	if data == nil {
-		// do not update data if data == nil
-		// tcp and udp config map will be changed by others
-		// the controller only need to create it
+	if reflect.DeepEqual(cm.Data, newConfig) && externalConfigMapsStr == cm.Annotations[annotationExternalConfigMaps] {
 		return nil
 	}
 
-	data = merge(cm.Data, del, data)
-
-	if reflect.DeepEqual(cm.Data, data) {
-		return nil
+	if cm.Annotations == nil {
+		cm.Annotations = make(map[string]string)
 	}
-
-	// replace cm.Data of data
-	// the data follows the priority
-	// 1. lb.Spec.Proxy.Config
-	// 2. default config
-	cm.Data = data
-	log.Infof("About to update ConfigMap %v/%v data", namespace, cm.Name)
-	_, err = f.client.CoreV1().ConfigMaps(namespace).Update(cm)
-
+	cm.Annotations[annotationExternalConfigMaps] = externalConfigMapsStr
+	cm.Data = newConfig
+	log.Infof("About to update ConfigMap %v/%v data, with exnternal configs: %v", cm.Namespace, cm.Name, externalConfigMapsStr)
+	_, err = f.client.CoreV1().ConfigMaps(cm.Namespace).Update(cm)
 	return err
+}
+
+func (f *nginx) updateIfHasUnmanagedConfig(lb *lbapi.LoadBalancer, cm *v1.ConfigMap) (bool, error) {
+	var err error
+
+	var oldExternalConfigMaps []string
+	if value, ok := cm.Annotations[annotationExternalConfigMaps]; ok {
+		err = json.Unmarshal([]byte(value), &oldExternalConfigMaps)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	var unmanagedConifgs map[string]string
+	// we consider that configs may contains unmanaged config only if cm is not marked (oldExternalConfigMaps is empty).
+	if len(oldExternalConfigMaps) == 0 {
+		unmanagedConifgs = mapDel(cm.Data, defaultConfig, managedConfig)
+	}
+
+	// if unmanagedConifgs is empty, we can update configs with new method safetly.
+	// otherwise, we should keep using old method to not lose user's unmanaged conifgs.
+	if len(unmanagedConifgs) == 0 {
+		return false, nil
+	}
+
+	log.Warningf("Found unmanaged configs in %s/%s: %v", lb.Namespace, lb.Name, unmanagedConifgs)
+	newConfig := mapAdd(unmanagedConifgs, defaultConfig, lb.Spec.Proxy.Config)
+
+	if !reflect.DeepEqual(cm.Data, newConfig) {
+		cm.Data = newConfig
+		log.Warningf("About to update ConfigMap %v/%v data with old method", cm.Namespace, cm.Name)
+		_, err = f.client.CoreV1().ConfigMaps(cm.Namespace).Update(cm)
+	}
+	return true, err
+}
+
+func (f *nginx) getExternalConfig(lb *lbapi.LoadBalancer) ([]string, map[string]string, map[string]string, error) {
+
+	presetConfigMaps := []string{}
+	overrideConfigMaps := []string{}
+	presetConfig := make(map[string]string)
+	overrideConfig := make(map[string]string)
+
+	for _, scope := range []string{"platform", "cluster", "instance-%s"} {
+
+		for _, postfix := range []string{"", "-override"} {
+			name := fmt.Sprintf("cfg-lb-nginx-%s%s", scope, postfix)
+			if scope == "instance-%s" {
+				name = fmt.Sprintf(name, lb.Name)
+			}
+			cm, err := f.client.CoreV1().ConfigMaps(lb.Namespace).Get(name, metav1.GetOptions{})
+			if errors.IsNotFound(err) {
+				continue
+			}
+			if err != nil {
+				return nil, nil, nil, err
+			}
+
+			if postfix == "" {
+				presetConfig = mapAdd(presetConfig, cm.Data)
+				presetConfigMaps = append(presetConfigMaps, cm.Name)
+				continue
+			}
+			overrideConfig = mapAdd(overrideConfig, cm.Data)
+			overrideConfigMaps = append(overrideConfigMaps, cm.Name)
+		}
+	}
+
+	presetConfigMaps = append(presetConfigMaps, "") // empty string delimits 'preset' and 'override'
+	presetConfigMaps = append(presetConfigMaps, overrideConfigMaps...)
+	return presetConfigMaps, presetConfig, overrideConfig, nil
 }
