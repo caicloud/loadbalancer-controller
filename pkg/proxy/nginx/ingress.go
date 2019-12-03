@@ -149,6 +149,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			"--enable-ssl-chain-completion=false",
 			"--http-port=" + strconv.Itoa(httpPort),
 			"--https-port=" + strconv.Itoa(httpsPort),
+			"--v=" + strconv.Itoa(3),
 		},
 		ReadinessProbe: &v1.Probe{
 			Handler: v1.Handler{
