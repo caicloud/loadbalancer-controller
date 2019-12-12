@@ -36,6 +36,7 @@ var (
 		"enable-vts-status":      "true",
 		"proxy-body-size":        "5G",
 		"server-tokens":          "false",
+		"use-forwarded-headers":  "true",
 		"skip-access-log-urls":   "/nginx_status/format/json",
 	}
 
