@@ -348,11 +348,11 @@ func (f *azure) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							ImagePullPolicy: v1.PullAlways,
 							Resources: v1.ResourceRequirements{
 								Requests: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("10m"),
+									v1.ResourceCPU:    resource.MustParse("20m"),
 									v1.ResourceMemory: resource.MustParse("50Mi"),
 								},
 								Limits: v1.ResourceList{
-									v1.ResourceCPU:    resource.MustParse("20m"),
+									v1.ResourceCPU:    resource.MustParse("100m"),
 									v1.ResourceMemory: resource.MustParse("100Mi"),
 								},
 							},
