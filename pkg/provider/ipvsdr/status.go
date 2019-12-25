@@ -29,6 +29,21 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer) error {
 	if lb.Spec.Providers.Ipvsdr == nil {
 		return f.deleteStatus(lb)
 	}
+
+	provider := lb.Spec.Providers.Ipvsdr
+
+	// vip and vips conversion for compatibility
+	vip := provider.VIP
+	vips := []string{}
+	vips = append(vips, provider.VIPs...)
+
+	if len(vips) == 0 {
+		vips = append(vips, vip)
+	}
+	if vip == "" && len(vips) > 0 {
+		vip = vips[0]
+	}
+
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	// caculate proxy status
 	providerStatus := lbapi.IpvsdrProviderStatus{
@@ -38,7 +53,8 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer) error {
 			TotalReplicas: 0,
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
-		VIP: lb.Spec.Providers.Ipvsdr.VIP,
+		VIP:  vip,
+		VIPs: vips,
 	}
 
 	// the following loadbalancer need to get a valid vrid
