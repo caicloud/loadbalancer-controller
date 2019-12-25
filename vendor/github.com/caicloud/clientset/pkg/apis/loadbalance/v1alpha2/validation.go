@@ -21,8 +21,16 @@ func ValidateLoadBalancer(lb *LoadBalancer) error {
 func ValidateProviders(spec ProvidersSpec) error {
 	if spec.Ipvsdr != nil {
 		ipvsdr := spec.Ipvsdr
-		if net.ParseIP(ipvsdr.VIP) == nil {
-			return fmt.Errorf("ipvsdr: vip is invalid")
+		if ipvsdr.VIP != "" && net.ParseIP(ipvsdr.VIP) == nil {
+			return fmt.Errorf("ipvsdr: vip %s is invalid", ipvsdr.VIP)
+		}
+		for i, vip := range ipvsdr.VIPs {
+			if net.ParseIP(vip) == nil {
+				return fmt.Errorf("ipvsdr: vips[%d] %s is invalid", i, vip)
+			}
+		}
+		if ipvsdr.VIP == "" && len(ipvsdr.VIPs) == 0 {
+			return fmt.Errorf("ipvsdr: vips is empty")
 		}
 		switch ipvsdr.Scheduler {
 		case IpvsSchedulerRR:
@@ -38,8 +46,16 @@ func ValidateProviders(spec ProvidersSpec) error {
 	}
 	if spec.External != nil {
 		external := spec.External
-		if net.ParseIP(external.VIP) == nil {
+		if external.VIP != "" && net.ParseIP(external.VIP) == nil {
 			return fmt.Errorf("external: vip is invalid")
+		}
+		for i, vip := range external.VIPs {
+			if net.ParseIP(vip) == nil {
+				return fmt.Errorf("external: vips[%d] %s is invalid", i, vip)
+			}
+		}
+		if external.VIP == "" && len(external.VIPs) == 0 {
+			return fmt.Errorf("external: vips is empty")
 		}
 	}
 	if spec.Azure != nil {

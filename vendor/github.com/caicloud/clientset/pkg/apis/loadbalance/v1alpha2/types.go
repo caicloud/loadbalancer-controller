@@ -5,7 +5,7 @@ Copyright 2017 caicloud authors. All rights reserved.
 package v1alpha2
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -121,15 +121,50 @@ type ProvidersSpec struct {
 
 // ExternalProvider is a provider docking for external loadbalancer
 type ExternalProvider struct {
-	VIP string `json:"vip"`
+	VIP  string   `json:"vip,omitempty"`
+	VIPs []string `json:"vips,omitempty"`
 }
+
+// KeepalivedBind is vip binding information
+type KeepalivedBind struct {
+	// bind to interface
+	Iface string `json:"iface,omitempty"`
+	// bind to interface which in subnet
+	//CIDR string `json:"cidr,omitempty"`
+	// bind to ip from node annotation
+	NodeIPAnnotation string `json:"nodeIPAnnotation,omitempty"`
+	// bind to iface from node annotation
+	//NodeIfaceAnnotation string `json:"nodeIfaceAnnotation,omitempty"`
+}
+
+// KeepalivedProvider is a keepalived provider
+type KeepalivedProvider struct {
+	// Virtual IP Address
+	VIP string `json:"vip,omitempty"`
+	// Virtual IP Addresses
+	VIPs []string `json:"vips,omitempty"`
+	// virutal server shceduler algorithm type
+	Scheduler IpvsScheduler `json:"scheduler"`
+	// ActiveActive or ActivePassive
+	HAMode HAMode `json:"haMode,omitempty"`
+	// vip bound to
+	Bind *KeepalivedBind `json:"bind,omitempty"`
+}
+
+// HAMode ...
+type HAMode string
+
+const (
+	// ActiveActiveHA ...
+	ActiveActiveHA HAMode = "ActiveActive"
+	// ActivePassiveHA ...
+	ActivePassiveHA HAMode = "ActivePassive"
+)
 
 // IpvsdrProvider is a ipvs dr provider
 type IpvsdrProvider struct {
-	// Virtual IP Address
-	VIP string `json:"vip"`
-	// ipvs shceduler algorithm type
-	Scheduler IpvsScheduler `json:"scheduler"`
+	KeepalivedProvider
+	Slaves []KeepalivedProvider `json:"slaves,omitempty"`
 }
 
 // IpvsScheduler is ipvs shceduler algorithm type
@@ -273,15 +308,17 @@ type ProvidersStatuses struct {
 
 // ExpternalProviderStatus represents the current status of the external provider
 type ExpternalProviderStatus struct {
-	VIP string `json:"vip"`
+	VIP  string   `json:"vip,omitempty"`
+	VIPs []string `json:"vips,omitempty"`
 }
 
 // IpvsdrProviderStatus represents the current status of the ipvsdr provider
 type IpvsdrProviderStatus struct {
 	PodStatuses `json:",inline"`
-	Deployment  string `json:"deployment,omitempty"`
-	VIP         string `json:"vip"`
-	Vrid        *int   `json:"vrid,omitempty"`
+	Deployment  string   `json:"deployment,omitempty"`
+	VIP         string   `json:"vip,omitempty"`
+	VIPs        []string `json:"vips,omitempty"`
+	Vrid        *int     `json:"vrid,omitempty"`
 }
 
 // AliyunProviderStatus represents the current status of the aliyun provider
