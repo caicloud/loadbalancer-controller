@@ -133,10 +133,22 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 		// TODO sync status only
 		return nil
 	}
+	provider := lb.Spec.Providers.External
 
+	// vip and vips conversion for compatibility
+	vip := provider.VIP
+	vips := []string{}
+	vips = append(vips, provider.VIPs...)
+	if len(vips) == 0 {
+		vips = append(vips, vip)
+	}
+	if vip == "" && len(vips) > 0 {
+		vip = vips[0]
+	}
 	// sync status
 	providerStatus := lbapi.ExpternalProviderStatus{
-		VIP: lb.Spec.Providers.External.VIP,
+		VIP:  vip,
+		VIPs: vips,
 	}
 	externalstatus := lb.Status.ProvidersStatuses.External
 	// check whether the statuses are equal
