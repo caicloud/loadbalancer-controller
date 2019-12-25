@@ -39,7 +39,8 @@ IMAGE_PREFIX ?= $(strip loadbalancer-)
 IMAGE_SUFFIX ?= $(strip )
 
 # Container registries.
-REGISTRY ?= cargo.dev.caicloud.xyz/release
+#REGISTRY ?= cargo.dev.caicloud.xyz/release
+REGISTRY := network.cargo.caicloud.io/release
 
 # Container registry for base images.
 BASE_REGISTRY ?= cargo.caicloud.xyz/library
@@ -121,7 +122,7 @@ build-linux:
 	        $(CMD_DIR)/$${target};                                                     \
 	    done'
 
-container: build-linux
+container: build-local
 	@for target in $(TARGETS); do                                                      \
 	  image=$(IMAGE_PREFIX)$${target}$(IMAGE_SUFFIX);                                  \
 	  docker build -t $(REGISTRY)/$${image}:$(VERSION)                                 \
