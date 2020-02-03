@@ -2,6 +2,7 @@ package status
 
 import (
 	"sort"
+	"time"
 
 	"github.com/caicloud/clientset/util/event"
 
@@ -45,6 +46,31 @@ func JudgePodStatus(pod *v1.Pod, events []*v1.Event) PodStatus {
 	status := judgePod(pod)
 	// only the latest event is useful
 	e := getLatestEventForPod(pod, events)
+
+	// If the liveness probe fails, count and lastTimestamp of event will be updated (it performed again).
+	// But success doesn't create a new event or update the event.
+	// So if the duration from event's lastTimestamp to now is longer than threshold timeout, we suppose that the
+	// container is healthy.
+	// We detect pod's phase based on the latest event, but
+	// if failure occurs to any of the pod's containers and then they become healthy,
+	// the latest event still shows unhealthy, but the pod's phase should be healthy.
+	// So we ignore the abnormal event in this condition
+	if e != nil && e.Reason == event.ContainerUnhealthy {
+		var threshold int32
+		for _, c := range pod.Spec.Containers {
+			if c.LivenessProbe != nil {
+				lp := c.LivenessProbe
+				t := (lp.TimeoutSeconds + lp.PeriodSeconds) * (lp.FailureThreshold)
+				if t > threshold {
+					threshold = t
+				}
+			}
+		}
+		if threshold != 0 && time.Since(e.LastTimestamp.Time) > time.Duration(threshold)*time.Second {
+			e = nil
+		}
+	}
+
 	// error event case will change the pod's status no matter what state it is in now
 	for _, c := range errorEventCases {
 		if c.Match(e) {
@@ -70,7 +96,7 @@ func JudgePodStatus(pod *v1.Pod, events []*v1.Event) PodStatus {
 	switch status.Phase {
 	case PodRunning, PodSucceeded:
 		status.State = PodNormal
-		// when phase == Succeded, the pod is not ready
+		// when phase == Succeeded, the pod is not ready
 		// status.Ready = true
 	case PodFailed, PodError, PodUnknown:
 		status.State = PodAbnormal
