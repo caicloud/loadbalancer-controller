@@ -14,9 +14,9 @@ type ConfigClaimStatusType string
 const (
 	// Unknown means that config is sync not yet
 	Unknown ConfigClaimStatusType = "Unknown"
-	// Success means taht config is sync success
+	// Success means that config is sync success
 	Success ConfigClaimStatusType = "Success"
-	// Failure  means taht config is sync failuer
+	// Failure means that config is sync failuer
 	Failure ConfigClaimStatusType = "Failure"
 )
 
@@ -86,20 +86,20 @@ type Reference struct {
 	ExtraInfo   `json:",inline"`
 }
 
-// ExtraInfo describes the extra infomation of config reference.
+// ExtraInfo describes the extra information of config reference.
 type ExtraInfo struct {
 	ReleaseExtraInfo  `json:",inline"`
 	IngressExtraInfo  `json:",inline"`
 	WorkloadExtraInfo `json:",inline"`
 }
 
-// WorkloadExtraInfo describes the workload extra infomation of config reference.
+// WorkloadExtraInfo describes the workload extra information of config reference.
 type WorkloadExtraInfo struct {
 	Alias        string `json:"alias,omitempty"`
 	WorkloadKind string `json:"workloadKind,omitempty"`
 }
 
-// ReleaseExtraInfo describes the release extra infomation of config reference.
+// ReleaseExtraInfo describes the release extra information of config reference.
 type ReleaseExtraInfo struct {
 	Alias        string        `json:"alias,omitempty"`
 	ReleaseKind  string        `json:"releaseKind,omitempty"`
@@ -113,7 +113,7 @@ type ControlledBy struct {
 	Alias string `json:"alias"`
 }
 
-// IngressExtraInfo describes the ingress extra infomation of config reference.
+// IngressExtraInfo describes the ingress extra information of config reference.
 type IngressExtraInfo struct {
 	LoadBalancer string `json:"loadBalancer,omitempty"`
 }

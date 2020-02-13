@@ -38,17 +38,20 @@ type ServingList struct {
 type ServingType string
 
 const (
-	// TensorRT is the type to serve with TensorRT. Not Implemented.
-	TensorRT ServingType = "TensorRT"
-	// TFServing is the type to serve with TFServing. Not Implemented.
-	TFServing ServingType = "TFServing"
-	// MXNetServing is the type to serve with MXNetServing. Not Implemented.
-	MXNetServing ServingType = "MXNetServing"
-	// GPUSharing is essentially implemented using TensorRT.
-	GPUSharing ServingType = "GPUSharing"
-	// GraphPipe is the type to serve with wrapped GraphPipe.
+	// GraphPipe is the type to serve with GraphPipe
+	// This is the serving type in scene in 1.4.0 and 1.4.1.
 	GraphPipe ServingType = "GraphPipe"
-	// Custom is the type to serve with Customized Images.
+	// TensorRT is the type to serve with TensorRT.
+	// This is the serving type in scene in 1.4.2 and decrypted after 1.5.0.
+	TensorRT ServingType = "TensorRT"
+	// TRTIS is the type to serve with TensorRT Server Inference.
+	// This is the serving type in 1.5.0.
+	TRTIS ServingType = "TRTIS"
+	// GPUSharing is custom serving implemented with TRTIS + Owl.
+	// By default, GPUSharing is turned off
+	GPUSharing ServingType = "GPUSharing"
+	// Custom is the type to serve with Custom Images.
+	// To mount multiple models on the same GPU, use TRTIS + Owl image with Custom type
 	Custom ServingType = "Custom"
 )
 
@@ -66,11 +69,20 @@ type ServingSpec struct {
 	// StorageConfig is the configuration about the storage.
 	Storage *StorageConfig `json:"storageConfig,omitempty"`
 	// Models is the list of models to be served via the serving deployment.
-	// In Scene, the size of the slices will be 1, while it can be larger than 1
-	// in Serving.
+	// In 1.5.0, the size of the slice will be 1.
 	Models []ServingModel `json:"models,omitempty"`
 	// Type of the Serving
 	Type ServingType `json:"type,omitempty"`
+	// Image used by the Serving
+	Image string `json:"image,omitempty"`
+	// Command used by custom serving
+	Command []string `json:"command,omitempty"`
+	// Args used by custom serving
+	Args []string `json:"args,omitempty"`
+	// PostStart script used by the Serving
+	PostStart []string `json:"poststart,omitempty"`
+	// Ports that are used for Custom serving
+	Ports []int `json:"ports,omitempty"`
 }
 
 // StorageConfig is the type for the configuration about storage.
@@ -85,6 +97,8 @@ type StorageConfig struct {
 	// When the field is empty, evaluation controller will create one; otherwise, given storage
 	// will be used, and all other fields are ignored.
 	PersistentVolumeClaimName *string `json:"persistentVolumeClaimName,omitempty"`
+	// In custom serving, user may specify the mount path of the pvc
+	Path string `json:"path,omitempty"`
 }
 
 // UserInformation is the type to store the user-related information.
@@ -148,13 +162,15 @@ type ServingStatus struct {
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
 
 	// ModelStatuses store the model statuses of one serving, which key is
-	// model-version<-alias>, the alias is only for GPUsharing.
+	// model-version<-alias>, the alias was only for GPUSharing.
 	ModelStatuses map[string]*ModelStatus `json:"modelStatuses,omitempty"`
 
 	// VolumeName is the name of the Volume.
 	VolumeName string `json:"volumeName,omitempty"`
+
 	// Conditions is an array of current observed job conditions.
 	Conditions []ServingCondition `json:"conditions,omitempty"`
+
 	// Represents time when the job was acknowledged by the job controller.
 	// It is not guaranteed to be set in happens-before order across separate operations.
 	// It is represented in RFC3339 form and is in UTC.

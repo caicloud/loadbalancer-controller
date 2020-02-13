@@ -27,6 +27,7 @@ type NetworkSpec struct {
 	CNI              CNI      `json:"cni"`
 	IPRecycleTimeout *int32   `json:"ipRecycleTimeout,omitempty"`
 	IsFixedIP        bool     `json:"isFixedIP,omitempty"`
+	IsDefaultNetwork bool     `json:"isDefaultNetwork,omitempty"`
 }
 
 type CNI struct {

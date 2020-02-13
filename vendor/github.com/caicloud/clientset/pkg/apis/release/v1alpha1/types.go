@@ -152,7 +152,7 @@ type ReleaseStatus struct {
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Release describes a release wich chart and values
+// Release describes a release with chart and values
 type Release struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
