@@ -96,7 +96,7 @@ func JudgePodStatus(pod *v1.Pod, events []*v1.Event) PodStatus {
 	switch status.Phase {
 	case PodRunning, PodSucceeded:
 		status.State = PodNormal
-		// when phase == Succeded, the pod is not ready
+		// when phase == Succeeded, the pod is not ready
 		// status.Ready = true
 	case PodFailed, PodError, PodUnknown:
 		status.State = PodAbnormal

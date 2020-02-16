@@ -103,6 +103,9 @@ type Machine struct {
 	Status MachineStatus `json:"status"`
 }
 
+// MachineTaint is a type alias for Kubernetes Taint struct.
+type MachineTaint = corev1.Taint
+
 // MachineSpec is a description of a machine.
 type MachineSpec struct {
 	Provider         CloudProvider              `json:"provider"`
@@ -116,12 +119,18 @@ type MachineSpec struct {
 	IsEtcd           bool                       `json:"isEtcd"`
 	HostnameReadonly bool                       `json:"hostnameReadonly,omitempty"`
 	Tags             map[string]string          `json:"tags"`
+
+	// Taints is a list of taints of a machine. All taints here will be synced to a corresponding Node object when adding a machine to a cluster, and will be cleared when the machine is removed from a cluster.
+	// This field is used internally via machine controller to persistently represent taints when a machine is added to a cluster (when Node object doesn't exist); otherwise the information will be lost across component restart.
+	Taints []MachineTaint `json:"taints,omitempty"`
 }
 
 // MachineStatus represents information about the status of a machine.
 type MachineStatus struct {
-	// Deprecated: calculated from spec, conditions, refers, status
+	// NOTE: this field will been deprecated in v2.11,
+	// should use the value calculated from spec, conditions, refers, status
 	Phase MachinePhase `json:"phase"`
+
 	// env
 	// has value if got any
 	Environment *MachineEnvironment `json:"environment,omitempty"`
@@ -1165,6 +1174,9 @@ type MASGSpec struct {
 	MaxNum int `json:"maxNum"`
 	// group level warning message notify setting
 	NotifySetting AutoScalingNotifySetting `json:"notifySetting"`
+
+	// Taints is the taint list of machine. It will been copied to the machine created by the MASG.
+	Taints []MachineTaint `json:"taints,omitempty"`
 }
 
 // MASGProviderConfig describe MachineAutoScalingGroup provider config

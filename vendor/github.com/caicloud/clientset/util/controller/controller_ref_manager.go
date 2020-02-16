@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/golang/glog"
-
 	apps "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 // GetControllerOf returns the controllerRef if controllee has a controller,
@@ -74,7 +73,7 @@ func (m *baseControllerRefManager) canAdopt() error {
 //   * Adopt orphans if the match function returns true.
 //   * Release owned objects if the match function returns false.
 //
-// A non-nil error is returned if some form of reconciliation was attemped and
+// A non-nil error is returned if some form of reconciliation was attempted and
 // failed. Usually, controllers should try again later in case reconciliation
 // is still needed.
 //
@@ -173,7 +172,7 @@ func NewDaemonSetControllerRefManager(
 //   * Adopt orphans if the selector matches.
 //   * Release owned objects if the selector no longer matches.
 //
-// A non-nil error is returned if some form of reconciliation was attemped and
+// A non-nil error is returned if some form of reconciliation was attempted and
 // failed. Usually, controllers should try again later in case reconciliation
 // is still needed.
 //
@@ -227,7 +226,7 @@ func (m *DaemonSetControllerRefManager) Adopt(ds *apps.DaemonSet) error {
 // Release sends a patch to free the DaemonSet from the control of the LoadBalancer controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
 func (m *DaemonSetControllerRefManager) Release(ds *apps.DaemonSet) error {
-	glog.V(2).Infof("patching deamonset %s_%s to remove its controllerRef to %s/%s:%s",
+	klog.V(2).Infof("patching deamonset %s_%s to remove its controllerRef to %s/%s:%s",
 		ds.Namespace, ds.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.controller.GetUID(), ds.UID)
 	_, err := m.client.AppsV1().DaemonSets(ds.Namespace).Patch(ds.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))
@@ -282,7 +281,7 @@ func NewDeploymentControllerRefManager(
 //   * Adopt orphans if the selector matches.
 //   * Release owned objects if the selector no longer matches.
 //
-// A non-nil error is returned if some form of reconciliation was attemped and
+// A non-nil error is returned if some form of reconciliation was attempted and
 // failed. Usually, controllers should try again later in case reconciliation
 // is still needed.
 //
@@ -336,7 +335,7 @@ func (m *DeploymentControllerRefManager) Adopt(d *apps.Deployment) error {
 // Release sends a patch to free the Deployment from the control of the LoadBalancer controller.
 // It returns the error if the patching fails. 404 and 422 errors are ignored.
 func (m *DeploymentControllerRefManager) Release(d *apps.Deployment) error {
-	glog.V(2).Infof("patching deployment %s_%s to remove its controllerRef to %s/%s:%s",
+	klog.V(2).Infof("patching deployment %s_%s to remove its controllerRef to %s/%s:%s",
 		d.Namespace, d.Name, m.controllerKind.GroupVersion(), m.controllerKind.Kind, m.controller.GetName())
 	deleteOwnerRefPatch := fmt.Sprintf(`{"metadata":{"ownerReferences":[{"$patch":"delete","uid":"%s"}],"uid":"%s"}}`, m.controller.GetUID(), d.UID)
 	_, err := m.client.AppsV1().Deployments(d.Namespace).Patch(d.Name, types.StrategicMergePatchType, []byte(deleteOwnerRefPatch))

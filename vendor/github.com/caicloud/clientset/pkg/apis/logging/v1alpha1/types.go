@@ -30,8 +30,9 @@ type LogEndpoint struct {
 type LogEndpointSpec struct {
 	Description       string `json:"description,omitempty"`
 	Target            `json:",inline"`
-	Default           bool     `json:"default,omitempty"`
-	CollectedClusters []string `json:"collectedClusters,omitempty"`
+	Default           bool               `json:"default,omitempty"`
+	CollectedClusters []string           `json:"collectedClusters,omitempty"`
+	CollectorSettings *CollectorSettings `json:"collectorSettings,omitempty"`
 }
 
 // Target represents the target to output logs.
@@ -54,6 +55,26 @@ type KafkaEndpoint struct {
 type ElasticsearchEndpoint struct {
 	// Hosts represents the array of Elasticsearch hosts.
 	Hosts []string `json:"hosts"`
+}
+
+// CollectorSettings describes Specify Settings of Collector.
+type CollectorSettings struct {
+	Filebeat *FilebeatSetting `json:"filebeat,omitempty"`
+}
+
+// FilebeatSetting describes Specify Settings of Filebeat.
+type FilebeatSetting struct {
+	Multiline *FilebeatMultilineSetting `json:"multiline,omitempty"`
+}
+
+// FilebeatMultilineSetting represents the Filebeat Multiline Rule to concat logs.
+type FilebeatMultilineSetting struct {
+	Pattern      string `json:"pattern"`
+	Negate       bool   `json:"negate"`
+	Match        string `json:"match"`
+	FlushPattern string `json:"flushPattern,omitempty"`
+	MaxLines     int    `json:"maxLines,omitempty"`
+	Timeout      string `json:"timeout,omitempty"`
 }
 
 // LogEndpointStatus describes status of a log endpoint instance.
