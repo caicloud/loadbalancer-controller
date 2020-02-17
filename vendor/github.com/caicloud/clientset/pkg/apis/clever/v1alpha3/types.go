@@ -217,6 +217,7 @@ type ModelDataSource struct {
 	Version       string `json:"version"`
 	FrameworkType string `json:"frameworkType"`
 	FormatType    string `json:"formatType"`
+	Tenant        string `json:"tenant"`
 }
 
 // DatasetDataSource represents the data come from clever-dataset

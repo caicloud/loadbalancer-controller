@@ -29,6 +29,10 @@
   version = "v1.0.3"
 
 [[constraint]]
+  name = "github.com/caicloud/go-common"
+  version = "v0.2.6"
+
+[[constraint]]
   name = "github.com/InVisionApp/conjungo"
   branch = "master"
 

@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "release-1.14"
-  digest = "1:206199a1ceba5f585ce207c87c0fd37ddd2229a0f2ef84076de7211dd0c44995"
+  digest = "1:fb35e22470f02100c1692b12a5536f41d262e7a72833a12b522e7ce3dc056a0a"
   name = "github.com/caicloud/clientset"
   packages = [
     "informers",
@@ -147,7 +147,15 @@
     "util/syncqueue",
   ]
   pruneopts = "NUT"
-  revision = "22b332d40d5c097cbe345fba8fcfd3b5d5778b1f"
+  revision = "7a1797804a9c635c2e00ee98b0c964af501db0b3"
+
+[[projects]]
+  digest = "1:c0eec4f5d71d69aace7ac33d0b787f03825baa0ac9528a14c066e356121070a0"
+  name = "github.com/caicloud/go-common"
+  packages = ["kubernetes/client"]
+  pruneopts = "NUT"
+  revision = "03bf68f79b2c6ec06b32987b87e040c0d17f650a"
+  version = "v0.2.6"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -835,6 +843,7 @@
     "github.com/caicloud/clientset/util/controller",
     "github.com/caicloud/clientset/util/status",
     "github.com/caicloud/clientset/util/syncqueue",
+    "github.com/caicloud/go-common/kubernetes/client",
     "github.com/mattbaird/jsonpatch",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
