@@ -18,8 +18,11 @@ package options
 
 import (
 	goflag "flag"
+	"os"
+	"strconv"
 
 	"github.com/caicloud/clientset/kubernetes"
+	gocommonclient "github.com/caicloud/go-common/kubernetes/client"
 	"github.com/caicloud/loadbalancer-controller/cmd/controller/app/config"
 	lbconfig "github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/spf13/pflag"
@@ -70,6 +73,9 @@ func (s *Options) Config() (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	kubeconfig = restclient.AddUserAgent(kubeconfig, UserAgent)
+	kubeconfig = setupConfigQPS(kubeconfig)
+
 	client, err := kubernetes.NewForConfig(restclient.AddUserAgent(kubeconfig, UserAgent))
 	if err != nil {
 		return nil, err
@@ -81,4 +87,26 @@ func (s *Options) Config() (*config.Config, error) {
 	}
 
 	return c, nil
+}
+
+func setupConfigQPS(c *restclient.Config) *restclient.Config {
+	const EnvKubeClientQPS = "ENV_KUBE_CLIENT_QPS"
+	const EnvKubeClientBurst = "ENV_KUBE_CLIENT_BURST"
+	getQPSEnvInt := func(key string, min int) int {
+		v := 0
+		s := os.Getenv(key)
+		if s != "" {
+			v, _ = strconv.Atoi(s)
+		}
+		if v < min {
+			v = min
+		}
+		return v
+	}
+
+	qps := getQPSEnvInt(EnvKubeClientQPS, gocommonclient.DefaultQPS)
+	burst := getQPSEnvInt(EnvKubeClientBurst, gocommonclient.DefaultBurst)
+	c.QPS = float32(qps)
+	c.Burst = burst
+	return c
 }

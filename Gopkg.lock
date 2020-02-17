@@ -123,6 +123,14 @@
   revision = "074f696502de30031ed43bb737b3949ed4c99074"
 
 [[projects]]
+  digest = "1:c0eec4f5d71d69aace7ac33d0b787f03825baa0ac9528a14c066e356121070a0"
+  name = "github.com/caicloud/go-common"
+  packages = ["kubernetes/client"]
+  pruneopts = "NUT"
+  revision = "34dfb37a364d1dfc5ce62ac18c5c8be4d3f605a4"
+  version = "v0.0.1"
+
+[[projects]]
   digest = "1:a2c1d0e43bd3baaa071d1b9ed72c27d78169b2b269f71c105ac4ba34b1be4a39"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -819,6 +827,7 @@
     "github.com/caicloud/clientset/util/controller",
     "github.com/caicloud/clientset/util/status",
     "github.com/caicloud/clientset/util/syncqueue",
+    "github.com/caicloud/go-common/kubernetes/client",
     "github.com/mattbaird/jsonpatch",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
