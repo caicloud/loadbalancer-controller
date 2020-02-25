@@ -10,10 +10,13 @@ import (
 	apiextensionsv1beta1 "github.com/caicloud/clientset/pkg/apis/apiextensions/v1beta1"
 	apiregistrationv1 "github.com/caicloud/clientset/pkg/apis/apiregistration/v1"
 	cleverv1alpha1 "github.com/caicloud/clientset/pkg/apis/clever/v1alpha1"
+	cleverv1alpha2 "github.com/caicloud/clientset/pkg/apis/clever/v1alpha2"
 	cnetworkingv1alpha1 "github.com/caicloud/clientset/pkg/apis/cnetworking/v1alpha1"
 	configv1alpha1 "github.com/caicloud/clientset/pkg/apis/config/v1alpha1"
 	datasetv1alpha1 "github.com/caicloud/clientset/pkg/apis/dataset/v1alpha1"
+	datasetv1alpha2 "github.com/caicloud/clientset/pkg/apis/dataset/v1alpha2"
 	devopsv1 "github.com/caicloud/clientset/pkg/apis/devops/v1"
+	evaluationv1alpha1 "github.com/caicloud/clientset/pkg/apis/evaluation/v1alpha1"
 	loadbalancev1alpha2 "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	loggingv1alpha1 "github.com/caicloud/clientset/pkg/apis/logging/v1alpha1"
 	microservicev1alpha1 "github.com/caicloud/clientset/pkg/apis/microservice/v1alpha1"
@@ -22,6 +25,7 @@ import (
 	releasev1alpha1 "github.com/caicloud/clientset/pkg/apis/release/v1alpha1"
 	resourcev1alpha1 "github.com/caicloud/clientset/pkg/apis/resource/v1alpha1"
 	resourcev1beta1 "github.com/caicloud/clientset/pkg/apis/resource/v1beta1"
+	servingv1alpha1 "github.com/caicloud/clientset/pkg/apis/serving/v1alpha1"
 	tenantv1alpha1 "github.com/caicloud/clientset/pkg/apis/tenant/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	scheme "k8s.io/client-go/kubernetes/scheme"
@@ -53,10 +57,13 @@ func AddToScheme(scheme *runtime.Scheme) {
 	apiextensionsv1beta1.AddToScheme(scheme)
 	apiregistrationv1.AddToScheme(scheme)
 	cleverv1alpha1.AddToScheme(scheme)
+	cleverv1alpha2.AddToScheme(scheme)
 	cnetworkingv1alpha1.AddToScheme(scheme)
 	configv1alpha1.AddToScheme(scheme)
 	datasetv1alpha1.AddToScheme(scheme)
+	datasetv1alpha2.AddToScheme(scheme)
 	devopsv1.AddToScheme(scheme)
+	evaluationv1alpha1.AddToScheme(scheme)
 	loadbalancev1alpha2.AddToScheme(scheme)
 	loggingv1alpha1.AddToScheme(scheme)
 	microservicev1alpha1.AddToScheme(scheme)
@@ -65,5 +72,6 @@ func AddToScheme(scheme *runtime.Scheme) {
 	releasev1alpha1.AddToScheme(scheme)
 	resourcev1alpha1.AddToScheme(scheme)
 	resourcev1beta1.AddToScheme(scheme)
+	servingv1alpha1.AddToScheme(scheme)
 	tenantv1alpha1.AddToScheme(scheme)
 }

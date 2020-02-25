@@ -26,7 +26,6 @@ import (
 	controllerutil "github.com/caicloud/clientset/util/controller"
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
-	log "github.com/zoumo/logdog"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
@@ -36,6 +35,7 @@ import (
 	appslisters "k8s.io/client-go/listers/apps/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 var _ cache.ResourceEventHandler = &EventHandlerForDeployment{}
@@ -93,7 +93,7 @@ func (eh *EventHandlerForDeployment) OnAdd(obj interface{}) {
 		if lb == nil {
 			return
 		}
-		log.Info("Deployment added", log.Fields{"d.name": d.Name, "lb.name": lb.Name, "ns": lb.Namespace})
+		log.Infof("Deployment %v added, belongs to loadbalancer %v", d.Name, lb.Name)
 		eh.queue.Enqueue(lb)
 		return
 	}
@@ -101,10 +101,10 @@ func (eh *EventHandlerForDeployment) OnAdd(obj interface{}) {
 	// Otherwise, it's an orphan. Get a matching LoadBalancer for deployment
 	lb, err := eh.lbLister.GetLoadBalancerForControllee(d)
 	if err != nil {
-		log.Debug("Can not get loadbalancer for orpha Deployment, ignore it", log.Fields{"d.name": d.Name, "ns": d.Namespace, "labels": d.Labels})
+		log.Errorf("Can not get loadbalancer for orpha Deployment %v, ignore it, deployment's labels %v", d.Name, d.Labels)
 		return
 	}
-	log.Info("Orphan Deployment added", log.Fields{"d.name": d.Name})
+	log.Infof("Orphan Deployment %v added", d.Name)
 	eh.queue.Enqueue(lb)
 
 }
@@ -139,7 +139,7 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 		if controllerRefChanged && oldControllerRef != nil {
 			if lb := eh.resolveControllerRef(old.Namespace, oldControllerRef); lb != nil {
 				// The ControllerRef was changed. Sync the old controller, if any.
-				log.Info("Deployment updated, ControllerRef changed, sync for old controller", log.Fields{"name": old.Name, "ns": old.Namespace})
+				log.Infof("Deployment updated, ControllerRef changed, sync for old controller %v/%v", old.Namespace, old.Name)
 				eh.queue.Enqueue(lb)
 			}
 		}
@@ -153,7 +153,7 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 			if lb == nil {
 				return
 			}
-			log.Info("Deployment updated", log.Fields{"name": cur.Name})
+			log.Infof("Deployment %v updated", cur.Name)
 			eh.queue.Enqueue(lb)
 			return
 		}
@@ -165,10 +165,10 @@ func (eh *EventHandlerForDeployment) OnUpdate(oldObj, curObj interface{}) {
 		if labelChanged || controllerRefChanged {
 			lb, err := eh.lbLister.GetLoadBalancerForControllee(cur)
 			if err != nil {
-				log.Debug("Can not get loadbalancer for orpha Deployment, ignore it", log.Fields{"d.name": cur.Name, "ns": cur.Namespace, "labels": cur.Labels})
+				log.Errorf("Can not get loadbalancer for orpha Deployment %v/%v, ignore it, deployment's labels %v", cur.Namespace, cur.Name, cur.Labels)
 				return
 			}
-			log.Info("Orphan Deployment updated", log.Fields{"d.name": cur.Name})
+			log.Infof("Orphan Deployment %v updated", cur.Name)
 			eh.queue.Enqueue(lb)
 		}
 	}
@@ -209,7 +209,7 @@ func (eh *EventHandlerForDeployment) OnDelete(obj interface{}) {
 		return
 	}
 
-	log.Info("Deployment deleted", log.Fields{"d.name": d.Name, "lb.name": lb.Name})
+	log.Infof("Deployment %v deleted, belongs to loadbalancer %v", d.Name, lb.Name)
 	eh.queue.Enqueue(lb)
 }
 
@@ -362,7 +362,7 @@ func (eh *EventHandlerForSyncStatusWithPod) getLoadbalancerForPod(pod *v1.Pod) *
 
 	namespace, name, err := SplitNamespaceAndNameByDot(v)
 	if err != nil {
-		log.Error("error get namespace and name", log.Fields{"err": err})
+		log.Errorf("error get namespace and name: %v", err)
 		return nil
 	}
 
@@ -372,7 +372,7 @@ func (eh *EventHandlerForSyncStatusWithPod) getLoadbalancerForPod(pod *v1.Pod) *
 		return nil
 	}
 	if err != nil {
-		log.Error("can not find loadbalancer for pod", log.Fields{"lb.name": name, "lb.ns": namespace, "pod.name": pod.Name, "err": err})
+		log.Errorf("can not find loadbalancer %v for pod %v: %v", name, pod.Name, err)
 		return nil
 	}
 	return lb
