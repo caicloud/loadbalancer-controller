@@ -17,14 +17,20 @@ type ResourceV1beta1Interface interface {
 	RESTClient() rest.Interface
 	ClustersGetter
 	ConfigsGetter
+	ExtendedResourcesGetter
+	InfraNetworksGetter
 	MachinesGetter
 	MachineAutoScalingGroupsGetter
+	NetworksGetter
+	NodeClaimsGetter
 	NodeLocalStoragesGetter
 	RequirementGapsGetter
+	ResourceClassesGetter
 	SnapshotsGetter
 	StorageServicesGetter
 	StorageTypesGetter
 	TagsGetter
+	WorkloadNetworksGetter
 }
 
 // ResourceV1beta1Client is used to interact with features provided by the resource.caicloud.io group.
@@ -40,6 +46,14 @@ func (c *ResourceV1beta1Client) Configs() ConfigInterface {
 	return newConfigs(c)
 }
 
+func (c *ResourceV1beta1Client) ExtendedResources() ExtendedResourceInterface {
+	return newExtendedResources(c)
+}
+
+func (c *ResourceV1beta1Client) InfraNetworks() InfraNetworkInterface {
+	return newInfraNetworks(c)
+}
+
 func (c *ResourceV1beta1Client) Machines() MachineInterface {
 	return newMachines(c)
 }
@@ -48,12 +62,24 @@ func (c *ResourceV1beta1Client) MachineAutoScalingGroups() MachineAutoScalingGro
 	return newMachineAutoScalingGroups(c)
 }
 
+func (c *ResourceV1beta1Client) Networks() NetworkInterface {
+	return newNetworks(c)
+}
+
+func (c *ResourceV1beta1Client) NodeClaims() NodeClaimInterface {
+	return newNodeClaims(c)
+}
+
 func (c *ResourceV1beta1Client) NodeLocalStorages() NodeLocalStorageInterface {
 	return newNodeLocalStorages(c)
 }
 
 func (c *ResourceV1beta1Client) RequirementGaps() RequirementGapInterface {
 	return newRequirementGaps(c)
+}
+
+func (c *ResourceV1beta1Client) ResourceClasses() ResourceClassInterface {
+	return newResourceClasses(c)
 }
 
 func (c *ResourceV1beta1Client) Snapshots(namespace string) SnapshotInterface {
@@ -70,6 +96,10 @@ func (c *ResourceV1beta1Client) StorageTypes() StorageTypeInterface {
 
 func (c *ResourceV1beta1Client) Tags() TagInterface {
 	return newTags(c)
+}
+
+func (c *ResourceV1beta1Client) WorkloadNetworks(namespace string) WorkloadNetworkInterface {
+	return newWorkloadNetworks(c, namespace)
 }
 
 // NewForConfig creates a new ResourceV1beta1Client for the given config.

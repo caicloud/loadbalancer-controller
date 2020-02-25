@@ -18,15 +18,19 @@ package main
 
 import (
 	"bytes"
+	goflag "flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
-	"gopkg.in/urfave/cli.v1"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-	log "github.com/zoumo/logdog"
+	log "k8s.io/klog"
 )
 
 var sentinels = []string{
@@ -36,18 +40,20 @@ var sentinels = []string{
 }
 
 // Run ...
-func Run(c *cli.Context) {
-	root := c.Args().First()
-
-	if root == "" {
-		root = "./"
+func Run(c *Options, args []string) error {
+	root := "./"
+	if len(args) > 0 {
+		root = args[0]
 	}
 
-	licenseBytes, err := ioutil.ReadFile(root + "/LICENSE")
+	licenseBytes, err := ioutil.ReadFile(root + "/hack/license/boilerplate.go.txt")
 	if err != nil {
-		log.Fatal(err)
-		return
+		return err
 	}
+
+	licenseBytes = bytes.Replace(licenseBytes, []byte("YEAR"), []byte(strconv.Itoa(time.Now().Year())), 1)
+
+	log.Infof("License Header: \n%v", string(licenseBytes))
 
 	license := []byte(fmt.Sprintf("/*\n%s*/\n\n", licenseBytes))
 
@@ -92,7 +98,7 @@ func Run(c *cli.Context) {
 
 			i := bytes.Index(allFile, []byte("package"))
 
-			if !c.Bool("dryRun") {
+			if !c.Dryrun {
 				ioutil.WriteFile(path, append(license, allFile[i:]...), 0655)
 			}
 			return nil
@@ -103,23 +109,46 @@ func Run(c *cli.Context) {
 		return nil
 	})
 
-	if err != nil {
-		log.Error(err)
+	return err
+}
+
+// Options is the main context object for the admission controller.
+type Options struct {
+	Dryrun bool
+}
+
+func (o *Options) addFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&o.Dryrun, "dryRun", false, "")
+	// init log
+	gofs := goflag.NewFlagSet("klog", goflag.ExitOnError)
+	log.InitFlags(gofs)
+
+	fs.AddGoFlagSet(gofs)
+}
+
+func newCommand() *cobra.Command {
+	s := &Options{}
+	cmd := &cobra.Command{
+		Use:  "license",
+		Long: `add license header`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := Run(s, args); err != nil {
+				log.Exitln(err)
+			}
+		},
 	}
+
+	fs := cmd.Flags()
+	s.addFlags(fs)
+	return cmd
 }
 
 func main() {
 
-	app := cli.NewApp()
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name: "dryRun",
-		},
+	command := newCommand()
+	if err := command.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
-	app.Action = func(c *cli.Context) error {
-		Run(c)
-		return nil
-	}
-	app.Run(os.Args)
 
 }

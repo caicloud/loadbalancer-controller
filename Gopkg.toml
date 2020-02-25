@@ -20,18 +20,13 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
+[[constraint]]
+  name = "github.com/spf13/pflag"
+  version = "v1.0.3"
 
 [[constraint]]
+  name = "github.com/InVisionApp/conjungo"
   branch = "master"
-  name = "github.com/zoumo/logdog"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/zoumo/register"
-
-[[constraint]]
-  name = "gopkg.in/urfave/cli.v1"
-  version = "1.20.0"
 
 [[override]]
   name = "github.com/caicloud/clientset"
@@ -40,6 +35,19 @@
 [[override]]
   name = "github.com/json-iterator/go"
   version = "^1.1.5"
+
+[[constraint]]
+  name = "k8s.io/kubernetes"
+  version = "=v1.12.3"
+
+[[override]]
+  name = "k8s.io/apiserver"
+  version = "kubernetes-1.12.3"
+
+[[override]]
+  name = "k8s.io/apiextensions-apiserver"
+  version = "kubernetes-1.12.3"
+
 
 [prune]
   non-go = true

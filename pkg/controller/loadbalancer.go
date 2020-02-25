@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -29,59 +28,62 @@ import (
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
+	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
-	"github.com/caicloud/loadbalancer-controller/pkg/util/taints"
-	log "github.com/zoumo/logdog"
 
-	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	log "k8s.io/klog"
 )
 
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
-	client kubernetes.Interface
-
-	factory    informers.SharedInformerFactory
-	lbLister   lblisters.LoadBalancerLister
-	nodeLister corelisters.NodeLister
-	queue      *syncqueue.SyncQueue
+	client    kubernetes.Interface
+	factory   informers.SharedInformerFactory
+	lbLister  lblisters.LoadBalancerLister
+	nodeCtl   *nodeController
+	queue     *syncqueue.SyncQueue
+	proxies   *plugin.Registry
+	providers *plugin.Registry
 }
 
 // NewLoadBalancerController creates a new LoadBalancerController.
 func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController {
 	// TODO register metrics
-
+	factory := informers.NewSharedInformerFactory(cfg.Client, 0)
+	lbinformer := factory.Loadbalance().V1alpha2().LoadBalancers()
 	lbc := &LoadBalancerController{
-		client:  cfg.Client,
-		factory: informers.NewSharedInformerFactory(cfg.Client, 0),
+		client:   cfg.Client,
+		factory:  factory,
+		lbLister: lbinformer.Lister(),
+		nodeCtl: &nodeController{
+			client:     cfg.Client,
+			nodeLister: factory.Core().V1().Nodes().Lister(),
+		},
+		proxies:   plugin.NewRegistry(),
+		providers: plugin.NewRegistry(),
 	}
+	proxy.AddToRegistry(lbc.proxies)
+	provider.AddToRegistry(lbc.providers)
+
 	// setup lb controller helper
 	lbc.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, lbc.syncLoadBalancer)
 
 	// setup informer
-	lbinformer := lbc.factory.Loadbalance().V1alpha2().LoadBalancers()
 	lbinformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    lbc.addLoadBalancer,
 		UpdateFunc: lbc.updateLoadBalancer,
 		DeleteFunc: lbc.deleteLoadBalancer,
 	})
 
-	lbc.lbLister = lbinformer.Lister()
-	lbc.nodeLister = lbc.factory.Core().V1().Nodes().Lister()
-
 	// setup proxies
-	proxy.Init(cfg, lbc.factory)
+	lbc.proxies.InitAll(cfg, factory)
 	// setup providers
-	provider.Init(cfg, lbc.factory)
+	lbc.providers.InitAll(cfg, factory)
 
 	return lbc
 }
@@ -95,7 +97,7 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 
 	// ensure loadbalancer tpr initialized
 	if err := lbc.ensureResource(); err != nil {
-		log.Error("Ensure loadbalancer resource error", log.Fields{"err": err})
+		log.Errorf("Ensure loadbalancer resource error: %v", err)
 		return
 	}
 
@@ -108,11 +110,11 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 	synced := lbc.factory.WaitForCacheSync(stopCh)
 	for tpy, sync := range synced {
 		if !sync {
-			log.Error("Wait for cache sync timeout", log.Fields{"type": tpy})
+			log.Errorf("Wait for %v cache sync timeout", tpy)
 			return
 		}
 	}
-	log.Info("All caches have synced, Running LoadBalancer Controller ...", log.Fields{"worker": workers})
+	log.Infof("All caches have synced, Running LoadBalancer Controller, workers %v", workers)
 
 	defer func() {
 		log.Info("Shuttingdown controller queue")
@@ -123,9 +125,9 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 	lbc.queue.Run(workers)
 
 	// run proxy
-	proxy.Run(stopCh)
+	lbc.proxies.RunAll(stopCh)
 	// run providers
-	provider.Run(stopCh)
+	lbc.providers.RunAll(stopCh)
 
 	<-stopCh
 }
@@ -174,7 +176,7 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	// Validate loadbalancer scheme
 	if err := lbapi.ValidateLoadBalancer(lb); err != nil {
-		log.Debug("invalid loadbalancer scheme", log.Fields{"err": err})
+		log.Errorf("invalid loadbalancer scheme: %v", err)
 		return err
 	}
 
@@ -182,12 +184,12 @@ func (lbc *LoadBalancerController) syncLoadBalancer(obj interface{}) error {
 
 	startTime := time.Now()
 	defer func() {
-		log.Debug("Finished syncing loadbalancer", log.Fields{"key": key, "usedTime": time.Since(startTime)})
+		log.V(5).Infof("Finished syncing loadbalancer, key: %v, uesdTime: %v", key, time.Since(startTime))
 	}()
 
 	nlb, err := lbc.lbLister.LoadBalancers(lb.Namespace).Get(lb.Name)
 	if errors.IsNotFound(err) {
-		log.Warn("LoadBalancer has been deleted", log.Fields{"lb": key})
+		log.Warningf("LoadBalancer %v has been deleted", key)
 		// deleted
 		return lbc.sync(lb, true)
 	}
@@ -212,9 +214,9 @@ func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) er
 	lb = nlb
 
 	// sync proxy
-	proxy.OnSync(lb)
+	lbc.proxies.SyncAll(lb)
 	// sync provider
-	provider.OnSync(lb)
+	lbc.providers.SyncAll(lb)
 
 	// sync nodes
 	if deleted {
@@ -226,58 +228,12 @@ func (lbc *LoadBalancerController) sync(lb *lbapi.LoadBalancer, deleted bool) er
 	}
 
 	// sync nodes
-	return lbc.syncNodes(lb)
-}
-
-func (lbc *LoadBalancerController) syncNodes(lb *lbapi.LoadBalancer) error {
-	// varify desired nodes
-	desiredNodes, err := lbc.getVerifiedNodes(lb)
-	if err != nil {
-		log.Error("varify nodes error", log.Fields{"err": err})
-		return err
-	}
-
-	oldNodes, err := lbc.getNodesForLoadBalancer(lb)
-	if err != nil {
-		log.Error("list node error")
-		return err
-	}
-	// compute diff
-	nodesToDelete := lbc.nodesDiff(oldNodes, desiredNodes.Nodes)
-	return lbc.doLabelAndTaints(nodesToDelete, desiredNodes)
-}
-
-func (lbc *LoadBalancerController) getNodesForLoadBalancer(lb *lbapi.LoadBalancer) ([]*apiv1.Node, error) {
-	// list old nodes
-	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name)
-	selector := labels.Set{labelkey: "true"}.AsSelector()
-	return lbc.nodeLister.List(selector)
-}
-
-func (lbc *LoadBalancerController) nodesDiff(oldNodes, desiredNodes []*apiv1.Node) []*apiv1.Node {
-
-	if len(desiredNodes) == 0 {
-		return oldNodes
-	}
-
-	nodesToDelete := make([]*apiv1.Node, 0)
-
-NEXT:
-	for _, oldNode := range oldNodes {
-		for _, desiredNode := range desiredNodes {
-			if oldNode.Name == desiredNode.Name {
-				continue NEXT
-			}
-		}
-		nodesToDelete = append(nodesToDelete, oldNode)
-	}
-
-	return nodesToDelete
+	return lbc.nodeCtl.syncNodes(lb)
 }
 
 func (lbc *LoadBalancerController) addLoadBalancer(obj interface{}) {
 	lb := obj.(*lbapi.LoadBalancer)
-	log.Info("Adding LoadBalancer", log.Fields{"name": lb.Name})
+	log.Infof("Adding LoadBalancer %v", lb.Name)
 	lbc.queue.Enqueue(lb)
 }
 
@@ -295,7 +251,7 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 		return
 	}
 
-	log.Info("Updating LoadBalancer", log.Fields{"name": old.Name})
+	log.Infof("Updating LoadBalancer %v", old.Name)
 	lbc.queue.EnqueueAfter(cur, 1*time.Second)
 }
 
@@ -315,93 +271,7 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 		}
 	}
 
-	log.Info("Deleting LoadBalancer", log.Fields{"lb.name": lb.Name, "lb.ns": lb.Namespace})
+	log.Infof("Deleting LoadBalancer %v/%v", lb.Namespace, lb.Name)
 
 	lbc.queue.Enqueue(lb)
-}
-
-// doLabelAndTaints delete label and taints in nodesToDelete
-// add label and taints in nodes
-func (lbc *LoadBalancerController) doLabelAndTaints(nodesToDelete []*apiv1.Node, desiredNodes *VerifiedNodes) error {
-	// delete labels and taints from old nodes
-	for _, node := range nodesToDelete {
-		copyNode := node.DeepCopy()
-
-		// change labels
-		for key := range desiredNodes.Labels {
-			delete(copyNode.Labels, key)
-		}
-
-		// change taints
-		// maybe taints are not found, reorganize will return error but it doesn't matter
-		// taints will not be changed
-		_, newTaints, _ := taints.ReorganizeTaints(copyNode, false, nil, []apiv1.Taint{
-			{Key: lbapi.TaintKey},
-		})
-		copyNode.Spec.Taints = newTaints
-
-		labelChanged := !reflect.DeepEqual(node.Labels, copyNode.Labels)
-		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
-		if labelChanged || taintChanged {
-
-			orginal, _ := json.Marshal(node)
-			modified, _ := json.Marshal(copyNode)
-			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
-			if err != nil {
-				return err
-			}
-			_, err = lbc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
-			if err != nil {
-				log.Errorf("update node err: %v", err)
-				return err
-			}
-			log.Notice("Delete labels and taints from old nodes", log.Fields{
-				"node":  node.Name,
-				"patch": string(patch),
-			})
-		}
-
-	}
-
-	// ensure labels and taints in cur nodes
-	for _, node := range desiredNodes.Nodes {
-		copyNode := node.DeepCopy()
-
-		// change labels
-		for k, v := range desiredNodes.Labels {
-			copyNode.Labels[k] = v
-		}
-
-		// override taint, add or delete
-		_, newTaints, _ := taints.ReorganizeTaints(copyNode, true, desiredNodes.TaintsToAdd, desiredNodes.TaintsToDelete)
-		// If you don't judge， it maybe change from nil to []Taint{}
-		// do not change taints when length of original and new taints are both equal to 0
-		if !(len(copyNode.Spec.Taints) == 0 && len(newTaints) == 0) {
-			copyNode.Spec.Taints = newTaints
-		}
-
-		labelChanged := !reflect.DeepEqual(node.Labels, copyNode.Labels)
-		taintChanged := !reflect.DeepEqual(node.Spec.Taints, copyNode.Spec.Taints)
-		if labelChanged || taintChanged {
-
-			orginal, _ := json.Marshal(node)
-			modified, _ := json.Marshal(copyNode)
-			patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, node)
-			if err != nil {
-				return err
-			}
-			_, err = lbc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
-			if err != nil {
-				log.Errorf("update node err: %v", err)
-				return err
-			}
-			log.Notice("Ensure labels and taints for requested nodes", log.Fields{
-				"node":  node.Name,
-				"patch": string(patch),
-			})
-		}
-	}
-
-	return nil
-
 }
