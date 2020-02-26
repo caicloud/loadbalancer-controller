@@ -48,7 +48,8 @@ var (
 		"whitelist-source-range":   "",
 	}
 
-	annotationExternalConfigMaps string = "external-configs"
+	annotationExternalConfigMaps = "external-configs"
+	labelExternalConfig          = "loadbalance.caicloud.io/external-config"
 )
 
 func mapDel(base map[string]string, dels ...map[string]string) map[string]string {
@@ -216,6 +217,11 @@ func (f *nginx) getExternalConfig(lb *lbapi.LoadBalancer) ([]string, map[string]
 			}
 			if err != nil {
 				return nil, nil, nil, err
+			}
+
+			if _, ok := cm.Labels[labelExternalConfig]; !ok {
+				log.Infof("external configmap: %s doesn't has a '%s' label", cm.Name, labelExternalConfig)
+				continue
 			}
 
 			if postfix == "" {
