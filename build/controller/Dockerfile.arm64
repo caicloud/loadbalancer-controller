@@ -1,0 +1,11 @@
+FROM cargo.caicloud.xyz/arm64v8/debian:stretch
+
+LABEL maintainer="Shi Wang <wangshi@caicloud.io>"
+
+WORKDIR /root
+
+COPY bin/controller /usr/bin/controller
+
+ENTRYPOINT ["/usr/bin/controller"]
+
+CMD ["--v=2"]
