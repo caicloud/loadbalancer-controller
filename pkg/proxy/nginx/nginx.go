@@ -18,6 +18,7 @@ package nginx
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -111,8 +112,12 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 	log.Infof("Starting nginx proxy, workers %v, image %v, default-http-backend %v, sidecar %v", workers, f.image, f.defaultHTTPbackend, f.sidecar)
 
-	if err := f.ensureDefaultHTTPBackend(); err != nil {
-		panic(fmt.Sprintf("Ensure default http backend service error, %v", err))
+	if runtime.GOARCH == "amd64" {
+		if err := f.ensureDefaultHTTPBackend(); err != nil {
+			panic(fmt.Sprintf("Ensure default http backend service error, %v", err))
+		}
+	} else {
+		log.Infof("Arch is %s, use internal default-http-backend instead of %s", runtime.GOARCH, f.defaultHTTPbackend)
 	}
 
 	// lb controller has waited all the informer synced

@@ -18,6 +18,7 @@ package nginx
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
@@ -94,6 +95,13 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		httpsPort = 443
 	}
 
+	// set default backend service
+	var extraArgs []string
+	if runtime.GOARCH == "amd64" {
+		argDefaultBackendService := "--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName)
+		extraArgs = append(extraArgs, argDefaultBackendService)
+	}
+
 	ingressContainer := v1.Container{
 		Name:            "proxy",
 		Image:           f.image,
@@ -132,9 +140,8 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			},
 		},
 		// TODO
-		Args: []string{
+		Args: append([]string{
 			"/nginx-ingress-controller",
-			"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
 			"--ingress-class=" + fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 			"--configmap=" + fmt.Sprintf("%s/"+configMapName, lb.Namespace, lb.Name),
 			"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
@@ -148,7 +155,7 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 			"--http-port=" + strconv.Itoa(httpPort),
 			"--https-port=" + strconv.Itoa(httpsPort),
 			"--v=" + strconv.Itoa(3),
-		},
+		}, extraArgs...),
 		ReadinessProbe: &v1.Probe{
 			Handler: v1.Handler{
 				HTTPGet: &v1.HTTPGetAction{
