@@ -111,8 +111,8 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 
 	log.Infof("Starting nginx proxy, workers %v, image %v, default-http-backend %v, sidecar %v", workers, f.image, f.defaultHTTPbackend, f.sidecar)
 
-	if err := f.ensureDefaultHTTPBackend(); err != nil {
-		panic(fmt.Sprintf("Ensure default http backend service error, %v", err))
+	if f.defaultHTTPbackend != "" {
+		log.Warning("Parameter default-http-backend is deprecated, use internal http backend instead.")
 	}
 
 	// lb controller has waited all the informer synced
