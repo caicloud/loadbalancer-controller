@@ -152,7 +152,6 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							// TODO
 							Args: []string{
 								"/nginx-ingress-controller",
-								"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
 								"--ingress-class=" + fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 								"--configmap=" + fmt.Sprintf("%s/"+configMapName, lb.Namespace, lb.Name),
 								"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),

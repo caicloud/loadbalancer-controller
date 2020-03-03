@@ -123,8 +123,8 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 		"sidecar":              f.sidecar,
 	})
 
-	if err := f.ensureDefaultHTTPBackend(); err != nil {
-		log.Panicf("Ensure default http backend service error, %v", err)
+	if f.defaultHTTPbackend != "" {
+		log.Warning("Parameter default-http-backend is deprecated, use internal http backend instead.")
 	}
 
 	// lb controller has waited all the informer synced
