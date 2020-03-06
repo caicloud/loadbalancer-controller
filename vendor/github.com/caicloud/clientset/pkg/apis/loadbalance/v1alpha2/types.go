@@ -5,7 +5,7 @@ Copyright 2017 caicloud authors. All rights reserved.
 package v1alpha2
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -125,14 +125,46 @@ type ExternalProvider struct {
 	VIPs []string `json:"vips,omitempty"`
 }
 
-// IpvsdrProvider is a ipvs dr provider
-type IpvsdrProvider struct {
+// KeepalivedBind is vip binding information
+type KeepalivedBind struct {
+	// bind to interface
+	Iface string `json:"iface,omitempty"`
+	// bind to interface which in subnet
+	//CIDR string `json:"cidr,omitempty"`
+	// bind to ip from node annotation
+	NodeIPAnnotation string `json:"nodeIPAnnotation,omitempty"`
+	// bind to iface from node annotation
+	//NodeIfaceAnnotation string `json:"nodeIfaceAnnotation,omitempty"`
+}
+
+// KeepalivedProvider is a keepalived provider
+type KeepalivedProvider struct {
 	// Virtual IP Address
 	VIP string `json:"vip,omitempty"`
 	// Virtual IP Addresses
 	VIPs []string `json:"vips,omitempty"`
-	// ipvs shceduler algorithm type
+	// virutal server shceduler algorithm type
 	Scheduler IpvsScheduler `json:"scheduler"`
+	// ActiveActive or ActivePassive
+	HAMode HAMode `json:"haMode,omitempty"`
+	// vip bound to
+	Bind *KeepalivedBind `json:"bind,omitempty"`
+}
+
+// HAMode ...
+type HAMode string
+
+const (
+	// ActiveActiveHA ...
+	ActiveActiveHA HAMode = "ActiveActive"
+	// ActivePassiveHA ...
+	ActivePassiveHA HAMode = "ActivePassive"
+)
+
+// IpvsdrProvider is a ipvs dr provider
+type IpvsdrProvider struct {
+	KeepalivedProvider
+	Slaves []KeepalivedProvider `json:"slaves,omitempty"`
 }
 
 // IpvsScheduler is ipvs shceduler algorithm type
