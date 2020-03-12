@@ -321,13 +321,6 @@
   version = "v1.0.5"
 
 [[projects]]
-  digest = "1:b0e963d7beff9842b4c6e79153c4687c6410c110acc9a5f5fabb83d5d5817c0d"
-  name = "github.com/zoumo/golib"
-  packages = ["register"]
-  pruneopts = "NUT"
-  revision = "60b6ea38fe1ce5cd8b1942e1cd6767d6fc3384d9^"
-
-[[projects]]
   branch = "master"
   digest = "1:ad2bf20798504fbde0c5bdf5ee83d3354fb101d32c5b2267f811c1958b91b0ab"
   name = "golang.org/x/crypto"
@@ -847,7 +840,6 @@
     "github.com/mattbaird/jsonpatch",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
-    "github.com/zoumo/golib/register",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
