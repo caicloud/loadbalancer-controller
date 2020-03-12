@@ -17,10 +17,11 @@ limitations under the License.
 package plugin
 
 import (
+	"sync"
+
 	"github.com/caicloud/clientset/informers"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
-	"github.com/zoumo/golib/register"
 )
 
 // Interface defines a pluggable proxy interface
@@ -32,45 +33,69 @@ type Interface interface {
 
 // Registry ...
 type Registry struct {
-	register *register.Register
+	data  map[string]interface{}
+	mutex sync.RWMutex
 }
 
 // NewRegistry ...
 func NewRegistry() *Registry {
 	return &Registry{
-		register: register.New(nil),
+		data: make(map[string]interface{}),
 	}
 }
 
 // Register registers a Interface into registry by name.
 // Register does not allow user to override an existing Interface.
 // This is expected to happen during app startup
-func (p *Registry) Register(name string, plugin Interface) {
-	p.register.Register(name, plugin)
+func (r *Registry) Register(name string, plugin Interface) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if _, ok := r.data[name]; ok {
+		panic("Repeated registration key" + name)
+	}
+	r.data[name] = plugin
 }
 
 // Get returns a registered Interface, or nil if not
-func (p *Registry) Get(name string) (Interface, bool) {
-	v, found := p.register.Get(name)
-	if !found {
-		return nil, false
+func (r *Registry) Get(name string) (Interface, bool) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if v, ok := r.data[name]; ok {
+		return v.(Interface), true
 	}
-	return v.(Interface), true
+	return nil, false
 }
 
 // Contains checks if the plugin's name is already registered
-func (p *Registry) Contains(name string) bool {
-	return p.register.Contains(name)
+func (r *Registry) Contains(name string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	_, ok := r.data[name]
+	return ok
 }
 
 // AllInterfaces returns all registered plugins' names
-func (p *Registry) AllInterfaces() []string {
-	return p.register.Keys()
+func (r *Registry) AllInterfaces() []string {
+	names := []string{}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for name := range r.data {
+		names = append(names, name)
+	}
+	return names
+}
+
+func (r *Registry) rangeItems(f func(key string, value interface{}) bool) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	for k, v := range r.data {
+		f(k, v)
+	}
 }
 
 // InitAll calls all registered plugins OnSync function
-func (p *Registry) InitAll(c config.Configuration, sif informers.SharedInformerFactory) {
-	p.register.Range(func(k string, value interface{}) bool {
+func (r *Registry) InitAll(c config.Configuration, sif informers.SharedInformerFactory) {
+	r.rangeItems(func(k string, value interface{}) bool {
 		plugin := value.(Interface)
 		plugin.Init(c, sif)
 		return true
@@ -78,8 +103,8 @@ func (p *Registry) InitAll(c config.Configuration, sif informers.SharedInformerF
 }
 
 // RunAll calls all registered plugins' Run function
-func (p *Registry) RunAll(stopCh <-chan struct{}) {
-	p.register.Range(func(k string, value interface{}) bool {
+func (r *Registry) RunAll(stopCh <-chan struct{}) {
+	r.rangeItems(func(k string, value interface{}) bool {
 		plugin := value.(Interface)
 		go plugin.Run(stopCh)
 		return true
@@ -87,8 +112,8 @@ func (p *Registry) RunAll(stopCh <-chan struct{}) {
 }
 
 // SyncAll calls all registered plugins OnSync function
-func (p *Registry) SyncAll(lb *lbapi.LoadBalancer) {
-	p.register.Range(func(k string, value interface{}) bool {
+func (r *Registry) SyncAll(lb *lbapi.LoadBalancer) {
+	r.rangeItems(func(k string, value interface{}) bool {
 		plugin := value.(Interface)
 		go plugin.OnSync(lb)
 		return true
