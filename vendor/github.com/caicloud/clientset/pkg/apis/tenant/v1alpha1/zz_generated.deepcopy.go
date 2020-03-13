@@ -45,7 +45,7 @@ func (in *ClusterQuota) DeepCopyObject() runtime.Object {
 func (in *ClusterQuotaList) DeepCopyInto(out *ClusterQuotaList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ClusterQuota, len(*in))
@@ -214,7 +214,7 @@ func (in *PartitionCondition) DeepCopy() *PartitionCondition {
 func (in *PartitionList) DeepCopyInto(out *PartitionList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Partition, len(*in))
@@ -391,7 +391,7 @@ func (in *TenantCondition) DeepCopy() *TenantCondition {
 func (in *TenantList) DeepCopyInto(out *TenantList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Tenant, len(*in))

@@ -281,7 +281,7 @@ func (in *SceneCondition) DeepCopy() *SceneCondition {
 func (in *SceneList) DeepCopyInto(out *SceneList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Scene, len(*in))
@@ -434,7 +434,7 @@ func (in *ServingCondition) DeepCopy() *ServingCondition {
 func (in *ServingList) DeepCopyInto(out *ServingList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Serving, len(*in))

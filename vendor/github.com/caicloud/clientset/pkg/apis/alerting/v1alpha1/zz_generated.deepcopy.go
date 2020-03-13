@@ -44,7 +44,7 @@ func (in *AlertingRule) DeepCopyObject() runtime.Object {
 func (in *AlertingRuleList) DeepCopyInto(out *AlertingRuleList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]AlertingRule, len(*in))
@@ -163,7 +163,7 @@ func (in *AlertingSubRule) DeepCopyObject() runtime.Object {
 func (in *AlertingSubRuleList) DeepCopyInto(out *AlertingSubRuleList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]AlertingSubRule, len(*in))

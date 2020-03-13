@@ -44,7 +44,7 @@ func (in *Istio) DeepCopyObject() runtime.Object {
 func (in *IstioList) DeepCopyInto(out *IstioList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Istio, len(*in))
