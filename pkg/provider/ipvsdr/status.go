@@ -93,7 +93,7 @@ func (f *ipvsdr) syncStatus(lb *lbapi.LoadBalancer) error {
 		// js, _ := json.Marshal(providerStatus)
 		// replacePatch := fmt.Sprintf(`{"status":{"providersStatuses":{"ipvsdr": %s}}}`, string(js))
 		_, err := lbutil.UpdateLBWithRetries(
-			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
 			lb.Namespace,
 			lb.Name,
@@ -119,7 +119,7 @@ func (f *ipvsdr) deleteStatus(lb *lbapi.LoadBalancer) error {
 
 	log.Infof("delete ipvsdr status for %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
-		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+		f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
 		lb.Namespace,
 		lb.Name,
