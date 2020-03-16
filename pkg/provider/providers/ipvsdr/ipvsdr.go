@@ -370,6 +370,7 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 	terminationGracePeriodSeconds := int64(30)
 	hostNetwork := true
 	dnsPolicy := v1.DNSClusterFirstWithHostNet
+	hostPathFileOrCreate := v1.HostPathFileOrCreate
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	privileged := true
 	maxSurge := intstr.FromInt(0)
@@ -505,6 +506,11 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 									MountPath: "/lib/modules",
 									ReadOnly:  true,
 								},
+								{
+									Name:      "xtables-lock",
+									MountPath: "/run/xtables.lock",
+									ReadOnly:  false,
+								},
 							},
 						},
 					},
@@ -514,6 +520,15 @@ func (f *ipvsdr) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 							VolumeSource: v1.VolumeSource{
 								HostPath: &v1.HostPathVolumeSource{
 									Path: "/lib/modules",
+								},
+							},
+						},
+						{
+							Name: "xtables-lock",
+							VolumeSource: v1.VolumeSource{
+								HostPath: &v1.HostPathVolumeSource{
+									Path: "/run/xtables.lock",
+									Type: &hostPathFileOrCreate,
 								},
 							},
 						},
