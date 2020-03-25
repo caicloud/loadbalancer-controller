@@ -17,7 +17,7 @@ limitations under the License.
 package lb
 
 import (
-	lbclient "github.com/caicloud/clientset/kubernetes/typed/loadbalance/v1alpha2"
+	lbclient "github.com/caicloud/clientset/customclient/typed/loadbalance/v1alpha2"
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/errors"

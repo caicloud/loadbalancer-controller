@@ -168,7 +168,7 @@ func (in *WorkloadCondition) DeepCopy() *WorkloadCondition {
 func (in *WorkloadList) DeepCopyInto(out *WorkloadList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Workload, len(*in))
@@ -232,7 +232,7 @@ func (in *WorkloadRevision) DeepCopyObject() runtime.Object {
 func (in *WorkloadRevisionList) DeepCopyInto(out *WorkloadRevisionList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]WorkloadRevision, len(*in))

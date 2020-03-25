@@ -23,43 +23,9 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/conversion"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubernetes/pkg/apis/autoscaling"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
-
-func addConversionFuncs(scheme *runtime.Scheme) error {
-	// Add non-generated conversion functions
-	err := scheme.AddConversionFuncs(
-		Convert_autoscaling_HorizontalPodAutoscaler_To_v1_HorizontalPodAutoscaler,
-		Convert_v1_HorizontalPodAutoscaler_To_autoscaling_HorizontalPodAutoscaler,
-		Convert_autoscaling_HorizontalPodAutoscalerSpec_To_v1_HorizontalPodAutoscalerSpec,
-		Convert_v1_HorizontalPodAutoscalerSpec_To_autoscaling_HorizontalPodAutoscalerSpec,
-		Convert_autoscaling_HorizontalPodAutoscalerStatus_To_v1_HorizontalPodAutoscalerStatus,
-		Convert_v1_HorizontalPodAutoscalerStatus_To_autoscaling_HorizontalPodAutoscalerStatus,
-		Convert_autoscaling_ExternalMetricSource_To_v1_ExternalMetricSource,
-		Convert_v1_ExternalMetricSource_To_autoscaling_ExternalMetricSource,
-		Convert_autoscaling_ObjectMetricSource_To_v1_ObjectMetricSource,
-		Convert_v1_ObjectMetricSource_To_autoscaling_ObjectMetricSource,
-		Convert_autoscaling_PodsMetricSource_To_v1_PodsMetricSource,
-		Convert_v1_PodsMetricSource_To_autoscaling_PodsMetricSource,
-		Convert_autoscaling_ExternalMetricStatus_To_v1_ExternalMetricStatus,
-		Convert_v1_ExternalMetricStatus_To_autoscaling_ExternalMetricStatus,
-		Convert_autoscaling_ObjectMetricStatus_To_v1_ObjectMetricStatus,
-		Convert_v1_ObjectMetricStatus_To_autoscaling_ObjectMetricStatus,
-		Convert_autoscaling_PodsMetricStatus_To_v1_PodsMetricStatus,
-		Convert_v1_PodsMetricStatus_To_autoscaling_PodsMetricStatus,
-		Convert_autoscaling_MetricTarget_To_v1_CrossVersionObjectReference,
-		Convert_v1_CrossVersionObjectReference_To_autoscaling_MetricTarget,
-		Convert_autoscaling_ResourceMetricStatus_To_v1_ResourceMetricStatus,
-		Convert_v1_ResourceMetricStatus_To_autoscaling_ResourceMetricStatus,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func Convert_autoscaling_MetricTarget_To_v1_CrossVersionObjectReference(in *autoscaling.MetricTarget, out *autoscalingv1.CrossVersionObjectReference, s conversion.Scope) error {
 	return nil
@@ -150,8 +116,7 @@ func Convert_autoscaling_PodsMetricSource_To_v1_PodsMetricSource(in *autoscaling
 }
 
 func Convert_v1_PodsMetricSource_To_autoscaling_PodsMetricSource(in *autoscalingv1.PodsMetricSource, out *autoscaling.PodsMetricSource, s conversion.Scope) error {
-	var metricType autoscaling.MetricTargetType
-	metricType = autoscaling.AverageValueMetricType
+	metricType := autoscaling.AverageValueMetricType
 
 	out.Target = autoscaling.MetricTarget{
 		Type:         metricType,
@@ -327,10 +292,8 @@ func Convert_autoscaling_HorizontalPodAutoscaler_To_v1_HorizontalPodAutoscaler(i
 	if len(otherMetrics) > 0 || len(in.Status.CurrentMetrics) > 0 || len(currentConditions) > 0 {
 		old := out.Annotations
 		out.Annotations = make(map[string]string, len(old)+3)
-		if old != nil {
-			for k, v := range old {
-				out.Annotations[k] = v
-			}
+		for k, v := range old {
+			out.Annotations[k] = v
 		}
 	}
 

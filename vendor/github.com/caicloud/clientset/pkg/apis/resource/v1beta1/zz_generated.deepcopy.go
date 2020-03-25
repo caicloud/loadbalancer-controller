@@ -1253,7 +1253,7 @@ func (in *ClusterCondition) DeepCopy() *ClusterCondition {
 func (in *ClusterList) DeepCopyInto(out *ClusterList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Cluster, len(*in))
@@ -1566,7 +1566,7 @@ func (in *Config) DeepCopyObject() runtime.Object {
 func (in *ConfigList) DeepCopyInto(out *ConfigList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Config, len(*in))
@@ -1627,7 +1627,7 @@ func (in *ExtendedResource) DeepCopyObject() runtime.Object {
 func (in *ExtendedResourceList) DeepCopyInto(out *ExtendedResourceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ExtendedResource, len(*in))
@@ -1779,7 +1779,7 @@ func (in *InfraNetworkBareMetalProviderConfig) DeepCopy() *InfraNetworkBareMetal
 func (in *InfraNetworkList) DeepCopyInto(out *InfraNetworkList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]InfraNetwork, len(*in))
@@ -2109,7 +2109,7 @@ func (in *MachineAutoScalingGroup) DeepCopyObject() runtime.Object {
 func (in *MachineAutoScalingGroupList) DeepCopyInto(out *MachineAutoScalingGroupList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]MachineAutoScalingGroup, len(*in))
@@ -2292,7 +2292,7 @@ func (in *MachineHardwareInfo) DeepCopy() *MachineHardwareInfo {
 func (in *MachineList) DeepCopyInto(out *MachineList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Machine, len(*in))
@@ -2578,7 +2578,7 @@ func (in *Network) DeepCopyObject() runtime.Object {
 func (in *NetworkList) DeepCopyInto(out *NetworkList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Network, len(*in))
@@ -2743,7 +2743,7 @@ func (in *NodeClaimCondition) DeepCopy() *NodeClaimCondition {
 func (in *NodeClaimList) DeepCopyInto(out *NodeClaimList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]NodeClaim, len(*in))
@@ -2844,7 +2844,7 @@ func (in *NodeLocalStorage) DeepCopyObject() runtime.Object {
 func (in *NodeLocalStorageList) DeepCopyInto(out *NodeLocalStorageList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]NodeLocalStorage, len(*in))
@@ -2980,7 +2980,7 @@ func (in *RequirementGap) DeepCopyObject() runtime.Object {
 func (in *RequirementGapList) DeepCopyInto(out *RequirementGapList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]RequirementGap, len(*in))
@@ -3108,7 +3108,7 @@ func (in *ResourceClass) DeepCopyObject() runtime.Object {
 func (in *ResourceClassList) DeepCopyInto(out *ResourceClassList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ResourceClass, len(*in))
@@ -3186,7 +3186,7 @@ func (in *Snapshot) DeepCopyObject() runtime.Object {
 func (in *SnapshotList) DeepCopyInto(out *SnapshotList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Snapshot, len(*in))
@@ -3321,7 +3321,7 @@ func (in *StorageService) DeepCopyObject() runtime.Object {
 func (in *StorageServiceList) DeepCopyInto(out *StorageServiceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]StorageService, len(*in))
@@ -3415,7 +3415,7 @@ func (in *StorageType) DeepCopyObject() runtime.Object {
 func (in *StorageTypeList) DeepCopyInto(out *StorageTypeList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]StorageType, len(*in))
@@ -3536,7 +3536,7 @@ func (in *Tag) DeepCopyObject() runtime.Object {
 func (in *TagList) DeepCopyInto(out *TagList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Tag, len(*in))
@@ -3596,7 +3596,7 @@ func (in *WorkloadNetwork) DeepCopyObject() runtime.Object {
 func (in *WorkloadNetworkList) DeepCopyInto(out *WorkloadNetworkList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]WorkloadNetwork, len(*in))

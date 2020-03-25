@@ -31,7 +31,7 @@ func (f *azure) deleteStatus(lb *lbapi.LoadBalancer) error {
 
 	log.Infof("delete azure status for loadbalancer %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
-		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+		f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
 		lb.Namespace,
 		lb.Name,
@@ -71,7 +71,7 @@ func (f *azure) syncStatus(lb *lbapi.LoadBalancer) error {
 		lb.Status.ProvidersStatuses.Azure.Message != status.Message) {
 		log.Infof("update azure status %s message %s", status.Phase, status.Message)
 		_, err := lbutil.UpdateLBWithRetries(
-			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
 			lb.Namespace,
 			lb.Name,

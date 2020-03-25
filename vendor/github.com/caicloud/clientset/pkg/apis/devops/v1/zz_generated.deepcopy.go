@@ -44,7 +44,7 @@ func (in *Cargo) DeepCopyObject() runtime.Object {
 func (in *CargoList) DeepCopyInto(out *CargoList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Cargo, len(*in))

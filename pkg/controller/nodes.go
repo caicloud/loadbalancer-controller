@@ -183,7 +183,7 @@ func (nc *nodeController) doLabelAndTaints(desiredNodes *VerifiedNodes) error {
 			if err != nil {
 				return err
 			}
-			_, err = nc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+			_, err = nc.client.Native().CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
 			if err != nil {
 				log.Errorf("update node err: %v", err)
 				return err
@@ -220,7 +220,7 @@ func (nc *nodeController) doLabelAndTaints(desiredNodes *VerifiedNodes) error {
 			if err != nil {
 				return err
 			}
-			_, err = nc.client.CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
+			_, err = nc.client.Native().CoreV1().Nodes().Patch(node.Name, types.StrategicMergePatchType, patch)
 			if err != nil {
 				log.Errorf("update node err: %v", err)
 				return err

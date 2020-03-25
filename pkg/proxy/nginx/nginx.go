@@ -87,9 +87,9 @@ func (f *nginx) Init(cfg config.Configuration, sif informers.SharedInformerFacto
 	f.client = cfg.Client
 
 	// initialize controller
-	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
-	dInformer := sif.Apps().V1().Deployments()
-	podInfomer := sif.Core().V1().Pods()
+	lbInformer := sif.Custom().Loadbalance().V1alpha2().LoadBalancers()
+	dInformer := sif.Native().Apps().V1().Deployments()
+	podInfomer := sif.Native().Core().V1().Pods()
 
 	f.lbLister = lbInformer.Lister()
 	f.dLister = dInformer.Lister()
@@ -227,7 +227,7 @@ func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1
 	// an uncached quorum read sometime after listing deployment (see kubernetes#42639).
 	canAdoptFunc := controllerutil.RecheckDeletionTimestamp(func() (metav1.Object, error) {
 		// fresh lb
-		fresh, err := f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace).Get(lb.Name, metav1.GetOptions{})
+		fresh, err := f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace).Get(lb.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -238,7 +238,7 @@ func (f *nginx) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1
 		return fresh, nil
 	})
 
-	cm := controllerutil.NewDeploymentControllerRefManager(f.client, lb, selector, api.ControllerKind, canAdoptFunc)
+	cm := controllerutil.NewDeploymentControllerRefManager(f.client.Native(), lb, selector, api.ControllerKind, canAdoptFunc)
 	return cm.Claim(dList)
 }
 
@@ -264,7 +264,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
-			_, _ = f.client.AppsV1().Deployments(lb.Namespace).Update(copy)
+			_, _ = f.client.Native().AppsV1().Deployments(lb.Namespace).Update(copy)
 			continue
 		}
 
@@ -275,7 +275,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 			merged, changed := lbutil.MergeDeployment(dp, desiredDeploy)
 			if changed {
 				log.Infof("Sync nginx deployment %v for loadbalancer %v", dp.Name, lb.Name)
-				_, err = f.client.AppsV1().Deployments(lb.Namespace).Update(merged)
+				_, err = f.client.Native().AppsV1().Deployments(lb.Namespace).Update(merged)
 				if err != nil {
 					return err
 				}
@@ -288,7 +288,7 @@ func (f *nginx) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		// create deployment
 		log.Infof("Create nginx deployment %v for loadbalancer %v", desiredDeploy.Name, lb.Name)
 		lbutil.InsertHelmAnnotation(desiredDeploy, desiredDeploy.Namespace, desiredDeploy.Name)
-		_, err = f.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
+		_, err = f.client.Native().AppsV1().Deployments(lb.Namespace).Create(desiredDeploy)
 		if err != nil {
 			return err
 		}
@@ -317,7 +317,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 	gracePeriodSeconds := int64(30)
 
 	for _, d := range ds {
-		err = f.client.AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+		err = f.client.Native().AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
 			GracePeriodSeconds: &gracePeriodSeconds,
 			PropagationPolicy:  &policy,
 		})
@@ -328,7 +328,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 	}
 
 	// clean up config map
-	err = f.client.CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
+	err = f.client.Native().CoreV1().ConfigMaps(lb.Namespace).DeleteCollection(nil, metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -341,7 +341,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 		// createdby ingressClass
 		lbapi.LabelKeyCreatedBy: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 	}
-	ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
+	ingresses, err := f.client.Native().ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 
@@ -351,7 +351,7 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 	}
 
 	for _, ingress := range ingresses.Items {
-		err = f.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
+		err = f.client.Native().ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			log.Errorf("Cleanup Ingress error: %v", err)
 			return err

@@ -62,7 +62,7 @@ func (f *external) Init(cfg config.Configuration, sif informers.SharedInformerFa
 	// set config
 	f.client = cfg.Client
 	// initialize controller
-	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
+	lbInformer := sif.Custom().Loadbalance().V1alpha2().LoadBalancers()
 	f.lbLister = lbInformer.Lister()
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
@@ -154,7 +154,7 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 	// check whether the statuses are equal
 	if externalstatus == nil || !lbutil.ExternalProviderStatusEqual(*externalstatus, providerStatus) {
 		_, err := lbutil.UpdateLBWithRetries(
-			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
 			lb.Namespace,
 			lb.Name,
@@ -180,7 +180,7 @@ func (f *external) deleteStatus(lb *lbapi.LoadBalancer) error {
 
 	log.Infof("delete external status for loadbalancer %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
-		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+		f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
 		lb.Namespace,
 		lb.Name,

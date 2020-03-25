@@ -99,7 +99,7 @@ func (in *CanaryReleaseCondition) DeepCopy() *CanaryReleaseCondition {
 func (in *CanaryReleaseList) DeepCopyInto(out *CanaryReleaseList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]CanaryRelease, len(*in))
@@ -398,7 +398,7 @@ func (in *ReleaseHistory) DeepCopyObject() runtime.Object {
 func (in *ReleaseHistoryList) DeepCopyInto(out *ReleaseHistoryList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ReleaseHistory, len(*in))
@@ -452,7 +452,7 @@ func (in *ReleaseHistorySpec) DeepCopy() *ReleaseHistorySpec {
 func (in *ReleaseList) DeepCopyInto(out *ReleaseList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Release, len(*in))
