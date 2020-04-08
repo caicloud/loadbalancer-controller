@@ -143,6 +143,26 @@ func (lbc *LoadBalancerController) ensureResource() error {
 				Singular: "loadbalancer",
 				Kind:     "LoadBalancer",
 				ListKind: "LoadBalancerList",
+				ShortNames: []string{
+					"lb",
+				},
+			},
+			AdditionalPrinterColumns: []apiextensions.CustomResourceColumnDefinition{
+				{
+					Name:     "VIP",
+					Type:     "string",
+					JSONPath: ".spec.providers.*.vip",
+				},
+				{
+					Name:     "VIPS",
+					Type:     "string",
+					JSONPath: ".spec.providers.*.vips",
+				},
+				{
+					Name:     "NODES",
+					Type:     "string",
+					JSONPath: ".spec.nodes.names",
+				},
 			},
 		},
 	}
