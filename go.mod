@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/InVisionApp/conjungo v1.1.0
-	github.com/caicloud/clientset v0.0.0-20200311021253-e5f43fda7589 // release-2.11
+	github.com/caicloud/clientset v0.0.0-20200408065619-9c56d7d22747
 	github.com/caicloud/go-common v0.3.0
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/imdario/mergo v0.3.8 // indirect

@@ -1,10 +1,11 @@
 # github.com/InVisionApp/conjungo v1.1.0
 github.com/InVisionApp/conjungo
-# github.com/caicloud/clientset v0.0.0-20200311021253-e5f43fda7589
+# github.com/caicloud/clientset v0.0.0-20200408065619-9c56d7d22747
 github.com/caicloud/clientset/customclient
 github.com/caicloud/clientset/customclient/scheme
 github.com/caicloud/clientset/customclient/typed/alerting/v1alpha1
 github.com/caicloud/clientset/customclient/typed/alerting/v1alpha2
+github.com/caicloud/clientset/customclient/typed/alerting/v1beta1
 github.com/caicloud/clientset/customclient/typed/apiregistration/v1
 github.com/caicloud/clientset/customclient/typed/clever/v1alpha1
 github.com/caicloud/clientset/customclient/typed/clever/v1alpha2
@@ -32,6 +33,7 @@ github.com/caicloud/clientset/custominformers
 github.com/caicloud/clientset/custominformers/alerting
 github.com/caicloud/clientset/custominformers/alerting/v1alpha1
 github.com/caicloud/clientset/custominformers/alerting/v1alpha2
+github.com/caicloud/clientset/custominformers/alerting/v1beta1
 github.com/caicloud/clientset/custominformers/apiregistration
 github.com/caicloud/clientset/custominformers/apiregistration/v1
 github.com/caicloud/clientset/custominformers/clever
@@ -78,6 +80,7 @@ github.com/caicloud/clientset/informers
 github.com/caicloud/clientset/kubernetes
 github.com/caicloud/clientset/listers/alerting/v1alpha1
 github.com/caicloud/clientset/listers/alerting/v1alpha2
+github.com/caicloud/clientset/listers/alerting/v1beta1
 github.com/caicloud/clientset/listers/apiregistration/v1
 github.com/caicloud/clientset/listers/clever/v1alpha1
 github.com/caicloud/clientset/listers/clever/v1alpha2
@@ -103,6 +106,7 @@ github.com/caicloud/clientset/listers/workload/v1alpha1
 github.com/caicloud/clientset/listers/workload/v1beta1
 github.com/caicloud/clientset/pkg/apis/alerting/v1alpha1
 github.com/caicloud/clientset/pkg/apis/alerting/v1alpha2
+github.com/caicloud/clientset/pkg/apis/alerting/v1beta1
 github.com/caicloud/clientset/pkg/apis/apiregistration/v1
 github.com/caicloud/clientset/pkg/apis/clever/v1alpha1
 github.com/caicloud/clientset/pkg/apis/clever/v1alpha2

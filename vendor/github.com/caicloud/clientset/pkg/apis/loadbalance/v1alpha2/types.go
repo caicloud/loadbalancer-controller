@@ -282,6 +282,26 @@ type LoadBalancerStatus struct {
 	ProxyStatus ProxyStatus `json:"proxyStatus"`
 	// +optional
 	ProvidersStatuses ProvidersStatuses `json:"providersStatuses"`
+	// +optional
+	NodeStatuses NodeStatuses `json:"nodeStatuses"`
+}
+
+// InterfaceNet represents the current status of an interface
+type InterfaceNet struct {
+	Name string   `json:"name"`
+	Mac  string   `json:"mac"`
+	IPs  []string `json:"ips,omitempty"`
+}
+
+// NodeStatus represents the current status of a node
+type NodeStatus struct {
+	Name         string          `json:"name"`
+	IfaceNetList []*InterfaceNet `json:"ifaces,omitempty"`
+}
+
+// NodeStatuses represents the current status of nodes
+type NodeStatuses struct {
+	Nodes []NodeStatus `json:"nodes,omitempty"`
 }
 
 // ProxyStatus represents the current status of a Proxy
