@@ -55,6 +55,7 @@ const (
 	ProviderFake      CloudProvider = "caicloud-fake"
 	ProviderAzure     CloudProvider = "caicloud-azure"
 	ProviderAzureAks  CloudProvider = "caicloud-azure-aks"
+	ProviderImported  CloudProvider = "caicloud-imported"
 )
 
 // cluster/machine/node about annotations & labels about

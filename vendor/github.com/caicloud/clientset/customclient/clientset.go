@@ -11,6 +11,7 @@ import (
 
 	alertingv1alpha1 "github.com/caicloud/clientset/customclient/typed/alerting/v1alpha1"
 	alertingv1alpha2 "github.com/caicloud/clientset/customclient/typed/alerting/v1alpha2"
+	alertingv1beta1 "github.com/caicloud/clientset/customclient/typed/alerting/v1beta1"
 	apiregistrationv1 "github.com/caicloud/clientset/customclient/typed/apiregistration/v1"
 	cleverv1alpha1 "github.com/caicloud/clientset/customclient/typed/clever/v1alpha1"
 	cleverv1alpha2 "github.com/caicloud/clientset/customclient/typed/clever/v1alpha2"
@@ -41,6 +42,7 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
+	AlertingV1beta1() alertingv1beta1.AlertingV1beta1Interface
 	AlertingV1alpha2() alertingv1alpha2.AlertingV1alpha2Interface
 	AlertingV1alpha1() alertingv1alpha1.AlertingV1alpha1Interface
 	ApiregistrationV1() apiregistrationv1.ApiregistrationV1Interface
@@ -72,6 +74,7 @@ type Interface interface {
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
+	alertingV1beta1       *alertingv1beta1.AlertingV1beta1Client
 	alertingV1alpha2      *alertingv1alpha2.AlertingV1alpha2Client
 	alertingV1alpha1      *alertingv1alpha1.AlertingV1alpha1Client
 	apiregistrationV1     *apiregistrationv1.ApiregistrationV1Client
@@ -97,6 +100,11 @@ type Clientset struct {
 	tenantV1alpha1        *tenantv1alpha1.TenantV1alpha1Client
 	workloadV1beta1       *workloadv1beta1.WorkloadV1beta1Client
 	workloadV1alpha1      *workloadv1alpha1.WorkloadV1alpha1Client
+}
+
+// AlertingV1beta1 retrieves the AlertingV1beta1Client
+func (c *Clientset) AlertingV1beta1() alertingv1beta1.AlertingV1beta1Interface {
+	return c.alertingV1beta1
 }
 
 // AlertingV1alpha2 retrieves the AlertingV1alpha2Client
@@ -245,6 +253,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
+	cs.alertingV1beta1, err = alertingv1beta1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.alertingV1alpha2, err = alertingv1alpha2.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -357,6 +369,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
+	cs.alertingV1beta1 = alertingv1beta1.NewForConfigOrDie(c)
 	cs.alertingV1alpha2 = alertingv1alpha2.NewForConfigOrDie(c)
 	cs.alertingV1alpha1 = alertingv1alpha1.NewForConfigOrDie(c)
 	cs.apiregistrationV1 = apiregistrationv1.NewForConfigOrDie(c)
@@ -390,6 +403,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
+	cs.alertingV1beta1 = alertingv1beta1.New(c)
 	cs.alertingV1alpha2 = alertingv1alpha2.New(c)
 	cs.alertingV1alpha1 = alertingv1alpha1.New(c)
 	cs.apiregistrationV1 = apiregistrationv1.New(c)

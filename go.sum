@@ -63,6 +63,8 @@ github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBT
 github.com/caddyserver/caddy v1.0.3/go.mod h1:G+ouvOY32gENkJC+jhgl62TyhvqEsFaDiZ4uw0RzP1E=
 github.com/caicloud/clientset v0.0.0-20200311021253-e5f43fda7589 h1:x61uxiE6iZJt8VGb+6gt8r65ioT7r2RQCQI9UJo+lqo=
 github.com/caicloud/clientset v0.0.0-20200311021253-e5f43fda7589/go.mod h1:rsCtX+s+m/Q10MKXjIMTHipg0KVHKKlLAciYl7/eDn8=
+github.com/caicloud/clientset v0.0.0-20200408065619-9c56d7d22747 h1:XaE+Mgq0sRO8xyhXmV++afPUkAQ41HaohAs68Kbglzg=
+github.com/caicloud/clientset v0.0.0-20200408065619-9c56d7d22747/go.mod h1:rsCtX+s+m/Q10MKXjIMTHipg0KVHKKlLAciYl7/eDn8=
 github.com/caicloud/go-common v0.3.0 h1:cAfUlJc+ShV/k26CGSETzHnjWvzTAHnHOXvUSyGmRCs=
 github.com/caicloud/go-common v0.3.0/go.mod h1:aPOUXF4teNTM4tLiOpGev94PjIDORyZBiyBy6QbGUGo=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=

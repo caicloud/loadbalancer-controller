@@ -9,6 +9,7 @@ package scheme
 import (
 	alertingv1alpha1 "github.com/caicloud/clientset/pkg/apis/alerting/v1alpha1"
 	alertingv1alpha2 "github.com/caicloud/clientset/pkg/apis/alerting/v1alpha2"
+	alertingv1beta1 "github.com/caicloud/clientset/pkg/apis/alerting/v1beta1"
 	apiregistrationv1 "github.com/caicloud/clientset/pkg/apis/apiregistration/v1"
 	cleverv1alpha1 "github.com/caicloud/clientset/pkg/apis/clever/v1alpha1"
 	cleverv1alpha2 "github.com/caicloud/clientset/pkg/apis/clever/v1alpha2"
@@ -43,6 +44,7 @@ var Scheme = runtime.NewScheme()
 var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
+	alertingv1beta1.AddToScheme,
 	alertingv1alpha2.AddToScheme,
 	alertingv1alpha1.AddToScheme,
 	apiregistrationv1.AddToScheme,
