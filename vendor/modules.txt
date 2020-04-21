@@ -1,6 +1,6 @@
 # github.com/InVisionApp/conjungo v1.1.0
 github.com/InVisionApp/conjungo
-# github.com/caicloud/clientset v0.0.0-20200408065619-9c56d7d22747
+# github.com/caicloud/clientset v0.0.0-20200420062837-792b5fced8a6
 github.com/caicloud/clientset/customclient
 github.com/caicloud/clientset/customclient/scheme
 github.com/caicloud/clientset/customclient/typed/alerting/v1alpha1
@@ -134,7 +134,7 @@ github.com/caicloud/clientset/util/controller
 github.com/caicloud/clientset/util/event
 github.com/caicloud/clientset/util/status
 github.com/caicloud/clientset/util/syncqueue
-# github.com/caicloud/go-common v0.3.0
+# github.com/caicloud/go-common v0.3.3
 github.com/caicloud/go-common/kubernetes/client
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
@@ -187,7 +187,7 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678
+# golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20200202094626-16171245cfb2
 golang.org/x/net/context
@@ -221,7 +221,7 @@ google.golang.org/appengine/urlfetch
 gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
-# k8s.io/api v0.17.3 => k8s.io/api v0.17.3
+# k8s.io/api v0.17.5 => k8s.io/api v0.17.5
 k8s.io/api/admissionregistration/v1
 k8s.io/api/admissionregistration/v1beta1
 k8s.io/api/apps/v1
@@ -262,7 +262,7 @@ k8s.io/api/settings/v1alpha1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apiextensions-apiserver v0.17.3 => k8s.io/apiextensions-apiserver v0.17.3
+# k8s.io/apiextensions-apiserver v0.17.5 => k8s.io/apiextensions-apiserver v0.17.5
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
@@ -271,7 +271,7 @@ k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/features
-# k8s.io/apimachinery v0.17.3 => k8s.io/apimachinery v0.17.3
+# k8s.io/apimachinery v0.17.5 => k8s.io/apimachinery v0.17.5
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -315,10 +315,10 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.17.3 => k8s.io/apiserver v0.17.3
+# k8s.io/apiserver v0.17.5 => k8s.io/apiserver v0.17.5
 k8s.io/apiserver/pkg/features
 k8s.io/apiserver/pkg/util/feature
-# k8s.io/client-go v11.0.1-0.20190516230509-ae8359b20417+incompatible => k8s.io/client-go v0.17.3
+# k8s.io/client-go v0.17.5 => k8s.io/client-go v0.17.5
 k8s.io/client-go/discovery
 k8s.io/client-go/informers
 k8s.io/client-go/informers/admissionregistration
@@ -479,13 +479,13 @@ k8s.io/client-go/util/homedir
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/component-base v0.17.3 => k8s.io/component-base v0.17.3
+# k8s.io/component-base v0.17.5 => k8s.io/component-base v0.17.5
 k8s.io/component-base/featuregate
 # k8s.io/klog v1.0.0
 k8s.io/klog
-# k8s.io/kube-openapi v0.0.0-20200204173128-addea2498afe
+# k8s.io/kube-openapi v0.0.0-20200316234421-82d701f24f9d
 k8s.io/kube-openapi/pkg/util/proto
-# k8s.io/kubernetes v1.17.3
+# k8s.io/kubernetes v1.17.5
 k8s.io/kubernetes/pkg/api/legacyscheme
 k8s.io/kubernetes/pkg/api/pod
 k8s.io/kubernetes/pkg/api/v1/pod
