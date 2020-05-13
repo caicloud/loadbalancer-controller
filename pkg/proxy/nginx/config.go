@@ -42,10 +42,12 @@ var (
 
 	// managedConfig is fully controlled by CPS. we should delete these from configmap if they are not specified.
 	managedConfig = map[string]string{
-		"proxy-buffer-size":        "",
-		"proxy-buffers-number":     "",
-		"limit-conn-zone-variable": "",
-		"whitelist-source-range":   "",
+		"proxy-buffer-size":          "",
+		"proxy-buffers-number":       "",
+		"limit-conn-zone-variable":   "",
+		"proxy-read-timeout":         "",
+		"proxy-send-timeout":         "",
+		"upstream-keepalive-timeout": "",
 	}
 
 	annotationExternalConfigMaps = "external-configs"
