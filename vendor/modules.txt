@@ -134,8 +134,10 @@ github.com/caicloud/clientset/util/controller
 github.com/caicloud/clientset/util/event
 github.com/caicloud/clientset/util/status
 github.com/caicloud/clientset/util/syncqueue
-# github.com/caicloud/go-common v0.3.3
+# github.com/caicloud/go-common v0.3.5
 github.com/caicloud/go-common/kubernetes/client
+github.com/caicloud/go-common/kubernetes/leaderelection
+github.com/caicloud/go-common/signal
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/docker/distribution v2.7.1+incompatible
@@ -317,6 +319,8 @@ k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
 # k8s.io/apiserver v0.17.5 => k8s.io/apiserver v0.17.5
 k8s.io/apiserver/pkg/features
+k8s.io/apiserver/pkg/server/healthz
+k8s.io/apiserver/pkg/server/httplog
 k8s.io/apiserver/pkg/util/feature
 # k8s.io/client-go v0.17.5 => k8s.io/client-go v0.17.5
 k8s.io/client-go/discovery
@@ -468,6 +472,8 @@ k8s.io/client-go/tools/clientcmd
 k8s.io/client-go/tools/clientcmd/api
 k8s.io/client-go/tools/clientcmd/api/latest
 k8s.io/client-go/tools/clientcmd/api/v1
+k8s.io/client-go/tools/leaderelection
+k8s.io/client-go/tools/leaderelection/resourcelock
 k8s.io/client-go/tools/metrics
 k8s.io/client-go/tools/pager
 k8s.io/client-go/tools/reference

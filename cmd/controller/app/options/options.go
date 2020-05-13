@@ -38,14 +38,17 @@ const (
 
 // Options is the main context object for the admission controller.
 type Options struct {
-	Master     string
-	Kubeconfig string
-	Cfg        lbconfig.Configuration
+	Master      string
+	Kubeconfig  string
+	HealthzPort int
+	Cfg         lbconfig.Configuration
 }
 
 // NewOptions creates a new AddmissionOptions with a default config.
 func NewOptions() *Options {
-	return &Options{}
+	return &Options{
+		HealthzPort: 8081,
+	}
 }
 
 // Flags returns flags for admission controller
@@ -56,6 +59,7 @@ func (s *Options) Flags() *pflag.FlagSet {
 
 	fs.StringVar(&s.Kubeconfig, "kubeconfig", s.Kubeconfig, "Path to kubeconfig file with authorization and master location information.")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
+	fs.IntVar(&s.HealthzPort, "healthzPort", s.HealthzPort, "Port for health check")
 
 	// init log
 	gofs := goflag.NewFlagSet("klog", goflag.ExitOnError)

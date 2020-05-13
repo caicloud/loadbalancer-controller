@@ -18,6 +18,19 @@ _config:
             - --provider-azure=[[ registry_release ]]/loadbalancer-provider-azure:[[ TagOfRepo(loadbalancer-provider) ]]
           image: "[[ registry_release ]]/loadbalancer-controller:[[ imageTagFromGitTag ]]"
           imagePullPolicy: IfNotPresent
+          probe:
+            liveness:
+              handler:
+                type: HTTP
+                method:
+                  path: /healthz
+                  port: 8081
+              delay: 10
+              period: 10
+              threshold:
+                failure: 3
+                success: 1
+              timeout: 1         
           resources:
             limits:
               cpu: 100m
