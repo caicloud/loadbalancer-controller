@@ -50,12 +50,12 @@ func RunOrDie(opt Option) {
 		panic("The ID option or POD_NAME environment variable must be set")
 	}
 
-	lock := &resourcelock.LeaseLock{
-		LeaseMeta: metav1.ObjectMeta{
+	lock := &resourcelock.EndpointsLock{
+		EndpointsMeta: metav1.ObjectMeta{
 			Name:      opt.LeaseLockName,
 			Namespace: opt.LeaseLockNamespace,
 		},
-		Client: opt.KubeClient.Native().CoordinationV1(),
+		Client: opt.KubeClient.Native().CoreV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity: id,
 		},
@@ -66,7 +66,7 @@ func RunOrDie(opt Option) {
 		Lock:          lock,
 		LeaseDuration: 60 * time.Second,
 		RenewDeadline: 15 * time.Second,
-		RetryPeriod:   5 * time.Second,
+		RetryPeriod:   3 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: opt.Run,
 			OnStoppedLeading: func() {
