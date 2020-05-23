@@ -19,4 +19,6 @@ package proxies
 import (
 	// nginx proxy
 	_ "github.com/caicloud/loadbalancer-controller/pkg/proxy/proxies/nginx"
+	// kong proxy
+	_ "github.com/caicloud/loadbalancer-controller/pkg/proxy/proxies/kong"
 )

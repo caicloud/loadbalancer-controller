@@ -1,0 +1,59 @@
+_config:
+  _metadata:
+    description: kong-proxy
+    name: kong-proxy
+    namespace: kube-system
+    template:
+      type: template.caicloud.io/application
+      version: 1.0.0
+    version: "v2.0"
+  controllers:
+    - containers:
+        - env:
+          - name: KONG_DATABASE
+            value: "off"
+          - name: KONG_LOG_LEVEL
+            value: notice
+          - name: KONG_ADMIN_ACCESS_LOG
+            value: /dev/stdout
+          - name: KONG_ADMIN_ERROR_LOG
+            value: /dev/stderr
+          - name: KONG_ADMIN_LISTEN
+            value: 0.0.0.0:8444 ssl
+          - name: KONG_PROXY_LISTEN
+            value: 0.0.0.0:8000, 0.0.0.0:8443 ssl http2
+          image: "[[ registry_release ]]/kong:2.0"
+          imagePullPolicy: IfNotPresent
+          name: proxy
+          resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 10m
+              memory: 10Mi
+        - env:
+          - name: CONTROLLER_KONG_ADMIN_URL
+            value: https://127.0.0.1:8444
+          - name: CONTROLLER_KONG_ADMIN_TLS_SKIP_VERIFY
+            value: "true"
+          - name: CONTROLLER_PUBLISH_SERVICE
+            value: kube-system/kong-proxy
+          - name: CONTROLLER_INGRESS_CLASS
+            value: kong
+          image: "[[ registry_release ]]/kong-ingress-controller:0.8.0"
+          imagePullPolicy: IfNotPresent
+          name: ingress-controller
+          resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 10m
+              memory: 10Mi
+      controller:
+        replica: 1
+      lables:
+        loadbalance.caicloud.io/kube-system.kong: "true"
+        loadbalance.caicloud.io/proxy: kong
+      type: Deployment
