@@ -104,6 +104,7 @@ func ValidateProxy(spec ProxySpec) error {
 	case ProxyTypeNginx:
 	case ProxyTypeHaproxy:
 	case ProxyTypeTraefik:
+	case ProxyTypeKong:
 	default:
 		return fmt.Errorf("unknown proxy type %v", spec.Type)
 	}

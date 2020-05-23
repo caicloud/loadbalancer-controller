@@ -96,6 +96,8 @@ const (
 	ProxyTypeHaproxy ProxyType = "haproxy"
 	// ProxyTypeTraefik for traefik
 	ProxyTypeTraefik ProxyType = "traefik"
+	// ProxyTypeKong for kong
+	ProxyTypeKong ProxyType = "kong"
 )
 
 // ProvidersSpec is a description of prividers
