@@ -37,6 +37,8 @@ func (f *kong) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploymen
 	ingressClass := annotations[ingressClassKey]
 	if ingressClass == "" {
 		ingressClass = "kong"
+		annotations[ingressClass] = "kong"
+		lb.Annotations = annotations
 	}
 
 	// caculate proxy status

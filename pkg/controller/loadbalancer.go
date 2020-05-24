@@ -45,6 +45,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const (
+	ingressClassKey = "loadbalance.caicloud.io/ingress.class"
+)
+
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
@@ -248,8 +252,14 @@ func (lbc *LoadBalancerController) syncNodes(lb *lbapi.LoadBalancer) error {
 }
 
 func (lbc *LoadBalancerController) getNodesForLoadBalancer(lb *lbapi.LoadBalancer) ([]*apiv1.Node, error) {
+	// get ingress class
+	annotations := lb.GetAnnotations()
+	ingressClass := annotations[ingressClassKey]
+	if ingressClass == "" {
+		ingressClass = lb.Name
+	}
 	// list old nodes
-	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name)
+	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, ingressClass)
 	selector := labels.Set{labelkey: "true"}.AsSelector()
 	return lbc.nodeLister.List(selector)
 }

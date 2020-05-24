@@ -46,8 +46,14 @@ func (lbc *LoadBalancerController) getVerifiedNodes(lb *lbapi.LoadBalancer) (*Ve
 		Labels:         map[string]string{},
 	}
 
+	// get ingress class
+	annotations := lb.GetAnnotations()
+	ingressClass := annotations[ingressClassKey]
+	if ingressClass == "" {
+		ingressClass = lb.Name
+	}
 	ran.Labels = map[string]string{
-		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name): "true",
+		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, ingressClass): "true",
 	}
 
 	if len(lb.Spec.Nodes.Names) == 0 {
