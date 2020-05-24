@@ -69,6 +69,8 @@ github.com/caicloud/clientset v0.0.0-20200420062837-792b5fced8a6 h1:TiaHcBMQJXpu
 github.com/caicloud/clientset v0.0.0-20200420062837-792b5fced8a6/go.mod h1:VDeG4D2HmThF5UvMXWQywD38jxJ38/7yvWGSP3bmeAc=
 github.com/caicloud/go-common v0.3.5 h1:vn7Uy3FtSL4hK93BfNRtR1cTebYrUDyoVsItc1zu6Rs=
 github.com/caicloud/go-common v0.3.5/go.mod h1:HVdq7Zejq9PggmORDEzVHda6S/deupDZCl8vC3qJ5o0=
+github.com/caicloud/go-common v0.3.6 h1:TPiqBwnd47HFBrL0pU/JI8jlBS8gDNGgsp27b7QbTxg=
+github.com/caicloud/go-common v0.3.6/go.mod h1:HVdq7Zejq9PggmORDEzVHda6S/deupDZCl8vC3qJ5o0=
 github.com/caicloud/nirvana v0.2.4/go.mod h1:m1HTGrIULzQX6YvMJJtZ9nr/YXL3XwNAq7dR1MezLAY=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c/go.mod h1:Xe6ZsFhtM8HrDku0pxJ3/Lr51rwykrzgFwpmTzleatY=
