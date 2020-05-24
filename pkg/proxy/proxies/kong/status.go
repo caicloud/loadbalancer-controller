@@ -32,6 +32,12 @@ import (
 )
 
 func (f *kong) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deployment) error {
+	// get ingress class from loadbalancer
+	annotations := lb.GetAnnotations()
+	ingressClass := annotations[ingressClassKey]
+	if ingressClass == "" {
+		ingressClass = "kong"
+	}
 
 	// caculate proxy status
 	proxyStatus := lbapi.ProxyStatus{
@@ -42,7 +48,7 @@ func (f *kong) syncStatus(lb *lbapi.LoadBalancer, activeDeploy *appsv1.Deploymen
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
 		Deployment:   activeDeploy.Name,
-		IngressClass: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, "kong"),
+		IngressClass: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, ingressClass),
 	}
 
 	podList, err := f.podLister.List(f.selector(lb).AsSelector())

@@ -42,8 +42,9 @@ import (
 )
 
 const (
-	proxyNameSuffix = "-proxy-kong"
 	proxyName       = "kong"
+	releaseLabelKey = "controller.caicloud.io/release"
+	ingressClassKey = "loadbalance.caicloud.io/ingress.class"
 )
 
 func init() {
@@ -119,6 +120,8 @@ func (f *kong) Run(stopCh <-chan struct{}) {
 	<-stopCh
 
 }
+
+
 
 func (f *kong) selector(lb *lbapi.LoadBalancer) labels.Set {
 	return labels.Set{
@@ -225,5 +228,25 @@ func (f *kong) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.
 
 // sync generate desired deployment from lb and compare it with existing deployment
 func (f *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
-	return f.syncStatus(lb, dps[0])
+	// get release name
+	labels := lb.GetLabels()
+	releaseName := labels[releaseLabelKey]
+	if releaseName == "" {
+		return fmt.Errorf("No release controller label on loadbalancer: %v", lb.Name)
+	}
+
+	// get the related deployment
+	var relatedDeploy *appsv1.Deployment
+	for _, deploy := range dps {
+		labels = deploy.GetLabels()
+		if labels[releaseLabelKey] == releaseName {
+			copy := deploy.DeepCopy()
+			relatedDeploy = copy
+			break
+		}
+	}
+	if relatedDeploy == nil {
+		return fmt.Errorf("Error get related deployment")
+	}
+	return f.syncStatus(lb, relatedDeploy)
 }
