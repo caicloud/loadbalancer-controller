@@ -37,6 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	log "k8s.io/klog"
 )
@@ -46,6 +47,8 @@ const (
 	proxyName        = "kong"
 	defaultNamespace = "kube-system"
 	releaseKey       = "controller.caicloud.io/release"
+	ingressClassKey  = "loadbalance.caicloud.io/ingress.class"
+	defaultIngressClass = "kong"
 )
 
 type kong struct {
@@ -55,6 +58,7 @@ type kong struct {
 	queue  *syncqueue.SyncQueue
 
 	lbLister  lblisters.LoadBalancerLister
+	podLister corelisters.PodLister
 	releaseLister releaselisters.ReleaseLister
 }
 
@@ -75,9 +79,11 @@ func (f *kong) Init(cfg config.Configuration, sif informers.SharedInformerFactor
 
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
+	podInfomer := sif.Core().V1().Pods()
 	releaseInformer := sif.Release().V1alpha1().Releases()
 
 	f.lbLister = lbInformer.Lister()
+	f.podLister = podInfomer.Lister()
 	f.releaseLister = releaseInformer.Lister()
 
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
