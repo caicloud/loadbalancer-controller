@@ -22,45 +22,40 @@ import (
 
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
+
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
+	releaselisters "github.com/caicloud/clientset/listers/release/v1alpha1"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
+	releaseapi "github.com/caicloud/clientset/pkg/apis/release/v1alpha1"
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
+	"github.com/caicloud/loadbalancer-controller/pkg/api"
 
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
-	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	log "k8s.io/klog"
 )
 
 const (
-	proxyNameSuffix = "-proxy-kong"
-	proxyName       = "kong"
+	proxyNameSuffix  = "-proxy-kong"
+	proxyName        = "kong"
+	defaultNamespace = "kube-system"
+	releaseKey       = "controller.caicloud.io/release"
 )
 
 type kong struct {
 	initialized           bool
-	image                 string
-	sidecar               string
-	defaultHTTPbackend    string
-	defaultSSLCertificate string
-	annotationPrefix      string
 
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
 
 	lbLister  lblisters.LoadBalancerLister
-	dLister   appslisters.DeploymentLister
-	podLister corelisters.PodLister
+	releaseLister releaselisters.ReleaseLister
 }
 
 // New creates a new kong proxy plugin
@@ -80,17 +75,14 @@ func (f *kong) Init(cfg config.Configuration, sif informers.SharedInformerFactor
 
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
-	dInformer := sif.Apps().V1().Deployments()
-	podInfomer := sif.Core().V1().Pods()
+	releaseInformer := sif.Release().V1alpha1().Releases()
 
 	f.lbLister = lbInformer.Lister()
-	f.dLister = dInformer.Lister()
-	f.podLister = podInfomer.Lister()
+	f.releaseLister = releaseInformer.Lister()
 
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
-	dInformer.Informer().AddEventHandler(lbutil.NewEventHandlerForDeployment(f.lbLister, f.dLister, f.queue, f.deploymentFiltered))
-	podInfomer.Informer().AddEventHandler(lbutil.NewEventHandlerForSyncStatusWithPod(f.lbLister, f.podLister, f.queue, f.podFiltered))
+	releaseInformer.Informer().AddEventHandler(newEventHandlerForRelease(f.lbLister, f.releaseLister, f.queue, f.releaseFiltered))
 }
 
 func (f *kong) Run(stopCh <-chan struct{}) {
@@ -101,7 +93,7 @@ func (f *kong) Run(stopCh <-chan struct{}) {
 
 	defer utilruntime.HandleCrash()
 
-	log.Infof("Starting kong proxy, workers %v, image %v, default-http-backend %v, sidecar %v", workers, f.image, f.defaultHTTPbackend, f.sidecar)
+	log.Infof("Starting kong proxy, workers %v", workers)
 
 	// lb controller has waited all the informer synced
 	// there is no need to wait again here
@@ -117,19 +109,7 @@ func (f *kong) Run(stopCh <-chan struct{}) {
 
 }
 
-func (f *kong) selector(lb *lbapi.LoadBalancer) labels.Set {
-	return labels.Set{
-		lbapi.LabelKeyCreatedBy: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
-		lbapi.LabelKeyProxy:     proxyName,
-	}
-}
-
-// filter Deployment that controller does not care
-func (f *kong) deploymentFiltered(obj *appsv1.Deployment) bool {
-	return f.filteredByLabel(obj)
-}
-
-func (f *kong) podFiltered(obj *v1.Pod) bool {
+func (f *kong) releaseFiltered(obj *releaseapi.Release) bool {
 	return f.filteredByLabel(obj)
 }
 
@@ -147,7 +127,7 @@ func (f *kong) OnSync(lb *lbapi.LoadBalancer) {
 }
 
 // TODO use event
-// sync deployment with loadbalancer
+// sync release with loadbalancer
 // the obj will be *lbapi.LoadBalancer
 func (f *kong) syncLoadBalancer(obj interface{}) error {
 	lb, ok := obj.(*lbapi.LoadBalancer)
@@ -183,10 +163,11 @@ func (f *kong) syncLoadBalancer(obj interface{}) error {
 
 	if lb.Spec.Proxy.Type != lbapi.ProxyTypeKong {
 		// It is not my responsible, clean up legacies
-		return f.cleanup(lb)
+		log.Infof("Loadbalancer %v is not a kong loadbalancer", lb.Name)
+		return nil
 	}
 
-	ds, err := f.getDeploymentsForLoadBalancer(lb)
+	release, err := f.getOrSetReleaseForLoadBalancer(lb)
 	if err != nil {
 		return err
 	}
@@ -196,16 +177,49 @@ func (f *kong) syncLoadBalancer(obj interface{}) error {
 		return nil
 	}
 
-	return f.sync(lb, ds)
+	return f.sync(lb, release)
 
 }
 
-func (f *kong) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.Deployment, error) {
+func (f *kong) getOrSetReleaseForLoadBalancer(lb *lbapi.LoadBalancer) (*releaseapi.Release, error) {
+	// get release name from annotations
+	annotations := lb.GetAnnotations()
+	releaseName := annotations[releaseKey]
+	if releaseName == "" {
+		return nil, fmt.Errorf("No release label found for loadbalancer %v", lb.Name)
+	}
+
+	// get release
+	release, err := f.releaseLister.Releases(defaultNamespace).Get(releaseName)
+	if err != nil {
+		log.Errorf("Get release for loadbalancer %v error", lb.Name)
+		return nil, err
+	}
+
+	// set owner reference
+	t := true
+	if release.OwnerReferences == nil || len(release.OwnerReferences) == 0 {
+		release.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         api.ControllerKind.GroupVersion().String(),
+				Kind:               api.ControllerKind.Kind,
+				Name:               lb.Name,
+				UID:                lb.UID,
+				Controller:         &t,
+				BlockOwnerDeletion: &t,
+			},
+		}
+		if release, err = f.client.ReleaseV1alpha1().Releases(defaultNamespace).Update(release); err != nil {
+			log.Errorf("Set owner references for release %v of loadbalancer %v error", release.Name, lb.Name)
+			return nil, err
+		}
+	}
+
 	return nil, nil
 }
 
-// sync generate desired deployment from lb and compare it with existing deployment
-func (f *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
+// sync release
+func (f *kong) sync(lb *lbapi.LoadBalancer, release *releaseapi.Release) error {
 	// update status
 	return f.syncStatus(lb)
 }
