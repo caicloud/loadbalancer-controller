@@ -39,6 +39,10 @@ import (
 	log "k8s.io/klog"
 )
 
+const (
+	ingressClassKey = "loadbalance.caicloud.io/ingress.class"
+)
+
 // LoadBalancerController is responsible for synchronizing LoadBalancer objects stored
 // in the system with actual running proxies and providers.
 type LoadBalancerController struct {
@@ -274,4 +278,15 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 	log.Infof("Deleting LoadBalancer %v/%v", lb.Namespace, lb.Name)
 
 	lbc.queue.Enqueue(lb)
+}
+
+func getIngressClassFromLoadbalancer(lb *lbapi.LoadBalancer) string {
+    // get ingress class from annotation of loadbalancer
+    annotations := lb.GetAnnotations()
+    ingressClass := annotations[ingressClassKey]
+    if ingressClass != "" {
+        return ingressClass
+	}
+
+	return lb.Name
 }
