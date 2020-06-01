@@ -14,17 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package proxy
+package kong
 
-import (
-	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
-	"github.com/caicloud/loadbalancer-controller/pkg/proxy/nginx"
-	"github.com/caicloud/loadbalancer-controller/pkg/proxy/kong"
-)
+import "github.com/caicloud/loadbalancer-controller/pkg/plugin"
 
-var localRegistryBuilder = plugin.RegistryBuilder{
-	nginx.AddToRegistry,
-	kong.AddToRegistry,
+func AddToRegistry(registry *plugin.Registry) error {
+	registry.Register(proxyName, New())
+	return nil
 }
-
-var AddToRegistry = localRegistryBuilder.AddToRegistry
