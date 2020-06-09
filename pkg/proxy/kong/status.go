@@ -52,7 +52,7 @@ func (f *kong) syncStatus(lb *lbapi.LoadBalancer) error {
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
 		Deployment: releaseName,
-		IngressClass: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, ingressClass),
+		IngressClass: ingressClass,
 	}
 
 	podList, err := f.podLister.List(labels.Set{releaseKey: releaseName}.AsSelector())
