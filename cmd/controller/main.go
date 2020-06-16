@@ -48,6 +48,7 @@ func main() {
 		KubeClient:         c.Cfg.Client,
 		Run: func(_ context.Context) {
 			_ = app.Run(c, stopCh)
+			signal.RequestShutdown()
 		},
 		Port:   s.HealthzPort,
 		StopCh: stopCh,
