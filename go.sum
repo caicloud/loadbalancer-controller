@@ -67,10 +67,8 @@ github.com/caddyserver/caddy v1.0.3/go.mod h1:G+ouvOY32gENkJC+jhgl62TyhvqEsFaDiZ
 github.com/caicloud/clientset v0.0.0-20200420034431-e19d2a44e1bf/go.mod h1:VDeG4D2HmThF5UvMXWQywD38jxJ38/7yvWGSP3bmeAc=
 github.com/caicloud/clientset v0.0.0-20200420062837-792b5fced8a6 h1:TiaHcBMQJXpuJu/JvhVWf88HBJoGXhlgAtE67NacyB4=
 github.com/caicloud/clientset v0.0.0-20200420062837-792b5fced8a6/go.mod h1:VDeG4D2HmThF5UvMXWQywD38jxJ38/7yvWGSP3bmeAc=
-github.com/caicloud/go-common v0.3.5 h1:vn7Uy3FtSL4hK93BfNRtR1cTebYrUDyoVsItc1zu6Rs=
-github.com/caicloud/go-common v0.3.5/go.mod h1:HVdq7Zejq9PggmORDEzVHda6S/deupDZCl8vC3qJ5o0=
-github.com/caicloud/go-common v0.3.6 h1:TPiqBwnd47HFBrL0pU/JI8jlBS8gDNGgsp27b7QbTxg=
-github.com/caicloud/go-common v0.3.6/go.mod h1:HVdq7Zejq9PggmORDEzVHda6S/deupDZCl8vC3qJ5o0=
+github.com/caicloud/go-common v0.3.7 h1:1ipQzzM8fSb1SnRpr1J41kj3T9m0e9OZKMR3QZmpWks=
+github.com/caicloud/go-common v0.3.7/go.mod h1:HVdq7Zejq9PggmORDEzVHda6S/deupDZCl8vC3qJ5o0=
 github.com/caicloud/nirvana v0.2.4/go.mod h1:m1HTGrIULzQX6YvMJJtZ9nr/YXL3XwNAq7dR1MezLAY=
 github.com/cenkalti/backoff v2.1.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c/go.mod h1:Xe6ZsFhtM8HrDku0pxJ3/Lr51rwykrzgFwpmTzleatY=
