@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Caicloud authors. All rights reserved.
+Copyright 2020 Caicloud authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ limitations under the License.
 package kong
 
 import (
-	"fmt"
 	"sort"
 
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
@@ -27,21 +26,7 @@ import (
 	log "k8s.io/klog"
 )
 
-func (f *kong) syncStatus(lb *lbapi.LoadBalancer) error {
-    // get ingress class from loadbalancer
-    annotations := lb.GetAnnotations()
-    ingressClass := annotations[ingressClassKey]
-    if ingressClass == "" {
-        ingressClass = defaultIngressClass
-        annotations[ingressClass] = defaultIngressClass
-        lb.Annotations = annotations
-	}
-	// get release name from loadbalancer annotation
-	releaseName := annotations[releaseKey]
-	if releaseName == "" {
-		return fmt.Errorf("No release name annotation on loadbalancer %v", lb.Name)
-	}
-	
+func (f *kong) syncStatus(lb *lbapi.LoadBalancer, releaseName, ingressClass string) error {	
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	// caculate proxy status
 	proxyStatus := lbapi.ProxyStatus{

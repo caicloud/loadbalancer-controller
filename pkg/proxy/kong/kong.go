@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Caicloud authors. All rights reserved.
+Copyright 2020 Caicloud authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -190,9 +190,12 @@ func (f *kong) syncLoadBalancer(obj interface{}) error {
 func (f *kong) getOrSetReleaseForLoadBalancer(lb *lbapi.LoadBalancer) (*releaseapi.Release, error) {
 	// get release name from annotations
 	annotations := lb.GetAnnotations()
+	if annotations == nil {
+		return nil, fmt.Errorf("No release annotation found for loadbalancer %v", lb.Name)
+	}
 	releaseName := annotations[releaseKey]
 	if releaseName == "" {
-		return nil, fmt.Errorf("No release label found for loadbalancer %v", lb.Name)
+		return nil, fmt.Errorf("No release annotation found for loadbalancer %v", lb.Name)
 	}
 
 	// get release
@@ -221,13 +224,24 @@ func (f *kong) getOrSetReleaseForLoadBalancer(lb *lbapi.LoadBalancer) (*releasea
 		}
 	}
 
-	return nil, nil
+	return release, nil
 }
 
 // sync release
 func (f *kong) sync(lb *lbapi.LoadBalancer, release *releaseapi.Release) error {
+    // get ingress class from loadbalancer
+	annotations := lb.GetAnnotations()
+	if annotations == nil {
+		return fmt.Errorf("No annotations on loadbalancer %v/%v", lb.Namespace, lb.Name)
+	}
+    ingressClass := annotations[ingressClassKey]
+    if ingressClass == "" {
+    	ingressClass = defaultIngressClass
+    	annotations[ingressClass] = defaultIngressClass
+    	lb.Annotations = annotations
+    }
 	// update status
-	return f.syncStatus(lb)
+	return f.syncStatus(lb, release.Name, ingressClass)
 }
 
 func (f *kong) cleanup(lb *lbapi.LoadBalancer) error {
