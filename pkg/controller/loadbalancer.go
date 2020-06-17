@@ -247,7 +247,34 @@ func (lbc *LoadBalancerController) updateLoadBalancer(oldObj, curObj interface{}
 		return
 	}
 
-	if reflect.DeepEqual(old.Spec, cur.Spec) {
+	isAzureAppGatewayEqual := func() bool {
+		const AppGateway = "loadbalance.caicloud.io/azureAppGateway"
+		const ResourceGroup = "loadbalance.caicloud.io/azureResourceGroup"
+		const AppGatewayName = "loadbalance.caicloud.io/azureAppGatewayName"
+
+		o := old.Annotations
+		c := cur.Annotations
+		if o == nil && c == nil {
+			return true
+		}
+		if o == nil {
+			o = make(map[string]string)
+		}
+		if c == nil {
+			c = make(map[string]string)
+		}
+
+		if o[AppGateway] == c[AppGateway] &&
+			o[ResourceGroup] == c[ResourceGroup] &&
+			o[AppGatewayName] == c[AppGatewayName] {
+			return true
+		}
+
+		return false
+
+	}
+
+	if reflect.DeepEqual(old.Spec, cur.Spec) && isAzureAppGatewayEqual() {
 		return
 	}
 
