@@ -134,7 +134,7 @@ github.com/caicloud/clientset/util/controller
 github.com/caicloud/clientset/util/event
 github.com/caicloud/clientset/util/status
 github.com/caicloud/clientset/util/syncqueue
-# github.com/caicloud/go-common v0.3.6
+# github.com/caicloud/go-common v0.3.7
 github.com/caicloud/go-common/kubernetes/client
 github.com/caicloud/go-common/kubernetes/leaderelection
 github.com/caicloud/go-common/signal

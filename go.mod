@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/InVisionApp/conjungo v1.1.0
 	github.com/caicloud/clientset v0.0.0-20200420062837-792b5fced8a6
-	github.com/caicloud/go-common v0.3.6
+	github.com/caicloud/go-common v0.3.7
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a

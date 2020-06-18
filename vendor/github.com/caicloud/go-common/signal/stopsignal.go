@@ -3,13 +3,10 @@ package signal
 import (
 	"os"
 	"os/signal"
-	"syscall"
 )
 
-var (
-	shutdownSignals      = []os.Signal{syscall.SIGINT, syscall.SIGTERM}
-	onlyOneSignalHandler = make(chan struct{})
-)
+var onlyOneSignalHandler = make(chan struct{})
+var shutdownHandler chan os.Signal
 
 // SetupStopSignalHandler registered for SIGTERM and SIGINT. A stop channel is returned
 // which is closed on one of these signals. If a second signal is caught, the program
@@ -18,15 +15,30 @@ var (
 func SetupStopSignalHandler() <-chan struct{} {
 	close(onlyOneSignalHandler) // panics when called twice
 
+	shutdownHandler = make(chan os.Signal, 2)
+
 	stop := make(chan struct{})
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, shutdownSignals...)
+	signal.Notify(shutdownHandler, shutdownSignals...)
 	go func() {
-		<-c
+		<-shutdownHandler
 		close(stop)
-		<-c
+		<-shutdownHandler
 		os.Exit(1) // second signal. Exit directly.
 	}()
 
 	return stop
+}
+
+// RequestShutdown emulates a received event that is considered as shutdown signal (SIGTERM/SIGINT)
+// This returns whether a handler was notified
+func RequestShutdown() bool {
+	if shutdownHandler != nil {
+		select {
+		case shutdownHandler <- shutdownSignals[0]:
+			return true
+		default:
+		}
+	}
+
+	return false
 }
