@@ -177,7 +177,8 @@ func (f *nginx) updateIfHasUnmanagedConfig(lb *lbapi.LoadBalancer, cm *v1.Config
 
 	var unmanagedConifgs map[string]string
 	// we consider that configs may contains unmanaged config only if cm is not marked (oldExternalConfigMaps is empty).
-	if len(oldExternalConfigMaps) == 0 {
+	if len(oldExternalConfigMaps) == 0 ||
+		(len(oldExternalConfigMaps) == 1 && oldExternalConfigMaps[0] == "") {
 		unmanagedConifgs = mapDel(cm.Data, defaultConfig, managedConfig)
 	}
 
