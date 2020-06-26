@@ -92,8 +92,8 @@ type VertexMeta struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// Memos contain extra infromation of this workload, such as coordinates.
-	// The difference beween Memos and Annotations is that the informations in Memos
+	// Memos contain extra information of this workload, such as coordinates.
+	// The difference between Memos and Annotations is that the informations in Memos
 	// are only stored here, will not be present in workload
 	// +optional
 	Memos map[string]string `json:"memos,omitempty"`
