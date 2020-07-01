@@ -493,9 +493,16 @@
   version = "kubernetes-1.12.3"
 
 [[projects]]
-  digest = "1:aff2ac035da399e2ccd6d58a0c484f87a52c82868b652397727c2ce1a3aba7f0"
+  digest = "1:6863750b53ac3e57c4ea2b068c6c07d3b42a6dc965f64c5fdd56ae2ab768deb5"
   name = "k8s.io/apiextensions-apiserver"
-  packages = ["pkg/features"]
+  packages = [
+    "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
+    "pkg/features",
+  ]
   pruneopts = "NUT"
   revision = "0cd23ebeb6882bd1cdc2cb15fc7b2d72e8a86a5b"
   version = "kubernetes-1.12.3"
@@ -814,8 +821,10 @@
     "github.com/caicloud/clientset/kubernetes",
     "github.com/caicloud/clientset/kubernetes/typed/loadbalance/v1alpha2",
     "github.com/caicloud/clientset/listers/loadbalance/v1alpha2",
+    "github.com/caicloud/clientset/listers/release/v1alpha1",
     "github.com/caicloud/clientset/pkg/apis/apiextensions/v1beta1",
     "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2",
+    "github.com/caicloud/clientset/pkg/apis/release/v1alpha1",
     "github.com/caicloud/clientset/util/controller",
     "github.com/caicloud/clientset/util/status",
     "github.com/caicloud/clientset/util/syncqueue",
@@ -825,6 +834,8 @@
     "github.com/zoumo/golib/register",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
+    "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
+    "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",

@@ -77,6 +77,9 @@ func (f *kong) Init(cfg config.Configuration, sif informers.SharedInformerFactor
 	// set config
 	f.client = cfg.Client
 
+	// init crds
+	_ = installKongCrds()
+
 	// initialize controller
 	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
 	podInfomer := sif.Core().V1().Pods()
