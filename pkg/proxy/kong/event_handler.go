@@ -17,6 +17,7 @@ limitations under the License.
 package kong
 
 import (
+	"k8s.io/apimachinery/pkg/labels"
 	"fmt"
 
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
@@ -92,13 +93,39 @@ func (eh *EventHandlerForRelease) OnAdd(obj interface{}) {
 	}
 
 	// Otherwise, it's an orphan. Get a matching LoadBalancer for Release
-	lb, err := eh.lbLister.GetLoadBalancerForControllee(d)
-	if err != nil {
-		log.Errorf("Can not get loadbalancer for orpha Release %v, ignore it, Release's labels %v", d.Name, d.Labels)
+	if d.Labels == nil {
+		log.Errorf("No ingress class label on release %v", d.Name)
 		return
 	}
-	log.Infof("Orphan Release %v added", d.Name)
-	eh.queue.Enqueue(lb)
+	ingressClass := d.Labels[ingressClassKey]
+	if ingressClass == "" {
+		log.Errorf("No ingress class label on release %v", d.Name)
+		return
+	}
+
+	lbs, err := eh.lbLister.List(labels.NewSelector())
+	if err != nil {
+		log.Errorf("Can not get loadbalancer list for orpha Release %v, ignore it, Release's labels %v", d.Name, d.Labels)
+		return
+	}
+	//
+	var reqlb *lbapi.LoadBalancer
+	for i, lb := range lbs {
+		annotations := lb.GetAnnotations()
+		if annotations == nil {
+			continue
+		}
+		if annotations[ingressClassKey] == ingressClass {
+			reqlb = lbs[i]
+			break
+		}
+	}
+	if reqlb == nil {
+		log.Errorf("Can not get loadbalancer for orpha Release %v with ingress class %v", d.Name, ingressClass)
+		return
+	}
+	log.Infof("Orphan Release %v added, get lb %v", d.Name, reqlb.Name)
+	eh.queue.Enqueue(reqlb)
 
 }
 
