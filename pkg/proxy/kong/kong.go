@@ -178,7 +178,8 @@ func (f *kong) syncLoadBalancer(obj interface{}) error {
 
 	release, err := f.getOrSetReleaseForLoadBalancer(lb)
 	if err != nil {
-		return err
+ 		log.Errorf("Wait for release ready, error %v", err)
+		return nil
 	}
 
 	if lb.DeletionTimestamp != nil {
@@ -248,5 +249,26 @@ func (f *kong) sync(lb *lbapi.LoadBalancer, release *releaseapi.Release) error {
 }
 
 func (f *kong) cleanup(lb *lbapi.LoadBalancer) error {
+    // clean up ingress
+    selector := labels.Set{
+        // createdby ingressClass
+        lbapi.LabelKeyCreatedBy: lb.Status.ProxyStatus.IngressClass,
+    }
+    ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
+        LabelSelector: selector.String(),
+    })
+
+    if err != nil {
+        log.Errorf("Cleanup Ingress error: %v", err)
+        return err
+    }
+
+    for _, ingress := range ingresses.Items {
+        err = f.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
+        if err != nil {
+            log.Errorf("Cleanup Ingress error: %v", err)
+            return err
+        }
+    }
 	return nil
 }

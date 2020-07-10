@@ -195,7 +195,8 @@ func (f *nginx) syncLoadBalancer(obj interface{}) error {
 
 	if lb.Spec.Proxy.Type != lbapi.ProxyTypeNginx {
 		// It is not my responsible, clean up legacies
-		return f.cleanup(lb)
+		log.Infof("lb %v is not nginx, skip it", lb.Name)
+    	return nil
 	}
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
