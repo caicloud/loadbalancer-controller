@@ -74,7 +74,7 @@ func (m *baseControllerRefManager) canAdopt() error {
 //   * Adopt orphans if the match function returns true.
 //   * Release owned objects if the match function returns false.
 //
-// A non-nil error is returned if some form of reconciliation was attemped and
+// A non-nil error is returned if some form of reconciliation was attempted and
 // failed. Usually, controllers should try again later in case reconciliation
 // is still needed.
 //
@@ -173,7 +173,7 @@ func NewDaemonSetControllerRefManager(
 //   * Adopt orphans if the selector matches.
 //   * Release owned objects if the selector no longer matches.
 //
-// A non-nil error is returned if some form of reconciliation was attemped and
+// A non-nil error is returned if some form of reconciliation was attempted and
 // failed. Usually, controllers should try again later in case reconciliation
 // is still needed.
 //
@@ -282,7 +282,7 @@ func NewDeploymentControllerRefManager(
 //   * Adopt orphans if the selector matches.
 //   * Release owned objects if the selector no longer matches.
 //
-// A non-nil error is returned if some form of reconciliation was attemped and
+// A non-nil error is returned if some form of reconciliation was attempted and
 // failed. Usually, controllers should try again later in case reconciliation
 // is still needed.
 //
