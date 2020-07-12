@@ -19,6 +19,7 @@ package kong
 import (
 	"fmt"
 	"time"
+	"encoding/json"
 
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
@@ -40,6 +41,8 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	log "k8s.io/klog"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -209,6 +212,8 @@ func (f *kong) getOrSetReleaseForLoadBalancer(lb *lbapi.LoadBalancer) (*releasea
 		return nil, err
 	}
 
+	originRelease := release.DeepCopy()
+
 	// set owner reference
 	t := true
 	if release.OwnerReferences == nil || len(release.OwnerReferences) == 0 {
@@ -222,7 +227,14 @@ func (f *kong) getOrSetReleaseForLoadBalancer(lb *lbapi.LoadBalancer) (*releasea
 				BlockOwnerDeletion: &t,
 			},
 		}
-		if release, err = f.client.ReleaseV1alpha1().Releases(defaultNamespace).Update(release); err != nil {
+		// get patch
+		orginal, _ := json.Marshal(originRelease)
+		modified, _ := json.Marshal(release)
+		patch, err := strategicpatch.CreateTwoWayMergePatch(orginal, modified, release)
+		if err != nil {
+			return nil, err
+		}
+		if release, err = f.client.ReleaseV1alpha1().Releases(defaultNamespace).Patch(release.Name, types.MergePatchType, patch); err != nil {
 			log.Errorf("Set owner references for release %v of loadbalancer %v error", release.Name, lb.Name)
 			return nil, err
 		}
