@@ -311,7 +311,9 @@ func (f *nginx) cleanup(lb *lbapi.LoadBalancer) error {
 
 	ds, err := f.getDeploymentsForLoadBalancer(lb)
 	if err != nil {
-		return err
+		if !errors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	policy := metav1.DeletePropagationForeground
