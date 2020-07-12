@@ -17,9 +17,9 @@ limitations under the License.
 package kong
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
-	"encoding/json"
 
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
@@ -29,39 +29,39 @@ import (
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	releaseapi "github.com/caicloud/clientset/pkg/apis/release/v1alpha1"
 	"github.com/caicloud/clientset/util/syncqueue"
-	"github.com/caicloud/loadbalancer-controller/pkg/config"
 	"github.com/caicloud/loadbalancer-controller/pkg/api"
+	"github.com/caicloud/loadbalancer-controller/pkg/config"
 
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	log "k8s.io/klog"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	proxyNameSuffix  = "-proxy-kong"
-	proxyName        = "kong"
-	defaultNamespace = "kube-system"
-	releaseKey       = "controller.caicloud.io/release"
-	ingressClassKey  = "loadbalance.caicloud.io/ingress.class"
+	proxyNameSuffix     = "-proxy-kong"
+	proxyName           = "kong"
+	defaultNamespace    = "kube-system"
+	releaseKey          = "controller.caicloud.io/release"
+	ingressClassKey     = "loadbalance.caicloud.io/ingress.class"
 	defaultIngressClass = "kong"
 )
 
 type kong struct {
-	initialized           bool
+	initialized bool
 
 	client kubernetes.Interface
 	queue  *syncqueue.SyncQueue
 
-	lbLister  lblisters.LoadBalancerLister
-	podLister corelisters.PodLister
+	lbLister      lblisters.LoadBalancerLister
+	podLister     corelisters.PodLister
 	releaseLister releaselisters.ReleaseLister
 }
 
@@ -181,7 +181,7 @@ func (f *kong) syncLoadBalancer(obj interface{}) error {
 
 	release, err := f.getOrSetReleaseForLoadBalancer(lb)
 	if err != nil {
- 		log.Errorf("Wait for release ready, error %v", err)
+		log.Errorf("Wait for release ready, error %v", err)
 		return nil
 	}
 
@@ -245,42 +245,42 @@ func (f *kong) getOrSetReleaseForLoadBalancer(lb *lbapi.LoadBalancer) (*releasea
 
 // sync release
 func (f *kong) sync(lb *lbapi.LoadBalancer, release *releaseapi.Release) error {
-    // get ingress class from loadbalancer
+	// get ingress class from loadbalancer
 	annotations := lb.GetAnnotations()
 	if annotations == nil {
 		return fmt.Errorf("No annotations on loadbalancer %v/%v", lb.Namespace, lb.Name)
 	}
-    ingressClass := annotations[ingressClassKey]
-    if ingressClass == "" {
-    	ingressClass = defaultIngressClass
-    	annotations[ingressClass] = defaultIngressClass
-    	lb.Annotations = annotations
-    }
+	ingressClass := annotations[ingressClassKey]
+	if ingressClass == "" {
+		ingressClass = defaultIngressClass
+		annotations[ingressClass] = defaultIngressClass
+		lb.Annotations = annotations
+	}
 	// update status
 	return f.syncStatus(lb, release.Name, ingressClass)
 }
 
 func (f *kong) cleanup(lb *lbapi.LoadBalancer) error {
-    // clean up ingress
-    selector := labels.Set{
-        // createdby ingressClass
-        lbapi.LabelKeyCreatedBy: lb.Status.ProxyStatus.IngressClass,
-    }
-    ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
-        LabelSelector: selector.String(),
-    })
+	// clean up ingress
+	selector := labels.Set{
+		// createdby ingressClass
+		lbapi.LabelKeyCreatedBy: lb.Status.ProxyStatus.IngressClass,
+	}
+	ingresses, err := f.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
 
-    if err != nil {
-        log.Errorf("Cleanup Ingress error: %v", err)
-        return err
-    }
+	if err != nil {
+		log.Errorf("Cleanup Ingress error: %v", err)
+		return err
+	}
 
-    for _, ingress := range ingresses.Items {
-        err = f.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
-        if err != nil {
-            log.Errorf("Cleanup Ingress error: %v", err)
-            return err
-        }
-    }
+	for _, ingress := range ingresses.Items {
+		err = f.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			log.Errorf("Cleanup Ingress error: %v", err)
+			return err
+		}
+	}
 	return nil
 }

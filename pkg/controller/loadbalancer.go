@@ -281,7 +281,7 @@ func (lbc *LoadBalancerController) deleteLoadBalancer(obj interface{}) {
 }
 
 func getIngressClassFromLoadbalancer(lb *lbapi.LoadBalancer) string {
-    // get ingress class from annotation of loadbalancer
+	// get ingress class from annotation of loadbalancer
 	annotations := lb.GetAnnotations()
 	if annotations != nil {
 		ingressClass := annotations[ingressClassKey]

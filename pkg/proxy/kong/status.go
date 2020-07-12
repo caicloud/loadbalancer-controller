@@ -26,7 +26,7 @@ import (
 	log "k8s.io/klog"
 )
 
-func (f *kong) syncStatus(lb *lbapi.LoadBalancer, releaseName, ingressClass string) error {	
+func (f *kong) syncStatus(lb *lbapi.LoadBalancer, releaseName, ingressClass string) error {
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	// caculate proxy status
 	proxyStatus := lbapi.ProxyStatus{
@@ -36,7 +36,7 @@ func (f *kong) syncStatus(lb *lbapi.LoadBalancer, releaseName, ingressClass stri
 			TotalReplicas: 0,
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
-		Deployment: releaseName,
+		Deployment:   releaseName,
 		IngressClass: ingressClass,
 	}
 

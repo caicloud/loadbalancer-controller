@@ -80,7 +80,7 @@ func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*a
 
 	ingressClass := getIngressClassFromLoadbalancer(lb)
 	ran.Labels = map[string]string{
-		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name): "true",
+		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name):      "true",
 		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, ingressClass): "true",
 	}
 

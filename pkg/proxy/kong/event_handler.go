@@ -17,8 +17,9 @@ limitations under the License.
 package kong
 
 import (
-	"k8s.io/apimachinery/pkg/labels"
 	"fmt"
+
+	"k8s.io/apimachinery/pkg/labels"
 
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
 	releaselisters "github.com/caicloud/clientset/listers/release/v1alpha1"
@@ -43,8 +44,8 @@ type filterReleaseFunc func(obj *releaseapi.Release) bool
 type EventHandlerForRelease struct {
 	queue *syncqueue.SyncQueue
 
-	lbLister lblisters.LoadBalancerLister
-	releaseLister  releaselisters.ReleaseLister
+	lbLister      lblisters.LoadBalancerLister
+	releaseLister releaselisters.ReleaseLister
 
 	filtered filterReleaseFunc
 }
@@ -57,10 +58,10 @@ func newEventHandlerForRelease(
 	filterFunc filterReleaseFunc,
 ) *EventHandlerForRelease {
 	return &EventHandlerForRelease{
-		queue:    queue,
-		lbLister: lbLister,
-		releaseLister:  releaseLister,
-		filtered: filterFunc,
+		queue:         queue,
+		lbLister:      lbLister,
+		releaseLister: releaseLister,
+		filtered:      filterFunc,
 	}
 }
 
