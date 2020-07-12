@@ -84,6 +84,15 @@ type ProxySpec struct {
 	// HTTPSPort is the port that LoadBalancer listen https protocol
 	// default is 443
 	HTTPSPort int `json:"httpsPort,omitempty"`
+	// PortRanges define a list of port-ranges the proxy can use
+	// default is [{20000,29999}]
+	PortRanges []PortRange `json:"portRanges,omitempty"`
+}
+
+// PortRange describe a port range in {start, end}
+type PortRange struct {
+	Start int32 `json:"start"`
+	End   int32 `json:"end"`
 }
 
 // ProxyType ...
@@ -96,6 +105,8 @@ const (
 	ProxyTypeHaproxy ProxyType = "haproxy"
 	// ProxyTypeTraefik for traefik
 	ProxyTypeTraefik ProxyType = "traefik"
+	// ProxyTypeKong for kong
+	ProxyTypeKong ProxyType = "kong"
 )
 
 // ProvidersSpec is a description of prividers
@@ -232,6 +243,8 @@ type LoadBalancerStatus struct {
 	Accessible bool `json:"accessible,omitempty"`
 	// AccessIPs specify the entrance ip of loadbalancer
 	AccessIPs []string `json:"accessIPs,omitempty"`
+	// NodeIPs specify the entrance node ip of loadbalancer
+	NodeIPs []string `json:"nodeIPs,omitempty"`
 	// +optional
 	ProxyStatus ProxyStatus `json:"proxyStatus"`
 	// +optional

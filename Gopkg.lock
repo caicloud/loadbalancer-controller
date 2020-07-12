@@ -10,8 +10,8 @@
   revision = "b3e69d3d701c8ca2652b517823173d58471ae1c2"
 
 [[projects]]
-  branch = "release-1.12"
-  digest = "1:e2bed6b57aab0866e95eb245876ab80f699192a34f9b68becb5f339496ee55e9"
+  branch = "release-1.12-oem-starbucks"
+  digest = "1:5925bd12163e0619e55d402d3617ac860d0b9a64da47db138acd389f7f96d01a"
   name = "github.com/caicloud/clientset"
   packages = [
     "informers",
@@ -120,7 +120,7 @@
     "util/syncqueue",
   ]
   pruneopts = "NUT"
-  revision = "5c4075a9e3a7efc0cf2f2041c919f014ac11dc62"
+  revision = "fed379e6eade245c96592e59c60014bf02ad657e"
 
 [[projects]]
   digest = "1:a2c1d0e43bd3baaa071d1b9ed72c27d78169b2b269f71c105ac4ba34b1be4a39"
@@ -493,9 +493,16 @@
   version = "kubernetes-1.12.3"
 
 [[projects]]
-  digest = "1:aff2ac035da399e2ccd6d58a0c484f87a52c82868b652397727c2ce1a3aba7f0"
+  digest = "1:6863750b53ac3e57c4ea2b068c6c07d3b42a6dc965f64c5fdd56ae2ab768deb5"
   name = "k8s.io/apiextensions-apiserver"
-  packages = ["pkg/features"]
+  packages = [
+    "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
+    "pkg/features",
+  ]
   pruneopts = "NUT"
   revision = "0cd23ebeb6882bd1cdc2cb15fc7b2d72e8a86a5b"
   version = "kubernetes-1.12.3"
@@ -814,8 +821,10 @@
     "github.com/caicloud/clientset/kubernetes",
     "github.com/caicloud/clientset/kubernetes/typed/loadbalance/v1alpha2",
     "github.com/caicloud/clientset/listers/loadbalance/v1alpha2",
+    "github.com/caicloud/clientset/listers/release/v1alpha1",
     "github.com/caicloud/clientset/pkg/apis/apiextensions/v1beta1",
     "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2",
+    "github.com/caicloud/clientset/pkg/apis/release/v1alpha1",
     "github.com/caicloud/clientset/util/controller",
     "github.com/caicloud/clientset/util/status",
     "github.com/caicloud/clientset/util/syncqueue",
@@ -825,6 +834,8 @@
     "github.com/zoumo/golib/register",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
+    "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
+    "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",

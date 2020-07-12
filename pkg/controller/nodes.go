@@ -62,8 +62,9 @@ func (nc *nodeController) syncNodes(lb *lbapi.LoadBalancer) error {
 }
 
 func (nc *nodeController) getNodesForLoadBalancer(lb *lbapi.LoadBalancer) ([]*apiv1.Node, error) {
+	ingressClass := getIngressClassFromLoadbalancer(lb)
 	// list old nodes
-	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name)
+	labelkey := fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, ingressClass)
 	selector := labels.Set{labelkey: "true"}.AsSelector()
 	return nc.nodeLister.List(selector)
 }
@@ -77,8 +78,10 @@ func (nc *nodeController) getVerifiedNodes(lb *lbapi.LoadBalancer, oldNodes []*a
 		Labels:         map[string]string{},
 	}
 
+	ingressClass := getIngressClassFromLoadbalancer(lb)
 	ran.Labels = map[string]string{
-		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name): "true",
+		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, lb.Name):      "true",
+		fmt.Sprintf(lbapi.UniqueLabelKeyFormat, lb.Namespace, ingressClass): "true",
 	}
 
 	if len(lb.Spec.Nodes.Names) == 0 {
