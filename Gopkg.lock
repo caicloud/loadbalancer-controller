@@ -10,8 +10,8 @@
   revision = "b3e69d3d701c8ca2652b517823173d58471ae1c2"
 
 [[projects]]
-  branch = "release-1.14"
-  digest = "1:fb35e22470f02100c1692b12a5536f41d262e7a72833a12b522e7ce3dc056a0a"
+  branch = "release-1.14-oem-infinitus"
+  digest = "1:cd41fe867efaa7da0b35d9324259c0fa81105cd91ff326e4bc5639f410737eca"
   name = "github.com/caicloud/clientset"
   packages = [
     "informers",
@@ -56,6 +56,8 @@
     "informers/servicemesh/v1alpha1",
     "informers/serving",
     "informers/serving/v1alpha1",
+    "informers/solution",
+    "informers/solution/v1alpha1",
     "informers/tenant",
     "informers/tenant/v1alpha1",
     "informers/workload",
@@ -86,6 +88,7 @@
     "kubernetes/typed/resource/v1beta1",
     "kubernetes/typed/servicemesh/v1alpha1",
     "kubernetes/typed/serving/v1alpha1",
+    "kubernetes/typed/solution/v1alpha1",
     "kubernetes/typed/tenant/v1alpha1",
     "kubernetes/typed/workload/v1alpha1",
     "kubernetes/typed/workload/v1beta1",
@@ -112,6 +115,7 @@
     "listers/resource/v1beta1",
     "listers/servicemesh/v1alpha1",
     "listers/serving/v1alpha1",
+    "listers/solution/v1alpha1",
     "listers/tenant/v1alpha1",
     "listers/workload/v1alpha1",
     "listers/workload/v1beta1",
@@ -138,6 +142,7 @@
     "pkg/apis/resource/v1beta1",
     "pkg/apis/servicemesh/v1alpha1",
     "pkg/apis/serving/v1alpha1",
+    "pkg/apis/solution/v1alpha1",
     "pkg/apis/tenant/v1alpha1",
     "pkg/apis/workload/v1alpha1",
     "pkg/apis/workload/v1beta1",
@@ -147,7 +152,7 @@
     "util/syncqueue",
   ]
   pruneopts = "NUT"
-  revision = "7a1797804a9c635c2e00ee98b0c964af501db0b3"
+  revision = "d287992bac5e7a4dbaac26d360de6d267a34c846"
 
 [[projects]]
   digest = "1:c0eec4f5d71d69aace7ac33d0b787f03825baa0ac9528a14c066e356121070a0"

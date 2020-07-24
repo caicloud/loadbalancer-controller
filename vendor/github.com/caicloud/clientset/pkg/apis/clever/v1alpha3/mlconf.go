@@ -18,6 +18,8 @@ const (
 	DataCleaning       FrameworkGroupType = "DataCleaning"
 	PresetAlgorithm    FrameworkGroupType = "PresetAlgorithm"
 	AutoML             FrameworkGroupType = "AutoML"
+	DataDevelopment    FrameworkGroupType = "DataDevelopment"
+	Custom             FrameworkGroupType = "Custom"
 )
 
 // Framework type of application
@@ -61,6 +63,7 @@ const (
 	PSWorkerTraining     TrainingType = "PSWorker"
 	MasterWorkerTraining TrainingType = "MasterWorker"
 	HorovodTraining      TrainingType = "Horovod"
+	Distributed          TrainingType = "Distributed"
 )
 
 type MLConfig struct {

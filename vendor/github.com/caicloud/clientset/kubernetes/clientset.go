@@ -30,6 +30,7 @@ import (
 	resourcev1beta1 "github.com/caicloud/clientset/kubernetes/typed/resource/v1beta1"
 	servicemeshv1alpha1 "github.com/caicloud/clientset/kubernetes/typed/servicemesh/v1alpha1"
 	servingv1alpha1 "github.com/caicloud/clientset/kubernetes/typed/serving/v1alpha1"
+	solutionv1alpha1 "github.com/caicloud/clientset/kubernetes/typed/solution/v1alpha1"
 	tenantv1alpha1 "github.com/caicloud/clientset/kubernetes/typed/tenant/v1alpha1"
 	workloadv1alpha1 "github.com/caicloud/clientset/kubernetes/typed/workload/v1alpha1"
 	workloadv1beta1 "github.com/caicloud/clientset/kubernetes/typed/workload/v1beta1"
@@ -99,6 +100,9 @@ type Interface interface {
 	ServingV1alpha1() servingv1alpha1.ServingV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Serving() servingv1alpha1.ServingV1alpha1Interface
+	SolutionV1alpha1() solutionv1alpha1.SolutionV1alpha1Interface
+	// Deprecated: please explicitly pick a version if possible.
+	Solution() solutionv1alpha1.SolutionV1alpha1Interface
 	TenantV1alpha1() tenantv1alpha1.TenantV1alpha1Interface
 	// Deprecated: please explicitly pick a version if possible.
 	Tenant() tenantv1alpha1.TenantV1alpha1Interface
@@ -135,6 +139,7 @@ type Clientset struct {
 	resourceV1beta1       *resourcev1beta1.ResourceV1beta1Client
 	servicemeshV1alpha1   *servicemeshv1alpha1.ServicemeshV1alpha1Client
 	servingV1alpha1       *servingv1alpha1.ServingV1alpha1Client
+	solutionV1alpha1      *solutionv1alpha1.SolutionV1alpha1Client
 	tenantV1alpha1        *tenantv1alpha1.TenantV1alpha1Client
 	workloadV1alpha1      *workloadv1alpha1.WorkloadV1alpha1Client
 	workloadV1beta1       *workloadv1beta1.WorkloadV1beta1Client
@@ -363,6 +368,17 @@ func (c *Clientset) Serving() servingv1alpha1.ServingV1alpha1Interface {
 	return c.servingV1alpha1
 }
 
+// SolutionV1alpha1 retrieves the SolutionV1alpha1Client
+func (c *Clientset) SolutionV1alpha1() solutionv1alpha1.SolutionV1alpha1Interface {
+	return c.solutionV1alpha1
+}
+
+// Deprecated: Solution retrieves the default version of SolutionClient.
+// Please explicitly pick a version.
+func (c *Clientset) Solution() solutionv1alpha1.SolutionV1alpha1Interface {
+	return c.solutionV1alpha1
+}
+
 // TenantV1alpha1 retrieves the TenantV1alpha1Client
 func (c *Clientset) TenantV1alpha1() tenantv1alpha1.TenantV1alpha1Interface {
 	return c.tenantV1alpha1
@@ -490,6 +506,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.solutionV1alpha1, err = solutionv1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 	cs.tenantV1alpha1, err = tenantv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
@@ -537,6 +557,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.resourceV1beta1 = resourcev1beta1.NewForConfigOrDie(c)
 	cs.servicemeshV1alpha1 = servicemeshv1alpha1.NewForConfigOrDie(c)
 	cs.servingV1alpha1 = servingv1alpha1.NewForConfigOrDie(c)
+	cs.solutionV1alpha1 = solutionv1alpha1.NewForConfigOrDie(c)
 	cs.tenantV1alpha1 = tenantv1alpha1.NewForConfigOrDie(c)
 	cs.workloadV1alpha1 = workloadv1alpha1.NewForConfigOrDie(c)
 	cs.workloadV1beta1 = workloadv1beta1.NewForConfigOrDie(c)
@@ -571,6 +592,7 @@ func New(c rest.Interface) *Clientset {
 	cs.resourceV1beta1 = resourcev1beta1.New(c)
 	cs.servicemeshV1alpha1 = servicemeshv1alpha1.New(c)
 	cs.servingV1alpha1 = servingv1alpha1.New(c)
+	cs.solutionV1alpha1 = solutionv1alpha1.New(c)
 	cs.tenantV1alpha1 = tenantv1alpha1.New(c)
 	cs.workloadV1alpha1 = workloadv1alpha1.New(c)
 	cs.workloadV1beta1 = workloadv1beta1.New(c)
