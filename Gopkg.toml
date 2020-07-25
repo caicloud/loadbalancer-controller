@@ -38,7 +38,7 @@
 
 [[override]]
   name = "github.com/caicloud/clientset"
-  branch = "release-1.14"
+  branch = "release-1.14-oem-infinitus"
 
 [[override]]
   name = "github.com/json-iterator/go"

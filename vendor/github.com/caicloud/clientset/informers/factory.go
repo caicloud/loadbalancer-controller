@@ -27,6 +27,7 @@ import (
 	resource "github.com/caicloud/clientset/informers/resource"
 	servicemesh "github.com/caicloud/clientset/informers/servicemesh"
 	serving "github.com/caicloud/clientset/informers/serving"
+	solution "github.com/caicloud/clientset/informers/solution"
 	tenant "github.com/caicloud/clientset/informers/tenant"
 	workload "github.com/caicloud/clientset/informers/workload"
 	kubernetes "github.com/caicloud/clientset/kubernetes"
@@ -111,6 +112,7 @@ type SharedInformerFactory interface {
 	Resource() resource.Interface
 	Servicemesh() servicemesh.Interface
 	Serving() serving.Interface
+	Solution() solution.Interface
 	Tenant() tenant.Interface
 	Workload() workload.Interface
 }
@@ -185,6 +187,10 @@ func (f *sharedInformerFactory) Servicemesh() servicemesh.Interface {
 
 func (f *sharedInformerFactory) Serving() serving.Interface {
 	return serving.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Solution() solution.Interface {
+	return solution.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Tenant() tenant.Interface {

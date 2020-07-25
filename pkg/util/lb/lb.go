@@ -98,6 +98,16 @@ func IpvsdrProviderStatusEqual(a, b lbapi.IpvsdrProviderStatus) bool {
 	return reflect.DeepEqual(a, b)
 }
 
+// F5ProviderStatusEqual check whether the given two Statuses are equal
+func F5ProviderStatusEqual(a, b lbapi.F5ProviderStatus) bool {
+	if !PodStatusesEqual(a.PodStatuses, b.PodStatuses) {
+		return false
+	}
+	a.PodStatuses = lbapi.PodStatuses{}
+	b.PodStatuses = lbapi.PodStatuses{}
+	return reflect.DeepEqual(a, b)
+}
+
 // ExternalProviderStatusEqual check whether the given two ExpternalProviderStatus are equal
 func ExternalProviderStatusEqual(a, b lbapi.ExpternalProviderStatus) bool {
 	return reflect.DeepEqual(a, b)

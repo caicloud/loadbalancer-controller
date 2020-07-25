@@ -14,21 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package provider
+package f5
 
-import (
-	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
-	"github.com/caicloud/loadbalancer-controller/pkg/provider/azure"
-	"github.com/caicloud/loadbalancer-controller/pkg/provider/external"
-	"github.com/caicloud/loadbalancer-controller/pkg/provider/f5"
-	"github.com/caicloud/loadbalancer-controller/pkg/provider/ipvsdr"
-)
+import "github.com/caicloud/loadbalancer-controller/pkg/plugin"
 
-var localRegistryBuilder = plugin.RegistryBuilder{
-	azure.AddToRegistry,
-	external.AddToRegistry,
-	ipvsdr.AddToRegistry,
-	f5.AddToRegistry,
+func AddToRegistry(registry *plugin.Registry) error {
+	registry.Register(providerName, New())
+	return nil
 }
-
-var AddToRegistry = localRegistryBuilder.AddToRegistry

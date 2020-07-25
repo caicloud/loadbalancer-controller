@@ -80,6 +80,7 @@ type ProxyNginx struct {
 type Providers struct {
 	Ipvsdr ProviderIpvsdr
 	Azure  ProviderAzure
+	F5     ProviderF5
 }
 
 // ProviderIpvsdr contains all cli flags of ipvsdr providers
@@ -91,6 +92,11 @@ type ProviderIpvsdr struct {
 
 // ProviderAzure contains all cli flags of azure providers
 type ProviderAzure struct {
+	Image string
+}
+
+// ProviderF5 contains all cli flags of f5 providers
+type ProviderF5 struct {
 	Image string
 }
 
@@ -107,6 +113,7 @@ func (c *Configuration) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.Proxies.Nginx.AnnotationPrefix, "proxy-nginx-annotation-prefix", defaultIngressAnnotationPrefix, "Prefix of ingress annotation")
 
 	fs.StringVar(&c.Providers.Ipvsdr.Image, "provider-ipvsdr", defaultIpvsdrImage, "`Image` of ipvsdr provider")
+	fs.StringVar(&c.Providers.F5.Image, "provider-f5", defaultIpvsdrImage, "`Image` of ipvsdr provider")
 	fs.StringVar(&c.Providers.Ipvsdr.NodeIPLabel, "nodeip-label", "", "tell provider which label of node stores node ip")
 	fs.StringVar(&c.Providers.Ipvsdr.NodeIPAnnotation, "nodeip-annotation", "", "tell provider which annotation of node stores node ip")
 

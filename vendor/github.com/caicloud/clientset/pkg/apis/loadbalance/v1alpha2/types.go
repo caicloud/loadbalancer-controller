@@ -117,11 +117,25 @@ type ProvidersSpec struct {
 	Aliyun *AliyunProvider `json:"aliyun,omitempty"`
 	// azure
 	Azure *AzureProvider `json:"azure,omitempty"`
+	// f5
+	F5 *F5Provider `json:"f5,omitempty"`
 }
 
 // ExternalProvider is a provider docking for external loadbalancer
 type ExternalProvider struct {
 	VIP string `json:"vip"`
+}
+
+// F5Provider is a f5 provider
+type F5Provider struct {
+	// VIP
+	VIP string `json:"vip"`
+	// Name in cluster
+	Name string `json:"name,omitemtpy"`
+	// Alias name of f5
+	Alias string `json:"alias,omitemtpy"`
+	// VirtualServerName
+	VirtualServerName string `json:"virtualServerName,omitempty"`
 }
 
 // IpvsdrProvider is a ipvs dr provider
@@ -269,6 +283,8 @@ type ProvidersStatuses struct {
 	Aliyun *AliyunProviderStatus `json:"aliyun,omitempty"`
 	// azure
 	Azure *AzureProviderStatus `json:"azure,omitempty"`
+	// f5
+	F5 *F5ProviderStatus `json:"f5,omitempty"`
 }
 
 // ExpternalProviderStatus represents the current status of the external provider
@@ -286,6 +302,17 @@ type IpvsdrProviderStatus struct {
 
 // AliyunProviderStatus represents the current status of the aliyun provider
 type AliyunProviderStatus struct {
+}
+
+// F5ProviderStatus represents the current status of the f5 provider
+type F5ProviderStatus struct {
+	PodStatuses `json:",inline"`
+	// Status f5 connection status
+	Status string `json:"status,omitempty"`
+	// Message f5 connection message
+	Message string `json:"message,omitempty"`
+	// Undefined statuses
+	Undefined map[string]string `json:"undefined,omitempty"`
 }
 
 // AzureProviderStatus represents the current status of the azure lb provider

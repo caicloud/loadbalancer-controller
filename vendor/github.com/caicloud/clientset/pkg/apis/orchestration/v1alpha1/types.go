@@ -99,6 +99,12 @@ type VertexMeta struct {
 	Memos map[string]string `json:"memos,omitempty"`
 }
 
+// VertexRollbackConfig describes the rollback config of a vertex
+type VertexRollbackConfig struct {
+	// The version to rollback to. If set to 0, rollbck to the last version.
+	Version int32 `json:"version,omitempty"`
+}
+
 // VertexSpec ...
 type VertexSpec struct {
 	// This flag tells the controller to suspend the workload
@@ -118,6 +124,9 @@ type VertexSpec struct {
 	// Defaults to false.
 	// +optional
 	AdoptedIfOrphan *bool `json:"adoptedIfOrphan,omitempty"`
+
+	// The config this vertex is rolling back to. Will be cleared after rollback is done.
+	RollbackTo *VertexRollbackConfig `json:"rollbackTo,omitempty"`
 }
 
 // Edge is edge in workflows startup sequence DAG
