@@ -59,6 +59,9 @@ func (f *f5) syncStatus(lb *lbapi.LoadBalancer) error {
 	if lb.Status.ProvidersStatuses.F5 != nil {
 		pStatus = lb.Status.ProvidersStatuses.F5.Status
 		pMessage = lb.Status.ProvidersStatuses.F5.Message
+	} else {
+		pStatus = "Initiating"
+		pMessage = "Connecting to F5"
 	}
 
 	providerStatus := lbapi.F5ProviderStatus{
