@@ -240,11 +240,12 @@ func (f *f5) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		// 1. deployment does not have auto-generated prefix
 		// 2. if there are more than one active controllers, there may be many valid deployments.
 		//    But we only need one.
+		if *dp.Spec.Replicas == 0 {
+			continue
+		}
 		if !strings.HasPrefix(dp.Name, lb.Name+providerNameSuffix) || updated {
-			if *dp.Spec.Replicas == 0 {
-				continue
-			}
 			// scale unexpected deployment replicas to zero
+			log.Infof("Deployment %v is duplicated, set replicas to zero", dp.Name)
 			copy := dp.DeepCopy()
 			replica := int32(0)
 			copy.Spec.Replicas = &replica
