@@ -38,6 +38,7 @@ var (
 		"proxy-body-size":        "5G",
 		"server-tokens":          "false",
 		"skip-access-log-urls":   "/nginx_status/format/json",
+		"use-forwarded-headers":  "true",
 	}
 
 	// managedConfig is fully controlled by CPS. we should delete these from configmap if they are not specified.
