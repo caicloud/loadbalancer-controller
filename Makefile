@@ -38,11 +38,20 @@ TARGETS := controller
 IMAGE_PREFIX ?= $(strip loadbalancer-)
 IMAGE_SUFFIX ?= $(strip )
 
-# Container registries.
-REGISTRY ?= cargo.dev.caicloud.xyz/release
-
 # Container registry for base images.
 BASE_REGISTRY ?= cargo.caicloud.xyz/library
+
+# Go build GOARCH, you can choose to build amd64 or arm64
+ARCH ?= amd64
+
+# Change Dockerfile name and registry project name for arm64
+ifeq ($(ARCH),arm64)
+DOCKERFILE := Dockerfile.arm64
+REGISTRY ?= cargo.dev.caicloud.xyz/arm64v8
+else
+DOCKERFILE := Dockerfile
+REGISTRY ?= cargo.dev.caicloud.xyz/release
+endif
 
 #
 # These variables should not need tweaking.
@@ -110,10 +119,10 @@ build-linux:
 	  -v $(PWD):/go/src/$(ROOT)                                                        \
 	  -w /go/src/$(ROOT)                                                               \
 	  -e GOOS=linux                                                                    \
-	  -e GOARCH=amd64                                                                  \
+	  -e GOARCH=$(ARCH)                                                                \
 	  -e GOPATH=/go                                                                    \
 	  -e SHELLOPTS=$(SHELLOPTS)                                                        \
-	  $(BASE_REGISTRY)/golang:1.12.12-stretch                                          \
+	  $(BASE_REGISTRY)/golang:1.10.4-stretch                                           \
 	    /bin/bash -c 'for target in $(TARGETS); do                                     \
 	      go build -i -v -o $(OUTPUT_DIR)/$${target} -p $(CPUS)                        \
 	        -ldflags "-s -w -X $(ROOT)/pkg/version.VERSION=$(VERSION)                  \
@@ -126,7 +135,7 @@ container: build-linux
 	  image=$(IMAGE_PREFIX)$${target}$(IMAGE_SUFFIX);                                  \
 	  docker build -t $(REGISTRY)/$${image}:$(VERSION)                                 \
 	    --label $(DOCKER_LABELS)                                                       \
-	    -f $(BUILD_DIR)/$${target}/Dockerfile .;                                       \
+	    -f $(BUILD_DIR)/$${target}/$(DOCKERFILE) .;                                    \
 	done
 
 push: container
