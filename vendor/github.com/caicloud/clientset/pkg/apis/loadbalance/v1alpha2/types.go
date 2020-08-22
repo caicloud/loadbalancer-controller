@@ -128,14 +128,24 @@ type ExternalProvider struct {
 
 // F5Provider is a f5 provider
 type F5Provider struct {
-	// VIP
-	VIP string `json:"vip"`
 	// Name in cluster
-	Name string `json:"name,omitemtpy"`
+	Name string `json:"name,omitempty"`
 	// Alias name of f5
-	Alias string `json:"alias,omitemtpy"`
-	// VirtualServerName
-	VirtualServerName string `json:"virtualServerName,omitempty"`
+	Alias string `json:"alias,omitempty"`
+	// LTM virtual server list
+	ServerList []LTMServer `json:"serverList,omitempty"`
+}
+
+// LTMServer represent a server in F5-LTM
+type LTMServer struct {
+	// ip of server
+	IP string `json:"ip,omitempty"`
+	// virtual server name
+	VirtualServer string `json:"virtualServer,omitempty"`
+	// irule name
+	IRule string `json:"irule,omitempty"`
+	// Type
+	Type string `json:"type,omitempty"`
 }
 
 // IpvsdrProvider is a ipvs dr provider

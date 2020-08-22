@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "release-1.14-oem-infinitus"
-  digest = "1:cd41fe867efaa7da0b35d9324259c0fa81105cd91ff326e4bc5639f410737eca"
+  digest = "1:97727802fac64ef11f2c5cdd1a575f881d8a5bc35152ce2cf802356807466dd5"
   name = "github.com/caicloud/clientset"
   packages = [
     "informers",
@@ -152,7 +152,7 @@
     "util/syncqueue",
   ]
   pruneopts = "NUT"
-  revision = "d287992bac5e7a4dbaac26d360de6d267a34c846"
+  revision = "1cafed682cc3d6a47825758cba5b28d602bbbf5b"
 
 [[projects]]
   digest = "1:c0eec4f5d71d69aace7ac33d0b787f03825baa0ac9528a14c066e356121070a0"
