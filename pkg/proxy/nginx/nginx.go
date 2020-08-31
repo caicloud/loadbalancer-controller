@@ -114,6 +114,9 @@ func (f *nginx) Run(stopCh <-chan struct{}) {
 	if f.defaultHTTPbackend != "" {
 		log.Warning("Parameter default-http-backend is deprecated, use internal http backend instead.")
 	}
+	if f.sidecar != "" {
+		log.Warning("Parameter proxy-sidecar is deprecated, no sidecar is used.")
+	}
 
 	// lb controller has waited all the informer synced
 	// there is no need to wait again here
