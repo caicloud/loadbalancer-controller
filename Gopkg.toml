@@ -34,7 +34,7 @@
 
 [[override]]
   name = "github.com/caicloud/clientset"
-  branch = "release-1.14"
+  branch = "release-1.14-oem-sunny"
 
 [[override]]
   name = "github.com/json-iterator/go"

@@ -16,6 +16,7 @@ import (
 type ResourceV1beta1Interface interface {
 	RESTClient() rest.Interface
 	ClustersGetter
+	ClusterResourceScalesGetter
 	ConfigsGetter
 	ExtendedResourcesGetter
 	InfraNetworksGetter
@@ -40,6 +41,10 @@ type ResourceV1beta1Client struct {
 
 func (c *ResourceV1beta1Client) Clusters() ClusterInterface {
 	return newClusters(c)
+}
+
+func (c *ResourceV1beta1Client) ClusterResourceScales() ClusterResourceScaleInterface {
+	return newClusterResourceScales(c)
 }
 
 func (c *ResourceV1beta1Client) Configs() ConfigInterface {

@@ -393,6 +393,8 @@ type HTTPMatchRequest struct {
 	Headers map[string]*StringMatch `json:"headers"`
 	// Path that external users use
 	Uri *StringMatch `json:"uri,omitempty"`
+	// Port that external users use
+	Port uint32 `json:"port,omitempty"`
 }
 
 type HTTPRouteServing struct {
@@ -406,6 +408,7 @@ type HTTPRouteServing struct {
 // Destination describes the name of the Serving where traffic lands
 type Destination struct {
 	Subset string `json:"subset"`
+	Port   uint32 `json:"port,omitempty"`
 }
 
 // StringMatch defines 3 different types of matching strategy, i.e. only match prefix,

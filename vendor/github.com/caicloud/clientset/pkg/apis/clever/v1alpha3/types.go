@@ -87,30 +87,10 @@ type Step struct {
 	StepID string `json:"stepId"`
 
 	// A list of Neurons belonging to this step.
-	MLNeuronRefs []MLNeuronRef `json:"NeuronRefs"`
+	MLNeuronRefs []*MLNeuron `json:"mlNeuronRefs"`
 
 	// CreationTime is a timestamp representing the server time when this object was created.
 	CreationTime *metav1.Time `json:"creationTime"`
-}
-
-// MLNeuronRef is the reference of MLNeuron crd
-type MLNeuronRef struct {
-	// Name of reference MLNeuron crd name.
-	Name string `json:"name"`
-
-	// The original name where the current neuron comes from
-	Origin string `json:"origin"`
-
-	// Time when the MLNeuron is added to this Step
-	AdditionTime *metav1.Time `json:"additionTime"`
-
-	// Saves the latest Phase for every MLNeuron
-	// Show on steps page
-	Phase MLNeuronPhase `json:"phase"`
-
-	// TODO @codeflitting Add more fields according to product display style
-	// Can only add fields that will not be changed after creation
-	// Should add MLNeuron info when created from MLProject
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -218,6 +198,9 @@ type ModelDataSource struct {
 	FrameworkType string `json:"frameworkType"`
 	FormatType    string `json:"formatType"`
 	Tenant        string `json:"tenant"`
+	Input         string `json:"input"`
+	Output        string `json:"output"`
+	GPU           string `json:"gpu"`
 }
 
 // DatasetDataSource represents the data come from clever-dataset

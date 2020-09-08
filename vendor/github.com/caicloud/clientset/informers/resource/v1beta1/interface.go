@@ -14,6 +14,8 @@ import (
 type Interface interface {
 	// Clusters returns a ClusterInformer.
 	Clusters() ClusterInformer
+	// ClusterResourceScales returns a ClusterResourceScaleInformer.
+	ClusterResourceScales() ClusterResourceScaleInformer
 	// Configs returns a ConfigInformer.
 	Configs() ConfigInformer
 	// ExtendedResources returns a ExtendedResourceInformer.
@@ -60,6 +62,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Clusters returns a ClusterInformer.
 func (v *version) Clusters() ClusterInformer {
 	return &clusterInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ClusterResourceScales returns a ClusterResourceScaleInformer.
+func (v *version) ClusterResourceScales() ClusterResourceScaleInformer {
+	return &clusterResourceScaleInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Configs returns a ConfigInformer.

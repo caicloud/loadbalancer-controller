@@ -45,6 +45,7 @@ type DatasetType string
 const (
 	Git       DatasetType = "git"
 	Glusterfs DatasetType = "glusterfs"
+	CephFS    DatasetType = "cephfs"
 )
 
 type DatasetPhase string

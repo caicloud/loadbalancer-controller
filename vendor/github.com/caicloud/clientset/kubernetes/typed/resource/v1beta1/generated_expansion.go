@@ -8,6 +8,8 @@ package v1beta1
 
 type ClusterExpansion interface{}
 
+type ClusterResourceScaleExpansion interface{}
+
 type ConfigExpansion interface{}
 
 type ExtendedResourceExpansion interface{}
