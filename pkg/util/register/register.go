@@ -1,24 +1,6 @@
-/*
-Copyright 2018 Jim Zhang (jim.zoumo@gmail.com). All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package register
 
 import (
-	"fmt"
-	"os"
 	"sync"
 )
 
@@ -37,7 +19,6 @@ type Register struct {
 
 // Config is a struct containing all config for register
 type Config struct {
-
 	// OverrideAllowed allows the register to override
 	// an already registered interface by name if it is true,
 	// otherwise register will panic.
@@ -62,16 +43,11 @@ func New(config *Config) *Register {
 func (r *Register) Register(name string, v interface{}) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	_, ok := r.data[name]
-	if ok {
-		if !r.overrideAllowed {
-			panic("[Register] Repeated registration key: " + name)
-		} else {
-			fmt.Fprintln(os.Stderr, "[Register] Repeated registration key: "+name)
-		}
+
+	if _, ok := r.data[name]; ok && !r.overrideAllowed {
+		panic("[Register] Repeated registration key: " + name)
 	}
 	r.data[name] = v
-
 }
 
 // Get returns an interface registered with the given name
@@ -104,9 +80,10 @@ func (r *Register) Range(f func(key string, value interface{}) bool) {
 
 // Keys returns the name of all registered interfaces
 func (r *Register) Keys() []string {
-	names := []string{}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	var names []string
 	for name := range r.data {
 		names = append(names, name)
 	}
@@ -115,9 +92,10 @@ func (r *Register) Keys() []string {
 
 // Values returns all registered interfaces
 func (r *Register) Values() []interface{} {
-	ret := []interface{}{}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	var ret []interface{}
 	for _, v := range r.data {
 		ret = append(ret, v)
 	}
@@ -133,5 +111,6 @@ func (r *Register) KeyValues() map[string]interface{} {
 func (r *Register) Clear() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	r.data = make(map[string]interface{})
 }

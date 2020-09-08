@@ -20,7 +20,7 @@ import (
 	"github.com/caicloud/clientset/informers"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
-	"github.com/zoumo/golib/register"
+	"github.com/caicloud/loadbalancer-controller/pkg/util/register"
 )
 
 // Interface defines a pluggable proxy interface
