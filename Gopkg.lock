@@ -182,6 +182,14 @@
   version = "v2.7.1"
 
 [[projects]]
+  digest = "1:dcc10b0bd570a2a2cd5e2ca92285a2ebad855f7ff893f6d81f55a8327b3e77f1"
+  name = "github.com/evanphx/json-patch"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "162e5629780b286cc21cd80f1114a71f5917951f"
+  version = "v5.1.0"
+
+[[projects]]
   digest = "1:2b0e6c0bea11257c646616ebd6a62be0ef2b6a0fd8210ac3caeaf57ee136123b"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -205,6 +213,14 @@
   pruneopts = "NUT"
   revision = "d23c5127dc24889085f8ccea5c9d560a57a879d8"
   version = "v1.3.3"
+
+[[projects]]
+  digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
+  name = "github.com/google/go-querystring"
+  packages = ["query"]
+  pruneopts = "NUT"
+  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:3ec6c8e4b700377066dbb5ab3155c55f97109ab6147fee9423a68506d79bbafa"
@@ -236,6 +252,17 @@
   pruneopts = "NUT"
   revision = "14eae340515388ca95aa8e7b86f0de668e981f54"
   version = "v0.5.4"
+
+[[projects]]
+  digest = "1:52d8e2d58f5f648926128e0c6e21653d8d53c6f50a3e7a582d5d776a4811eeb2"
+  name = "github.com/hbagdi/go-kong"
+  packages = [
+    "kong",
+    "kong/custom",
+  ]
+  pruneopts = "NUT"
+  revision = "c67086485acd56f7b4a929226e8531e2eb9bfa0b"
+  version = "v0.12.0"
 
 [[projects]]
   digest = "1:7c47a990a91ab4922f4009c8ba8dcf35dad08e2b697cf26ea87eaae90e3f7aa1"
@@ -300,6 +327,14 @@
   pruneopts = "NUT"
   revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
   version = "v1.0.0-rc1"
+
+[[projects]]
+  digest = "1:4047c378584616813d610c9f993bf90dd0d07aed8d94bd3bc299cd35ececdcba"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "614d223910a179a466c1767a985424175c39b465"
+  version = "v0.9.1"
 
 [[projects]]
   digest = "1:f4aaa07a6c33f2b354726d0571acbc8ca118837c75709f6353203ae1a3f8eeab"
@@ -558,10 +593,11 @@
   version = "kubernetes-1.14.2"
 
 [[projects]]
-  digest = "1:3867e786f4e4548117d753492429b5ba560848780f28285ecef15974dccc3440"
+  digest = "1:c6220f22c6f22eeca8fa1f9d35c196c33db321e3acb246ba03145273ede135f7"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
+    "discovery/fake",
     "informers",
     "informers/admissionregistration",
     "informers/admissionregistration/v1beta1",
@@ -690,6 +726,7 @@
     "plugin/pkg/client/auth/exec",
     "rest",
     "rest/watch",
+    "testing",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
@@ -849,6 +886,7 @@
     "github.com/caicloud/clientset/util/status",
     "github.com/caicloud/clientset/util/syncqueue",
     "github.com/caicloud/go-common/kubernetes/client",
+    "github.com/hbagdi/go-kong/kong",
     "github.com/mattbaird/jsonpatch",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
@@ -860,17 +898,25 @@
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/labels",
+    "k8s.io/apimachinery/pkg/runtime",
+    "k8s.io/apimachinery/pkg/runtime/schema",
+    "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/errors",
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/strategicpatch",
     "k8s.io/apimachinery/pkg/util/wait",
+    "k8s.io/apimachinery/pkg/watch",
+    "k8s.io/client-go/discovery",
+    "k8s.io/client-go/discovery/fake",
     "k8s.io/client-go/listers/apps/v1",
     "k8s.io/client-go/listers/core/v1",
     "k8s.io/client-go/rest",
+    "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/client-go/util/flowcontrol",
     "k8s.io/klog",
     "k8s.io/kubernetes/pkg/api/legacyscheme",
     "k8s.io/kubernetes/pkg/api/pod",
