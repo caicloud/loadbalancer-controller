@@ -63,7 +63,7 @@ func (k *kong) Init(cfg config.Configuration, factory informers.SharedInformerFa
 	k.ingressImage = cfg.Proxies.Kong.IngressImage
 
 	if err := installKongCRDs(); err != nil {
-		klog.Fatalf("Install kong crd failed: %v", err)
+		klog.Fatalf("Install kong crds failed: %v", err)
 	}
 
 	klog.Info("All kong crds installed.")
@@ -175,6 +175,11 @@ func (k *kong) getDeploymentsForLoadBalancer(lb *lbapi.LoadBalancer) ([]*appsv1.
 }
 
 func (k *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
+	if err := installGlobalPlugins(lb.Name); err != nil {
+		klog.Errorf("Install kong global plugins failed: %v", err)
+		return err
+	}
+
 	desiredDeploy := k.generateDeployment(lb)
 
 	// update
