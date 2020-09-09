@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Caicloud authors. All rights reserved.
+Copyright 2017 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,17 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package proxy
+// +k8s:deepcopy-gen=package
+// +groupName=apiextensions.k8s.io
 
-import (
-	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
-	"github.com/caicloud/loadbalancer-controller/pkg/proxy/kong"
-	"github.com/caicloud/loadbalancer-controller/pkg/proxy/nginx"
-)
-
-var localRegistryBuilder = plugin.RegistryBuilder{
-	nginx.AddToRegistry,
-	kong.AddToRegistry,
-}
-
-var AddToRegistry = localRegistryBuilder.AddToRegistry
+// Package apiextensions is the internal version of the API.
+package apiextensions // import "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"

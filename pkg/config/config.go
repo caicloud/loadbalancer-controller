@@ -31,6 +31,9 @@ const (
 	defaultNginxIngressImage       = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.12.0"
 	defaultIngressSidecarImage     = "cargo.caicloud.io/caicloud/loadbalancer-provider-ingress:v0.3.2"
 	defaultIngressAnnotationPrefix = "ingress.kubernetes.io"
+
+	defaultKongProxyImage   = "cargo.caicloud.io/caicloud/kong:2.0"
+	defaultKongIngressImage = "cargo.caicloud.io/caicloud/kong-ingress-controller:0.9.1"
 )
 
 type additionalTolerations []string
@@ -66,6 +69,7 @@ type Configuration struct {
 type Proxies struct {
 	Sidecar string
 	Nginx   ProxyNginx
+	Kong    ProxyKong
 }
 
 // ProxyNginx contains all cli flags of nginx proxy
@@ -74,6 +78,11 @@ type ProxyNginx struct {
 	DefaultHTTPBackend    string
 	AnnotationPrefix      string
 	DefaultSSLCertificate string
+}
+
+type ProxyKong struct {
+	ProxyImage   string
+	IngressImage string
 }
 
 // Providers contains all cli flags of providers
@@ -112,4 +121,6 @@ func (c *Configuration) AddFlags(fs *pflag.FlagSet) {
 
 	fs.StringVar(&c.Providers.Azure.Image, "provider-azure", defaultAzureProviderImage, "`Image` of azure provider")
 
+	fs.StringVar(&c.Proxies.Kong.ProxyImage, "proxy-kong", defaultKongProxyImage, "Image of kong proxy image")
+	fs.StringVar(&c.Proxies.Kong.IngressImage, "proxy-kong-ingress", defaultKongIngressImage, "Image of kong ingress controller image")
 }

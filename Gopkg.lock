@@ -481,9 +481,16 @@
   version = "kubernetes-1.14.2"
 
 [[projects]]
-  digest = "1:d7276d849da38d07fd1cc29884d0424523f3c6e8086de9b477982100593a0c57"
+  digest = "1:47ddb5be73e959bd73931c04911cd05e3f45d7f7c978a45eb817e1fb85e21da4"
   name = "k8s.io/apiextensions-apiserver"
-  packages = ["pkg/features"]
+  packages = [
+    "pkg/apis/apiextensions",
+    "pkg/apis/apiextensions/v1beta1",
+    "pkg/client/clientset/clientset",
+    "pkg/client/clientset/clientset/scheme",
+    "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
+    "pkg/features",
+  ]
   pruneopts = "NUT"
   revision = "bf6753f2aa24fe1d69a2abeea1c106042bcf3f5f"
   version = "kubernetes-1.14.2"
@@ -847,6 +854,8 @@
     "github.com/spf13/pflag",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
+    "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
+    "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
