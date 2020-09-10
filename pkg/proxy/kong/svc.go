@@ -92,7 +92,7 @@ func (k *kong) ensureProxySvc(lb *lbapi.LoadBalancer) error {
 }
 
 func (k *kong) ensureValidationWebhookSvc(lb *lbapi.LoadBalancer) error {
-	name := "kong-validation-webhook" + lb.Name
+	name := "kong-validation-webhook-" + lb.Name
 	t := true
 	labels := k.selector(lb)
 	webhookSvc := &v1.Service{

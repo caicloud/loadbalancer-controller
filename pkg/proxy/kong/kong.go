@@ -136,7 +136,7 @@ func (k *kong) syncLoadBalancer(obj interface{}) error {
 	lb = nlb.DeepCopy()
 	if lb.Spec.Proxy.Type != lbapi.ProxyTypeKong {
 		klog.Infof("lb %v is not responsible for kong", lb.Name)
-		return nil
+		return k.cleanup(lb)
 	}
 
 	ds, err := k.getDeploymentsForLoadBalancer(lb)
@@ -220,7 +220,7 @@ func (k *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 	// len(dps) == 0 or no deployment's name match desired deployment
 	if !updated {
 		// create deployment
-		klog.Infof("Create nginx deployment %v for loadbalancer %v", desiredDeploy.Name, lb.Name)
+		klog.Infof("Create kong deployment %v for loadbalancer %v", desiredDeploy.Name, lb.Name)
 		lbutil.InsertHelmAnnotation(desiredDeploy, desiredDeploy.Namespace, desiredDeploy.Name)
 		if _, err = k.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy); err != nil {
 			return err
@@ -260,5 +260,41 @@ func (k *kong) selector(lb *lbapi.LoadBalancer) labels.Set {
 
 // cleanup will delete all resources of this lb, such as daemonset and ingress.
 func (k *kong) cleanup(lb *lbapi.LoadBalancer) error {
+	dps, err := k.getDeploymentsForLoadBalancer(lb)
+	if err != nil {
+		return err
+	}
+
+	policy := metav1.DeletePropagationForeground
+	gracePeriodSeconds := int64(30)
+
+	for _, d := range dps {
+		if err := k.client.AppsV1().Deployments(d.Namespace).Delete(d.Name, &metav1.DeleteOptions{
+			GracePeriodSeconds: &gracePeriodSeconds,
+			PropagationPolicy:  &policy,
+		}); err != nil {
+			klog.Errorf("Cleanup proxy failed: %v", err)
+			return err
+		}
+	}
+
+	// clean up ingress
+	ingresses, err := k.client.ExtensionsV1beta1().Ingresses(metav1.NamespaceAll).List(metav1.ListOptions{
+		LabelSelector: labels.FormatLabels(map[string]string{
+			// created by IngressClass
+			lbapi.LabelKeyCreatedBy: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		}),
+	})
+	if err != nil {
+		klog.Errorf("List Ingress failed: %v", err)
+		return err
+	}
+
+	for _, ingress := range ingresses.Items {
+		if err = k.client.ExtensionsV1beta1().Ingresses(ingress.Namespace).Delete(ingress.Name, &metav1.DeleteOptions{}); err != nil {
+			klog.Errorf("Cleanup Ingress failed: %v", err)
+			return err
+		}
+	}
 	return nil
 }
