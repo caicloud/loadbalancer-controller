@@ -182,6 +182,7 @@ func (k *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 
 	desiredDeploy := k.generateDeployment(lb)
 
+	deploymentName := ""
 	// update
 	var err error
 	updated := false
@@ -208,6 +209,7 @@ func (k *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		if !lbutil.IsStatic(lb) {
 			lbutil.InsertHelmAnnotation(desiredDeploy, dp.Namespace, dp.Name)
 			merged, changed := lbutil.MergeDeployment(dp, desiredDeploy)
+			deploymentName = merged.Name
 			if changed {
 				klog.Infof("Sync kong deployment %v for loadbalancer %v", dp.Name, lb.Name)
 				if _, err = k.client.AppsV1().Deployments(lb.Namespace).Update(merged); err != nil {
@@ -225,13 +227,14 @@ func (k *kong) sync(lb *lbapi.LoadBalancer, dps []*appsv1.Deployment) error {
 		if _, err = k.client.AppsV1().Deployments(lb.Namespace).Create(desiredDeploy); err != nil {
 			return err
 		}
+		deploymentName = desiredDeploy.Name
 	}
 
 	if err := k.ensureService(lb); err != nil {
 		return err
 	}
 
-	return k.syncStatus(lb)
+	return k.syncStatus(lb, deploymentName)
 }
 
 // filter Deployment that controller does not care

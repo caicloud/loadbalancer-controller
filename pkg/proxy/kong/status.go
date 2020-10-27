@@ -9,7 +9,7 @@ import (
 	"k8s.io/klog"
 )
 
-func (k *kong) syncStatus(lb *lbapi.LoadBalancer) error {
+func (k *kong) syncStatus(lb *lbapi.LoadBalancer, deploymentName string) error {
 	replicas, _ := lbutil.CalculateReplicas(lb)
 	// caculate proxy status
 	proxyStatus := lbapi.ProxyStatus{
@@ -20,6 +20,7 @@ func (k *kong) syncStatus(lb *lbapi.LoadBalancer) error {
 			Statuses:      make([]lbapi.PodStatus, 0),
 		},
 		IngressClass: fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
+		Deployment:   deploymentName,
 	}
 
 	podList, err := k.podLister.List(k.selector(lb).AsSelector())
