@@ -269,11 +269,7 @@ func (in *KongCredential) DeepCopyInto(out *KongCredential) {
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
 		dec := gob.NewDecoder(&buf)
-		err := enc.Encode(in.Config)
-		if err != nil {
-		}
-		err = dec.Decode(&out.Config)
-		if err != nil {
-		}
+		_ = enc.Encode(in.Config)
+		_ = dec.Decode(&out.Config)
 	}
 }
