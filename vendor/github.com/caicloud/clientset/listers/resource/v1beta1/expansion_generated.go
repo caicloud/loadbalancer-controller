@@ -10,6 +10,10 @@ package v1beta1
 // ClusterLister.
 type ClusterListerExpansion interface{}
 
+// ClusterResourceScaleListerExpansion allows custom methods to be added to
+// ClusterResourceScaleLister.
+type ClusterResourceScaleListerExpansion interface{}
+
 // ConfigListerExpansion allows custom methods to be added to
 // ConfigLister.
 type ConfigListerExpansion interface{}

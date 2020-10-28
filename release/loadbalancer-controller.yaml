@@ -16,6 +16,8 @@ _config:
             - --proxy-sidecar=[[ registry_release ]]/loadbalancer-provider-ingress:[[ TagOfRepo(loadbalancer-provider) ]]
             - --provider-ipvsdr=[[ registry_release ]]/loadbalancer-provider-ipvsdr:[[ TagOfRepo(loadbalancer-provider) ]]
             - --provider-azure=[[ registry_release ]]/loadbalancer-provider-azure:[[ TagOfRepo(loadbalancer-provider) ]]
+            - --proxy-kong=[[ registry_library ]]/kong:2.0
+            - --proxy-kong-ingress=[[ registry_library ]]/kong-ingress-controller:0.9.1
           image: "[[ registry_release ]]/loadbalancer-controller:[[ imageTagFromGitTag ]]"
           imagePullPolicy: IfNotPresent
           resources:

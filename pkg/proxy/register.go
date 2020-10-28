@@ -18,11 +18,13 @@ package proxy
 
 import (
 	"github.com/caicloud/loadbalancer-controller/pkg/plugin"
+	"github.com/caicloud/loadbalancer-controller/pkg/proxy/kong"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy/nginx"
 )
 
 var localRegistryBuilder = plugin.RegistryBuilder{
 	nginx.AddToRegistry,
+	kong.AddToRegistry,
 }
 
 var AddToRegistry = localRegistryBuilder.AddToRegistry

@@ -18,6 +18,7 @@ const (
 	Keras      FrameworkType = "keras"
 	Onnx       FrameworkType = "onnx"
 	Horovod    FrameworkType = "horovod"
+	TensorRT   FrameworkType = "tensorrt"
 
 	// Programming language
 	JavaScript FrameworkType = "javascript"
@@ -35,6 +36,9 @@ const (
 	JupyterLab         FrameworkType = "jupyterlab"
 	TensorBoard        FrameworkType = "tensorboard"
 	SparkHistoryServer FrameworkType = "sparkhistoryserver"
+
+	// ModelEvaluation
+	Evaluation FrameworkType = "evaluation"
 )
 
 // Framework group type of framework

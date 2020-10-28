@@ -9,12 +9,10 @@ linter-settings:
 
 linters:
   enable:
-    - golint
     - goconst
     - gofmt
     - goimports
     - misspell
-    - unparam
 
 issues:
   exclude-use-default: false

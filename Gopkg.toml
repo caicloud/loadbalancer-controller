@@ -21,10 +21,6 @@
 #  version = "2.4.0"
 
 [[constraint]]
-  name = "github.com/zoumo/golib"
-  revision = "60b6ea38fe1ce5cd8b1942e1cd6767d6fc3384d9^"
-
-[[constraint]]
   name = "github.com/spf13/pflag"
   version = "v1.0.3"
 
@@ -38,7 +34,7 @@
 
 [[override]]
   name = "github.com/caicloud/clientset"
-  branch = "release-1.14"
+  branch = "release-1.14-oem-sunny"
 
 [[override]]
   name = "github.com/json-iterator/go"

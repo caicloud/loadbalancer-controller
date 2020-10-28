@@ -30,6 +30,7 @@ import (
 	resourcev1beta1 "github.com/caicloud/clientset/pkg/apis/resource/v1beta1"
 	servicemeshv1alpha1 "github.com/caicloud/clientset/pkg/apis/servicemesh/v1alpha1"
 	servingv1alpha1 "github.com/caicloud/clientset/pkg/apis/serving/v1alpha1"
+	solutionv1alpha1 "github.com/caicloud/clientset/pkg/apis/solution/v1alpha1"
 	tenantv1alpha1 "github.com/caicloud/clientset/pkg/apis/tenant/v1alpha1"
 	workloadv1alpha1 "github.com/caicloud/clientset/pkg/apis/workload/v1alpha1"
 	workloadv1beta1 "github.com/caicloud/clientset/pkg/apis/workload/v1beta1"
@@ -170,6 +171,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		// Group=resource.caicloud.io, Version=v1beta1
 	case resourcev1beta1.SchemeGroupVersion.WithResource("clusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Resource().V1beta1().Clusters().Informer()}, nil
+	case resourcev1beta1.SchemeGroupVersion.WithResource("clusterresourcescales"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Resource().V1beta1().ClusterResourceScales().Informer()}, nil
 	case resourcev1beta1.SchemeGroupVersion.WithResource("configs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Resource().V1beta1().Configs().Informer()}, nil
 	case resourcev1beta1.SchemeGroupVersion.WithResource("extendedresources"):
@@ -210,6 +213,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Serving().V1alpha1().Scenes().Informer()}, nil
 	case servingv1alpha1.SchemeGroupVersion.WithResource("servings"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Serving().V1alpha1().Servings().Informer()}, nil
+
+		// Group=solution.caicloud.io, Version=v1alpha1
+	case solutionv1alpha1.SchemeGroupVersion.WithResource("solutions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Solution().V1alpha1().Solutions().Informer()}, nil
 
 		// Group=tenant.caicloud.io, Version=v1alpha1
 	case tenantv1alpha1.SchemeGroupVersion.WithResource("clusterquotas"):

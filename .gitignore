@@ -21,3 +21,7 @@
 
 .vscode
 bin
+
+.idea/
+
+.DS_Store

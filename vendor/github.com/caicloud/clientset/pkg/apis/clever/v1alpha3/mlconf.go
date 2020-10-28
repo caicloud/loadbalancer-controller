@@ -18,6 +18,10 @@ const (
 	DataCleaning       FrameworkGroupType = "DataCleaning"
 	PresetAlgorithm    FrameworkGroupType = "PresetAlgorithm"
 	AutoML             FrameworkGroupType = "AutoML"
+	DataDevelopment    FrameworkGroupType = "DataDevelopment"
+	Custom             FrameworkGroupType = "Custom"
+	DataSync           FrameworkGroupType = "DataSync"
+	ModelCompressing   FrameworkGroupType = "ModelCompressing"
 )
 
 // Framework type of application
@@ -37,6 +41,7 @@ const (
 	Keras      FrameworkType = "keras"
 	Onnx       FrameworkType = "onnx"
 	Horovod    FrameworkType = "horovod"
+	TensorRT   FrameworkType = "tensorrt"
 
 	// HyperparameterTuning is only used for template in clever admin.
 	HyperparameterTuning FrameworkType = "hyperparameter tuning"
@@ -50,6 +55,12 @@ const (
 	Cpp        FrameworkType = "cpp"
 	C          FrameworkType = "c"
 	R          FrameworkType = "r"
+
+	// DataSync
+	DataX FrameworkType = "datax"
+
+	// ModelEvaluation
+	Evaluation FrameworkType = "evaluation"
 )
 
 // Training framework like: horovod, stand-alone, PS, multi-worker.
@@ -61,6 +72,7 @@ const (
 	PSWorkerTraining     TrainingType = "PSWorker"
 	MasterWorkerTraining TrainingType = "MasterWorker"
 	HorovodTraining      TrainingType = "Horovod"
+	Distributed          TrainingType = "Distributed"
 )
 
 type MLConfig struct {
@@ -77,6 +89,100 @@ type MLConfig struct {
 	JupyterConf    *JupyterConfig    `json:"jupyterConf,omitempty"`
 	AutoMLConf     *AutoMLConfig     `json:"automlConf,omitempty"`
 	Horovod        *HorovodConfig    `json:"horovodConf,omitempty"`
+	DataXConf      *DataXConfig      `json:"dataxConf,omitempty"`
+}
+
+type DataXConfig struct {
+	// "From" indicates the data source for data synchronization
+	Reader Reader `json:"reader,omitempty"`
+	// "To" indicates the destination of data synchronization
+	Writer Writer `json:"writer,omitempty"`
+}
+
+type ReaderType string
+
+const (
+	FTPReader   ReaderType = "ftpreader"
+	HDFSReader  ReaderType = "hdfsreader"
+	HiveReader  ReaderType = "hivereader"
+	MysqlReader ReaderType = "mysqlreader"
+)
+
+type Reader struct {
+	Type ReaderType `json:"type"`
+
+	// DataSourceSecret carries the name of the Secret containing DataSource configuration files.
+	DataSourceSecret string `json:"dataSourceSecret,omitempty"`
+	// xxxReaderPlugin is used to read data from the source data source
+	HDFSReaderPlugin  *HDFSReaderPlugin  `json:"hdfsReaderPlugin,omitempty"`
+	HiveReaderPlugin  *HiveReaderPlugin  `json:"hiveReaderPlugin,omitempty"`
+	FTPReaderPlugin   *FTPReaderPlugin   `json:"ftpReaderPlugin,omitempty"`
+	MysqlReaderPlugin *MysqlReaderPlugin `json:"mysqlReaderPlugin,omitempty"`
+}
+
+type HDFSReaderPlugin struct {
+	// FieldDelimiter is the field delimiter written, by default ","
+	FieldDelimiter string `json:"fieldDelimiter,omitempty"`
+	// Path represent the absolute path to a folder or file
+	Path string `json:"path,omitempty"`
+	// FileType represents the file type, such as csv, text, etc.
+	FileType string `json:"fileType,omitempty"`
+	// IsFile indicates whether the data synchronization task is to synchronize a single file
+	IsFile bool `json:"isFile,omitempty"`
+}
+
+type FTPReaderPlugin struct {
+	// FieldDelimiter is the field delimiter written, by default ","
+	FieldDelimiter string `json:"fieldDelimiter,omitempty"`
+	// Path represent the absolute path to a folder or file
+	Path string `json:"path,omitempty"`
+	// FileType represents the file type, such as csv, text, etc.
+	FileType string `json:"fileType,omitempty"`
+	// IsFile indicates whether the data synchronization task is to synchronize a single file
+	IsFile bool `json:"isFile,omitempty"`
+}
+
+type HiveReaderPlugin struct {
+	// The table name of the data table
+	Table string `json:"table,omitempty"`
+}
+
+type MysqlReaderPlugin struct {
+	// The table name of the data table
+	Table string `json:"table,omitempty"`
+}
+
+type WriteMode string
+
+const (
+	// truncate, clean up all files with the fileName prefix in the directory before writing.
+	TruncateWriteMode WriteMode = "truncate"
+	// append, do not do any processing before writing, directly uses filename to write, and ensure that the file name does not conflict.
+	AppendWriteMode WriteMode = "append"
+)
+
+type WriterType string
+
+const (
+	TxtFileWriter WriterType = "txtfilewriter"
+)
+
+type Writer struct {
+	Type WriterType `json:"type"`
+
+	// xxxWriterPlugin is used to write data to the target data source
+	TxtFileWriterPlugin *TxtFileWriterPlugin `json:"txtFileWriterPlugin,omitempty"`
+}
+
+type TxtFileWriterPlugin struct {
+	// Path indicates the destination of data synchronization
+	Path string `json:"path"`
+	//FileName is the file name stored in data synchronization
+	FileName string `json:"fileName"`
+	// WriteMode represents the data cleaning processing mode before writing
+	WriteMode WriteMode `json:"writeMode"`
+	// FieldDelimiter is the field delimiter written, by default ","
+	FieldDelimiter string `json:"fieldDelimiter,omitempty"`
 }
 
 type JupyterConfig struct {

@@ -1356,3 +1356,123 @@ type InfraNetworkList struct {
 	// Items is the list of InfraNetworks
 	Items []InfraNetwork `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
+
+// oem for SUNNY-62
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterResourceScale describe a scale cluster node & partition resource information
+type ClusterResourceScale struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	Spec   ClusterResourceScaleSpec   `json:"spec"`
+	Status ClusterResourceScaleStatus `json:"status"`
+}
+
+type ClusterResourceScaleSpec struct {
+	Cluster string              `json:"cluster"`
+	Machine ClusterMachineScale `json:"machine"`
+	Quota   ClusterQuotaScale   `json:"quota"`
+}
+
+type ClusterMachineScale struct {
+	// Provider describe the scale machine cloud information,
+	// and this will not equal machine.spec.Provider
+	Provider CloudProvider `json:"provider"`
+
+	// Addresses describe the ip of every machine,
+	// every item respresent a scale machine.
+	Addresses []NodeAddress `json:"addresses"`
+
+	SSHPort string `json:"sshPort"`
+
+	Auth MachineAuth       `json:"auth"`
+	Tags map[string]string `json:"tags"`
+}
+
+type ClusterQuotaScale struct {
+	Quotas []ClusterQuotaScaleItem `json:"quotas"`
+}
+
+type ClusterQuotaScaleItem struct {
+	Tenant    string              `json:"tenant"`
+	Partition string              `json:"partition"`
+	Quota     corev1.ResourceList `json:"quota"`
+}
+
+type ClusterResourceScalePhase = string
+
+const (
+	ClusterResourceScalePhasePending ClusterResourceScalePhase = "Pending"
+	ClusterResourceScalePhaseScaling ClusterResourceScalePhase = "Scaling"
+	ClusterResourceScalePhaseDone    ClusterResourceScalePhase = "Done"
+)
+
+type ClusterResourceScaleStatus struct {
+	Phase ClusterResourceScalePhase `json:"phase"`
+
+	Machines []ClusterMachineScaleStatusItem `json:"machines"`
+	Quotas   []ClusterQuotaScaleStatusItem   `json:"quotas"`
+
+	Conditions []ClusterResourceScaleCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,2,rep,name=conditions"`
+}
+
+type ClusterMachineScaleStatusItem struct {
+	Name        string       `json:"name"`
+	Phase       MachinePhase `json:"phase"`
+	CreatedTime *metav1.Time `json:"createdTime,omitempty"`
+	BoundTime   *metav1.Time `json:"boundTime,omitempty"`
+	ReadyTime   *metav1.Time `json:"readyTime,omitempty"`
+	FailedTime  *metav1.Time `json:"failedTime,omitempty"`
+}
+
+type ClusterQuotaScaleStatusItem struct {
+	Tenant      string       `json:"tenant"`
+	Partition   string       `json:"partition"`
+	UpdatedTime *metav1.Time `json:"updatedTime,omitempty"`
+}
+
+type ClusterResourceScaleConditionType = string
+
+// ClusterResourceScaleCondition contains details for the current condition of this cluster-resource-scale.
+type ClusterResourceScaleCondition struct {
+	// Type is the type of the condition.
+	// Currently only Ready.
+	Type ClusterResourceScaleConditionType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=MachineConditionType"`
+	// Status is the status of the condition.
+	// Can be True, False, Unknown.
+	Status ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=ConditionStatus"`
+	// Last time we probed the condition.
+	// +optional
+	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty" protobuf:"bytes,3,opt,name=lastProbeTime"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty" protobuf:"bytes,4,opt,name=lastTransitionTime"`
+	// Unique, one-word, CamelCase reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,5,opt,name=reason"`
+	// Human-readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,6,opt,name=message"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterResourceScaleList is the list result of cluster-resource-scale
+type ClusterResourceScaleList struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard list metadata
+	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Items is the list of ClusterResourceScale
+	Items []ClusterResourceScale `json:"items" protobuf:"bytes,2,rep,name=items"`
+}

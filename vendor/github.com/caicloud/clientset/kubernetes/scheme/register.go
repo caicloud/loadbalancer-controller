@@ -30,6 +30,7 @@ import (
 	resourcev1beta1 "github.com/caicloud/clientset/pkg/apis/resource/v1beta1"
 	servicemeshv1alpha1 "github.com/caicloud/clientset/pkg/apis/servicemesh/v1alpha1"
 	servingv1alpha1 "github.com/caicloud/clientset/pkg/apis/serving/v1alpha1"
+	solutionv1alpha1 "github.com/caicloud/clientset/pkg/apis/solution/v1alpha1"
 	tenantv1alpha1 "github.com/caicloud/clientset/pkg/apis/tenant/v1alpha1"
 	workloadv1alpha1 "github.com/caicloud/clientset/pkg/apis/workload/v1alpha1"
 	workloadv1beta1 "github.com/caicloud/clientset/pkg/apis/workload/v1beta1"
@@ -83,6 +84,7 @@ func AddToScheme(scheme *runtime.Scheme) {
 	resourcev1beta1.AddToScheme(scheme)
 	servicemeshv1alpha1.AddToScheme(scheme)
 	servingv1alpha1.AddToScheme(scheme)
+	solutionv1alpha1.AddToScheme(scheme)
 	tenantv1alpha1.AddToScheme(scheme)
 	workloadv1alpha1.AddToScheme(scheme)
 	workloadv1beta1.AddToScheme(scheme)
