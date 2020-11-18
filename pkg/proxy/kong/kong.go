@@ -136,7 +136,7 @@ func (k *kong) syncLoadBalancer(obj interface{}) error {
 	lb = nlb.DeepCopy()
 	if lb.Spec.Proxy.Type != lbapi.ProxyTypeKong {
 		klog.Infof("lb %v is not responsible for kong", lb.Name)
-		return k.cleanup(lb)
+		return nil
 	}
 
 	ds, err := k.getDeploymentsForLoadBalancer(lb)
