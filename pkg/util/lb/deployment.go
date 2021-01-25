@@ -23,19 +23,3 @@ func MergeDeployment(dst, src *appsv1.Deployment) (*appsv1.Deployment, bool) {
 	})
 	return dstcopy, !equal
 }
-
-func completeHelmAnnotation(ann map[string]string, namespace, name string) map[string]string {
-	if ann == nil {
-		ann = make(map[string]string)
-	}
-	ann["helm.sh/namespace"] = namespace
-	ann["helm.sh/release"] = name
-	ann["helm.sh/path"] = name // The key "helm.sh/path" is needed, the value is meaningless
-	return ann
-}
-
-// InsertHelmAnnotation inserts helm.sh field into annotation
-func InsertHelmAnnotation(dp *appsv1.Deployment, namespace, name string) {
-	dp.Annotations = completeHelmAnnotation(dp.Annotations, namespace, name)
-	dp.Spec.Template.Annotations = completeHelmAnnotation(dp.Spec.Template.Annotations, namespace, name)
-}

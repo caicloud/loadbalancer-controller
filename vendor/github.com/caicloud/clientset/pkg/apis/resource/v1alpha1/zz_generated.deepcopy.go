@@ -49,7 +49,7 @@ func (in *StorageService) DeepCopyObject() runtime.Object {
 func (in *StorageServiceList) DeepCopyInto(out *StorageServiceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]StorageService, len(*in))
@@ -122,7 +122,7 @@ func (in *StorageType) DeepCopyObject() runtime.Object {
 func (in *StorageTypeList) DeepCopyInto(out *StorageTypeList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]StorageType, len(*in))

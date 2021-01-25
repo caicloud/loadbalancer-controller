@@ -50,9 +50,12 @@ type ClusterSpec struct {
 	Etcds            []string                   `json:"etcds"`
 	// deploy
 	DeployToolsExternalVars map[string]string `json:"deployToolsExternalVars"`
-	// adapt expired
-	ClusterToken string       `json:"clusterToken"`
-	Ratio        ClusterRatio `json:"ratio"`
+
+	// Deprecated: use vaquita generate kubeconfig and client cert auth for apiserver
+	ClusterToken string `json:"clusterToken"`
+
+	// Deprecated: migrate to tenant-admin and store in ClusterQuota
+	Ratio ClusterRatio `json:"ratio"`
 }
 
 // ClusterStatus represents information about the status of a cluster.
@@ -127,7 +130,7 @@ type MachineSpec struct {
 
 // MachineStatus represents information about the status of a machine.
 type MachineStatus struct {
-	// NOTE: this field will been deprecated in v2.11,
+	// NOTE: this field will been deprecated in v3.x,
 	// should use the value calculated from spec, conditions, refers, status
 	Phase MachinePhase `json:"phase"`
 
@@ -334,6 +337,9 @@ type ClusterCloudProviderConfig struct {
 
 	// Aliyun is the specific config of aliyun cluster
 	Aliyun *AliyunClusterCloudProviderConfig `json:"aliyun,omitempty"`
+
+	// Imported is the specific config of imported cluster
+	Imported *ImportedClusterCloudProviderConfig `json:"imported,omitempty"`
 }
 
 // AliyunInstanceType is a label for the aliyun instance type
@@ -567,8 +573,19 @@ type AliyunClusterCloudProviderConfig struct {
 	RegionID string    `json:"regionID,omitempty"`
 	VPC      AliyunVPC `json:"vpc,omitempty"`
 	// the eip use for snat
-	EIP          string              `json:"eip,omitempty"`
+	EIP string `json:"eip,omitempty"`
+
+	// ResourceGroupID for aliyun cluster external resource
+	ResourceGroupID string `json:"resourceGroupID"`
+
+	// LoadBalancer for high-available aliyun cluster external lb
 	LoadBalancer *AliyunLoadBalancer `json:"loadBalancer,omitempty"`
+}
+
+// ImportedClusterCloudProviderConfig is a description of a imported cluster
+type ImportedClusterCloudProviderConfig struct {
+	// ForceImport for skip imported cluster match version preflight-check
+	ForceImport bool `json:"forceImport,omitempty"`
 }
 
 // azure
@@ -914,11 +931,17 @@ type NetworkTemplate struct {
 }
 
 type ClusterAuth struct {
-	KubeUser     string `json:"kubeUser,omitempty"`
+	// Deprecated: use KubeConfig for apiserver auth
+	KubeUser string `json:"kubeUser,omitempty"`
+	// Deprecated: use KubeConfig for apiserver auth
 	KubePassword string `json:"kubePassword,omitempty"`
-	KubeToken    string `json:"kubeToken,omitempty"`
+	// Deprecated: use KubeConfig for apiserver auth
+	KubeToken string `json:"kubeToken,omitempty"`
+	// Deprecated: use KubeConfig for apiserver auth
 	KubeCertPath string `json:"kubeCertPath,omitempty"`
-	KubeCAData   []byte `json:"kubeCAData,omitempty"`
+	// Deprecated: use KubeConfig for apiserver auth
+	KubeCAData []byte `json:"kubeCAData,omitempty"`
+
 	EndpointIP   string `json:"endpointIP,omitempty"`
 	EndpointPort string `json:"endpointPort,omitempty"`
 
@@ -988,6 +1011,7 @@ type OperationLog struct {
 // AzureAksNetworkConfigMode for the user network config mode in aks
 type AzureAksNetworkConfigMode string
 
+// CloudProvider type definition for cloud provider
 type CloudProvider string
 
 type ClusterPhase string

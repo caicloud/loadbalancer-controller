@@ -24,7 +24,6 @@ import (
 	"github.com/caicloud/clientset/informers"
 	"github.com/caicloud/clientset/kubernetes"
 	lblisters "github.com/caicloud/clientset/listers/loadbalance/v1alpha2"
-	apiextensions "github.com/caicloud/clientset/pkg/apis/apiextensions/v1beta1"
 	lbapi "github.com/caicloud/clientset/pkg/apis/loadbalance/v1alpha2"
 	"github.com/caicloud/clientset/util/syncqueue"
 	"github.com/caicloud/loadbalancer-controller/pkg/config"
@@ -32,6 +31,7 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
 
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -55,14 +55,14 @@ type LoadBalancerController struct {
 func NewLoadBalancerController(cfg config.Configuration) *LoadBalancerController {
 	// TODO register metrics
 	factory := informers.NewSharedInformerFactory(cfg.Client, 0)
-	lbinformer := factory.Loadbalance().V1alpha2().LoadBalancers()
+	lbinformer := factory.Custom().Loadbalance().V1alpha2().LoadBalancers()
 	lbc := &LoadBalancerController{
 		client:   cfg.Client,
 		factory:  factory,
 		lbLister: lbinformer.Lister(),
 		nodeCtl: &nodeController{
 			client:     cfg.Client,
-			nodeLister: factory.Core().V1().Nodes().Lister(),
+			nodeLister: factory.Native().Core().V1().Nodes().Lister(),
 		},
 		proxies:   plugin.NewRegistry(),
 		providers: plugin.NewRegistry(),
@@ -107,12 +107,8 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 
 	// wait cache synced
 	log.Info("Wait for all caches synced")
-	synced := lbc.factory.WaitForCacheSync(stopCh)
-	for tpy, sync := range synced {
-		if !sync {
-			log.Errorf("Wait for %v cache sync timeout", tpy)
-			return
-		}
+	if err := lbc.factory.WaitForCacheSync(stopCh); err != nil {
+		log.Errorf("Wait for cache sync error %v", err)
 	}
 	log.Infof("All caches have synced, Running LoadBalancer Controller, workers %v", workers)
 
@@ -134,23 +130,60 @@ func (lbc *LoadBalancerController) Run(workers int, stopCh <-chan struct{}) {
 
 // ensure loadbalancer tpr initialized
 func (lbc *LoadBalancerController) ensureResource() error {
+	// set x-kubernetes-preserve-unknown-fields to true, stops the API server
+	// decoding step from pruning fields which are not specified
+	// in the validation schema.
+	xPreserveUnknownFields := true
 	crd := &apiextensions.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "loadbalancers." + lbapi.GroupName,
 		},
 		Spec: apiextensions.CustomResourceDefinitionSpec{
-			Group:   lbapi.GroupName,
-			Version: lbapi.SchemeGroupVersion.Version,
-			Scope:   apiextensions.NamespaceScoped,
+			Group: lbapi.GroupName,
+			Scope: apiextensions.NamespaceScoped,
 			Names: apiextensions.CustomResourceDefinitionNames{
 				Plural:   "loadbalancers",
 				Singular: "loadbalancer",
 				Kind:     "LoadBalancer",
 				ListKind: "LoadBalancerList",
+				ShortNames: []string{
+					"lb",
+				},
+			},
+			Versions: []apiextensions.CustomResourceDefinitionVersion{
+				{
+					Name: lbapi.SchemeGroupVersion.Version,
+					AdditionalPrinterColumns: []apiextensions.CustomResourceColumnDefinition{
+						{
+							Name:     "VIP",
+							Type:     "string",
+							JSONPath: ".spec.providers.*.vip",
+						},
+						{
+							Name:     "VIPS",
+							Type:     "string",
+							JSONPath: ".spec.providers.*.vips",
+						},
+						{
+							Name:     "NODES",
+							Type:     "string",
+							JSONPath: ".spec.nodes.names",
+						},
+					},
+					Schema: &apiextensions.CustomResourceValidation{
+						OpenAPIV3Schema: &apiextensions.JSONSchemaProps{
+							Type: "object",
+							// x-kubernetes-preserve-unknown-fields
+							XPreserveUnknownFields: &xPreserveUnknownFields,
+						},
+					},
+					Served:  true,
+					Storage: true,
+				},
 			},
 		},
 	}
-	_, err := lbc.client.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+	_, err := lbc.client.Apiextensions().ApiextensionsV1().CustomResourceDefinitions().Create(crd)
 
 	if errors.IsAlreadyExists(err) {
 		log.Info("Skip the creation for CustomResourceDefinition LoadBalancer because it has already been created")

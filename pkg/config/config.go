@@ -27,7 +27,6 @@ import (
 const (
 	defaultIpvsdrImage             = "cargo.caicloud.io/caicloud/loadbalancer-provider-ipvsdr:v0.3.2"
 	defaultAzureProviderImage      = "cargo.caicloud.io/caicloud/loadbalancer-provider-azure:v0.3.2"
-	defaultHTTPBackendImage        = "cargo.caicloud.io/caicloud/default-http-backend:v0.1.0"
 	defaultNginxIngressImage       = "cargo.caicloud.io/caicloud/nginx-ingress-controller:0.12.0"
 	defaultIngressSidecarImage     = "cargo.caicloud.io/caicloud/loadbalancer-provider-ingress:v0.3.2"
 	defaultIngressAnnotationPrefix = "ingress.kubernetes.io"
@@ -102,7 +101,8 @@ func (c *Configuration) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.Proxies.Sidecar, "proxy-sidecar", defaultIngressSidecarImage, "`Image` of ingress controller sidecar")
 
 	fs.StringVar(&c.Proxies.Nginx.Image, "proxy-nginx", defaultNginxIngressImage, "`Image` of nginx ingress controller image")
-	fs.StringVar(&c.Proxies.Nginx.DefaultHTTPBackend, "default-http-backend", defaultHTTPBackendImage, "Default http backend `Image` for ingress controller")
+	// Deprecated, but reserve it for upgrade compitibility
+	fs.StringVar(&c.Proxies.Nginx.DefaultHTTPBackend, "default-http-backend", "", "Default http backend `Image` for ingress controller")
 	fs.StringVar(&c.Proxies.Nginx.DefaultSSLCertificate, "default-ssl-certificate", "", "Name of the secret that contains a SSL `certificate` to be used as default for a HTTPS catch-all server")
 	fs.StringVar(&c.Proxies.Nginx.AnnotationPrefix, "proxy-nginx-annotation-prefix", defaultIngressAnnotationPrefix, "Prefix of ingress annotation")
 
