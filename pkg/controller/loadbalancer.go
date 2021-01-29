@@ -31,7 +31,7 @@ import (
 	"github.com/caicloud/loadbalancer-controller/pkg/provider"
 	"github.com/caicloud/loadbalancer-controller/pkg/proxy"
 
-	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -183,8 +183,7 @@ func (lbc *LoadBalancerController) ensureResource() error {
 			},
 		},
 	}
-	_, err := lbc.client.Apiextensions().ApiextensionsV1().CustomResourceDefinitions().Create(crd)
-
+	_, err := lbc.client.Apiextensions().ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
 	if errors.IsAlreadyExists(err) {
 		log.Info("Skip the creation for CustomResourceDefinition LoadBalancer because it has already been created")
 		return nil
