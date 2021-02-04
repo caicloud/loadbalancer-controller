@@ -62,7 +62,7 @@ func (f *external) Init(cfg config.Configuration, sif informers.SharedInformerFa
 	// set config
 	f.client = cfg.Client
 	// initialize controller
-	lbInformer := sif.Loadbalance().V1alpha2().LoadBalancers()
+	lbInformer := sif.Custom().Loadbalance().V1alpha2().LoadBalancers()
 	f.lbLister = lbInformer.Lister()
 	f.queue = syncqueue.NewPassthroughSyncQueue(&lbapi.LoadBalancer{}, f.syncLoadBalancer)
 
@@ -133,16 +133,28 @@ func (f *external) syncLoadBalancer(obj interface{}) error {
 		// TODO sync status only
 		return nil
 	}
+	provider := lb.Spec.Providers.External
 
+	// vip and vips conversion for compatibility
+	vip := provider.VIP
+	vips := []string{}
+	vips = append(vips, provider.VIPs...)
+	if len(vips) == 0 {
+		vips = append(vips, vip)
+	}
+	if vip == "" && len(vips) > 0 {
+		vip = vips[0]
+	}
 	// sync status
 	providerStatus := lbapi.ExpternalProviderStatus{
-		VIP: lb.Spec.Providers.External.VIP,
+		VIP:  vip,
+		VIPs: vips,
 	}
 	externalstatus := lb.Status.ProvidersStatuses.External
 	// check whether the statuses are equal
 	if externalstatus == nil || !lbutil.ExternalProviderStatusEqual(*externalstatus, providerStatus) {
 		_, err := lbutil.UpdateLBWithRetries(
-			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
 			lb.Namespace,
 			lb.Name,
@@ -168,7 +180,7 @@ func (f *external) deleteStatus(lb *lbapi.LoadBalancer) error {
 
 	log.Infof("delete external status for loadbalancer %v/%v", lb.Namespace, lb.Name)
 	_, err := lbutil.UpdateLBWithRetries(
-		f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+		f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 		f.lbLister,
 		lb.Namespace,
 		lb.Name,

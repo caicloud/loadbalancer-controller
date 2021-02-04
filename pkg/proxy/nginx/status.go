@@ -67,7 +67,7 @@ func (f *nginx) syncStatus(lb *lbapi.LoadBalancer) error {
 		// replacePatch := fmt.Sprintf(`{"status":{"proxyStatus": %s }}`, string(js))
 		// _, err := f.tprclient.NetworkingV1alpha1().LoadBalancers(lb.Namespace).Patch(lb.Name, types.MergePatchType, []byte(replacePatch))
 		_, err := lbutil.UpdateLBWithRetries(
-			f.client.LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
+			f.client.Custom().LoadbalanceV1alpha2().LoadBalancers(lb.Namespace),
 			f.lbLister,
 			lb.Namespace,
 			lb.Name,

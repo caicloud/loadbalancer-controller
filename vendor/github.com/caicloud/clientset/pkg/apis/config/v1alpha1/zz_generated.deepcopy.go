@@ -43,7 +43,7 @@ func (in *ConfigClaim) DeepCopyObject() runtime.Object {
 func (in *ConfigClaimList) DeepCopyInto(out *ConfigClaimList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ConfigClaim, len(*in))
@@ -119,7 +119,7 @@ func (in *ConfigReference) DeepCopyObject() runtime.Object {
 func (in *ConfigReferenceList) DeepCopyInto(out *ConfigReferenceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]ConfigReference, len(*in))

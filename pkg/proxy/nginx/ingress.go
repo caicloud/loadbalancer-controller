@@ -26,7 +26,6 @@ import (
 	lbutil "github.com/caicloud/loadbalancer-controller/pkg/util/lb"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -136,7 +135,6 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		// TODO
 		Args: []string{
 			"/nginx-ingress-controller",
-			"--default-backend-service=" + fmt.Sprintf("%s/%s", defaultHTTPBackendNamespace, defaultHTTPBackendName),
 			"--ingress-class=" + fmt.Sprintf(lbapi.LabelValueFormatCreateby, lb.Namespace, lb.Name),
 			"--configmap=" + fmt.Sprintf("%s/"+configMapName, lb.Namespace, lb.Name),
 			"--tcp-services-configmap=" + fmt.Sprintf("%s/"+tcpConfigMapName, lb.Namespace, lb.Name),
@@ -173,52 +171,6 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		},
 	}
 
-	sidecarContainer := v1.Container{
-		Name:            "sidecar",
-		Image:           f.sidecar,
-		ImagePullPolicy: v1.PullAlways,
-		Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				v1.ResourceCPU:    resource.MustParse("20m"),
-				v1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-			Requests: v1.ResourceList{
-				v1.ResourceCPU:    resource.MustParse("20m"),
-				v1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-		},
-		SecurityContext: &v1.SecurityContext{
-			// ingress controller sidecar need provileged to change sysctl settings
-			Privileged: &t,
-		},
-		Env: []v1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &v1.EnvVarSource{
-					FieldRef: &v1.ObjectFieldSelector{
-						FieldPath: "metadata.name",
-					},
-				},
-			},
-			{
-				Name: "POD_NAMESPACE",
-				ValueFrom: &v1.EnvVarSource{
-					FieldRef: &v1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
-					},
-				},
-			},
-			{
-				Name:  "LOADBALANCER_NAMESPACE",
-				Value: lb.Namespace,
-			},
-			{
-				Name:  "LOADBALANCER_NAME",
-				Value: lb.Name,
-			},
-		},
-	}
-
 	if f.defaultSSLCertificate != "" {
 		ingressContainer.Args = append(ingressContainer.Args, "--default-ssl-certificate="+f.defaultSSLCertificate)
 	}
@@ -232,8 +184,6 @@ func (f *nginx) generateDeployment(lb *lbapi.LoadBalancer) *appsv1.Deployment {
 		affinity.NodeAffinity = nodeAffinity
 		// don't co-locate pods of this deployment in same node
 		affinity.PodAntiAffinity = podAntiAffinity
-		// add sidecar container
-		containers = append(containers, sidecarContainer)
 		// change dns policy in hostnetwork
 		dnsPolicy = v1.DNSClusterFirstWithHostNet
 	}

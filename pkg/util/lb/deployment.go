@@ -30,7 +30,6 @@ func completeHelmAnnotation(ann map[string]string, namespace, name string) map[s
 	}
 	ann["helm.sh/namespace"] = namespace
 	ann["helm.sh/release"] = name
-	ann["helm.sh/path"] = name // The key "helm.sh/path" is needed, the value is meaningless
 	return ann
 }
 

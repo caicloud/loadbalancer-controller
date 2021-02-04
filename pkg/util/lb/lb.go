@@ -206,7 +206,7 @@ func EvictPod(client kubernetes.Interface, lb *lbapi.LoadBalancer, pod *v1.Pod) 
 	}
 
 	evict := func() {
-		_ = client.CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
+		_ = client.Native().CoreV1().Pods(pod.Namespace).Delete(pod.Name, &metav1.DeleteOptions{})
 	}
 
 	// FIXME: when RequiredDuringSchedulingRequiredDuringExecution finished

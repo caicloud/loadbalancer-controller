@@ -114,7 +114,7 @@ func (f *nginx) ensureConfigMaps(lb *lbapi.LoadBalancer) error {
 }
 
 func (f *nginx) ensureConfigMap(name, namespace string, labels map[string]string) (*v1.ConfigMap, error) {
-	cm, err := f.client.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+	cm, err := f.client.Native().CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
 
 	if err == nil {
 		return cm, nil
@@ -130,7 +130,7 @@ func (f *nginx) ensureConfigMap(name, namespace string, labels map[string]string
 		},
 	}
 	log.Infof("About to craete ConfigMap %v/%v for proxy", namespace, cm.Name)
-	return f.client.CoreV1().ConfigMaps(namespace).Create(cm)
+	return f.client.Native().CoreV1().ConfigMaps(namespace).Create(cm)
 }
 
 func (f *nginx) updateConfig(lb *lbapi.LoadBalancer, cm *v1.ConfigMap) error {
@@ -160,7 +160,7 @@ func (f *nginx) updateConfig(lb *lbapi.LoadBalancer, cm *v1.ConfigMap) error {
 	cm.Annotations[annotationExternalConfigMaps] = externalConfigMapsStr
 	cm.Data = newConfig
 	log.Infof("About to update ConfigMap %v/%v data, with exnternal configs: %v", cm.Namespace, cm.Name, externalConfigMapsStr)
-	_, err = f.client.CoreV1().ConfigMaps(cm.Namespace).Update(cm)
+	_, err = f.client.Native().CoreV1().ConfigMaps(cm.Namespace).Update(cm)
 	return err
 }
 
@@ -194,7 +194,7 @@ func (f *nginx) updateIfHasUnmanagedConfig(lb *lbapi.LoadBalancer, cm *v1.Config
 	if !reflect.DeepEqual(cm.Data, newConfig) {
 		cm.Data = newConfig
 		log.Warningf("About to update ConfigMap %v/%v data with old method", cm.Namespace, cm.Name)
-		_, err = f.client.CoreV1().ConfigMaps(cm.Namespace).Update(cm)
+		_, err = f.client.Native().CoreV1().ConfigMaps(cm.Namespace).Update(cm)
 	}
 	return true, err
 }
@@ -213,7 +213,7 @@ func (f *nginx) getExternalConfig(lb *lbapi.LoadBalancer) ([]string, map[string]
 			if scope == "instance-%s" {
 				name = fmt.Sprintf(name, lb.Name)
 			}
-			cm, err := f.client.CoreV1().ConfigMaps(lb.Namespace).Get(name, metav1.GetOptions{})
+			cm, err := f.client.Native().CoreV1().ConfigMaps(lb.Namespace).Get(name, metav1.GetOptions{})
 			if errors.IsNotFound(err) {
 				continue
 			}

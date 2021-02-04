@@ -363,7 +363,7 @@ func (in *Flavor) DeepCopyObject() runtime.Object {
 func (in *FlavorList) DeepCopyInto(out *FlavorList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Flavor, len(*in))
@@ -652,7 +652,7 @@ func (in *MLNeuron) DeepCopyObject() runtime.Object {
 func (in *MLNeuronList) DeepCopyInto(out *MLNeuronList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]MLNeuron, len(*in))
@@ -766,7 +766,7 @@ func (in *MLProject) DeepCopyObject() runtime.Object {
 func (in *MLProjectList) DeepCopyInto(out *MLProjectList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]MLProject, len(*in))
@@ -867,7 +867,7 @@ func (in *MLTask) DeepCopyObject() runtime.Object {
 func (in *MLTaskList) DeepCopyInto(out *MLTaskList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]MLTask, len(*in))
